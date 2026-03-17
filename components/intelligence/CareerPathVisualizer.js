@@ -1,6 +1,8 @@
 // ============================================================================
 // components/intelligence/CareerPathVisualizer.js
 // HireEdge Frontend — Career path step visualizer
+// All enriched classes scoped with he-path- prefix.
+// Styled by styles/career-path.css (imported in career-path page).
 // ============================================================================
 
 export default function CareerPathVisualizer({ pathData, loading, onStepClick }) {
@@ -27,13 +29,17 @@ export default function CareerPathVisualizer({ pathData, loading, onStepClick })
     <div className="path-viz">
       <div className="path-viz__summary">
         <div className="path-viz__stat">
-          <span className="path-viz__stat-value">{steps || displaySteps.length}</span>
+          <span className="path-viz__stat-value">
+            {steps || displaySteps.length}
+          </span>
           <span className="path-viz__stat-label">
             step{(steps || displaySteps.length) !== 1 ? "s" : ""}
           </span>
         </div>
         <div className="path-viz__stat">
-          <span className="path-viz__stat-value">~{totalYears || "?"}yr</span>
+          <span className="path-viz__stat-value">
+            ~{totalYears || "?"}yr
+          </span>
           <span className="path-viz__stat-label">estimated</span>
         </div>
         {totalSalaryGrowthPct != null && (
@@ -90,49 +96,49 @@ export default function CareerPathVisualizer({ pathData, loading, onStepClick })
 
 function EnrichedChain({ steps, edges, onStepClick }) {
   return (
-    <div className="path-viz__enriched">
+    <div className="he-path-enriched">
       {steps.map((step, i) => {
         const edge = edges && edges[i] ? edges[i] : null;
         const isFirst = i === 0;
         const isLast = i === steps.length - 1;
 
         return (
-          <div key={step.slug} className="path-enriched-wrap">
+          <div key={step.slug} className="he-path-wrap">
             {!isFirst && edge && <TransitionConnector edge={edge} />}
 
             <button
-              className={`path-enriched-step ${
-                isFirst ? "path-enriched-step--start" : ""
-              } ${isLast ? "path-enriched-step--end" : ""}`}
+              className={`he-path-step${
+                isFirst ? " he-path-step--start" : ""
+              }${isLast ? " he-path-step--end" : ""}`}
               onClick={() => onStepClick?.(step.slug)}
             >
               <div
-                className={`path-enriched-step__num ${
-                  isFirst ? "path-enriched-step__num--start" : ""
-                } ${isLast ? "path-enriched-step__num--end" : ""}`}
+                className={`he-path-num${
+                  isFirst ? " he-path-num--start" : ""
+                }${isLast ? " he-path-num--end" : ""}`}
               >
                 {i + 1}
               </div>
 
-              <div className="path-enriched-step__info">
-                <div className="path-enriched-step__title">{step.title}</div>
-                <div className="path-enriched-step__meta">
+              <div className="he-path-info">
+                <div className="he-path-title">{step.title}</div>
+                <div className="he-path-meta">
                   {step.category && <span>{step.category}</span>}
                   {step.seniority && <span>{step.seniority}</span>}
                 </div>
               </div>
 
               {step.salary != null && (
-                <div className="path-enriched-step__salary">
-                  <span className="path-enriched-step__salary-amount">
+                <div className="he-path-salary">
+                  <span className="he-path-salary-amount">
                     £{step.salary.toLocaleString()}
                   </span>
                   {step.salaryChange != null && step.salaryChange !== 0 && (
                     <span
-                      className={`path-enriched-step__salary-change ${
+                      className={`he-path-salary-delta${
                         step.salaryChange >= 0
-                          ? "path-enriched-step__salary-change--up"
-                          : "path-enriched-step__salary-change--down"
+                          ? " he-path-salary-delta--up"
+                          : " he-path-salary-delta--down"
                       }`}
                     >
                       {step.salaryChange >= 0 ? "+" : ""}£
@@ -168,25 +174,22 @@ function TransitionConnector({ edge }) {
   const bg = diffBg[edge.difficulty_label] || "var(--bg-elevated)";
 
   return (
-    <div className="path-connector-enriched">
-      <div className="path-connector-enriched__line" />
+    <div className="he-path-connector">
+      <div className="he-path-connector-line" />
 
-      <div className="path-connector-enriched__card">
-        <div className="path-connector-enriched__row">
-          <span
-            className="path-connector-enriched__diff"
-            style={{ background: bg, color }}
-          >
+      <div className="he-path-connector-card">
+        <div className="he-path-connector-row">
+          <span className="he-path-diff" style={{ background: bg, color }}>
             {edge.difficulty_label || "unknown"}
           </span>
           {edge.estimated_years && (
-            <span className="path-connector-enriched__years">
+            <span className="he-path-years">
               ~{edge.estimated_years}yr
             </span>
           )}
           {edge.salary_growth_pct != null && (
             <span
-              className="path-connector-enriched__growth"
+              className="he-path-growth"
               style={{
                 color:
                   edge.salary_growth_pct >= 0
@@ -201,18 +204,16 @@ function TransitionConnector({ edge }) {
         </div>
 
         {edge.missingSkills && edge.missingSkills.length > 0 && (
-          <div className="path-connector-enriched__skills">
-            <span className="path-connector-enriched__skills-label">
-              Skills to learn:
-            </span>
-            <div className="path-connector-enriched__skills-tags">
+          <div className="he-path-skills">
+            <span className="he-path-skills-label">Skills to learn:</span>
+            <div className="he-path-skills-tags">
               {edge.missingSkills.slice(0, 5).map((skill, i) => (
-                <span key={i} className="path-connector-enriched__skill-tag">
+                <span key={i} className="he-path-skill-tag">
                   {skill}
                 </span>
               ))}
               {edge.missingSkills.length > 5 && (
-                <span className="path-connector-enriched__skill-more">
+                <span className="he-path-skill-more">
                   +{edge.missingSkills.length - 5}
                 </span>
               )}
@@ -221,7 +222,7 @@ function TransitionConnector({ edge }) {
         )}
       </div>
 
-      <div className="path-connector-enriched__line" />
+      <div className="he-path-connector-line" />
     </div>
   );
 }
@@ -256,8 +257,8 @@ function BasicChain({ path, edges, onStepClick }) {
               </div>
             )}
             <button
-              className={`path-step ${isFirst ? "path-step--start" : ""} ${
-                isLast ? "path-step--end" : ""
+              className={`path-step${isFirst ? " path-step--start" : ""}${
+                isLast ? " path-step--end" : ""
               }`}
               onClick={() => onStepClick?.(slug)}
             >
