@@ -9,19 +9,37 @@ import CareerPathVisualizer from "../../components/intelligence/CareerPathVisual
 import { fetchShortestPath, fetchAllPaths } from "../../services/intelligenceService";
 import { useRouter } from "next/router";
 
+function slugifyRole(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
 function getSlug(role) {
   if (!role) return null;
-  if (typeof role === "string") return role;
-  return role.slug || null;
+
+  if (typeof role === "string") {
+    return slugifyRole(role);
+  }
+
+  if (role.slug) return role.slug;
+  if (role.value) return slugifyRole(role.value);
+  if (role.title) return slugifyRole(role.title);
+  if (role.label) return slugifyRole(role.label);
+
+  return null;
 }
 
 function getTitle(role) {
   if (!role) return "";
-  if (typeof role === "string")
-    return role
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-  return role.title || role.slug || "";
+
+  if (typeof role === "string") return role;
+
+  return role.title || role.label || role.slug || "";
 }
 
 export default function CareerPathPage() {
@@ -56,22 +74,31 @@ export default function CareerPathPage() {
         }).catch(() => null),
       ]);
 
-      const shortestData = shortest?.data || shortest;
-      const allData = all?.data || all;
+      const shortestData = shortest?.data || shortest || null;
+      const allData = all?.data || all || null;
 
-      setPathData(shortestData || null);
-      setAltPaths(Array.isArray(allData) ? allData.slice(1, 4) : []);
+      if (
+        shortestData &&
+        shortestData.path &&
+        Array.isArray(shortestData.path) &&
+        shortestData.path.length > 0
+      ) {
+        setPathData(shortestData);
+      } else {
+        setPathData(null);
+        setError("No path found between these roles");
+      }
 
-      if (!shortestData) {
-        setError(
-          `No path found between "${getTitle(fromRole)}" and "${getTitle(toRole)}".`
-        );
+      if (Array.isArray(allData)) {
+        setAltPaths(allData.slice(1, 4));
+      } else if (Array.isArray(allData?.paths)) {
+        setAltPaths(allData.paths.slice(1, 4));
+      } else {
+        setAltPaths([]);
       }
     } catch (err) {
       console.error("[HireEdge] Career path error:", err);
-      setError(
-        err.data?.error || err.message || "No path found between these roles."
-      );
+      setError(err?.data?.error || err?.message || "No path found between these roles");
     } finally {
       setLoading(false);
     }
@@ -81,7 +108,7 @@ export default function CareerPathPage() {
     router.push(`/intelligence/role-explorer?slug=${slug}`);
   };
 
-  const canSubmit = getSlug(fromRole) && getSlug(toRole) && !loading;
+  const canSubmit = !!getSlug(fromRole) && !!getSlug(toRole) && !loading;
 
   return (
     <div className="intel-page">
@@ -92,7 +119,6 @@ export default function CareerPathPage() {
         </p>
       </div>
 
-      {/* From / To inputs */}
       <div className="intel-path-inputs">
         <div className="intel-path-input">
           <label className="intel-label">From</label>
@@ -116,7 +142,9 @@ export default function CareerPathPage() {
             placeholder="Target role..."
           />
           {toRole && (
-            <span className="intel-path-selected">{getTitle(toRole)}</span>
+            <span className="intel-path-selected">
+              {getTitle(toRole)}
+            </span>
           )}
         </div>
 
@@ -129,10 +157,8 @@ export default function CareerPathPage() {
         </button>
       </div>
 
-      {/* Error */}
       {error && <div className="intel-path-error">{error}</div>}
 
-      {/* Primary path */}
       {pathData && (
         <div className="intel-page__result">
           <h3
@@ -148,7 +174,6 @@ export default function CareerPathPage() {
         </div>
       )}
 
-      {/* Alternative paths */}
       {altPaths.length > 0 && (
         <div
           className="intel-page__result"
@@ -160,18 +185,21 @@ export default function CareerPathPage() {
           >
             Alternative Routes
           </h3>
+
           {altPaths.map((ap, i) => (
             <div key={i} className="intel-alt-path">
               <div className="intel-alt-path__header">
                 <span>Route {i + 2}</span>
                 <span className="intel-alt-path__meta">
-                  {ap.steps} steps · ~{ap.totalYears}yr · +
-                  {ap.totalSalaryGrowthPct}%
+                  {ap.steps || (ap.path?.length ? ap.path.length - 1 : 0)} steps
+                  {ap.totalYears ? ` · ~${ap.totalYears}yr` : ""}
+                  {ap.totalSalaryGrowthPct ? ` · +${ap.totalSalaryGrowthPct}%` : ""}
                 </span>
               </div>
+
               <div className="intel-alt-path__chain">
                 {(ap.path || []).map((slug, j) => (
-                  <span key={slug}>
+                  <span key={`${slug}-${j}`}>
                     {j > 0 && (
                       <span className="intel-alt-path__arrow">→</span>
                     )}
@@ -191,7 +219,6 @@ export default function CareerPathPage() {
         </div>
       )}
 
-      {/* Empty state */}
       {!pathData && !loading && !error && (
         <div className="dash-empty" style={{ marginTop: "var(--space-8)" }}>
           <div className="dash-empty__icon">🗺️</div>
