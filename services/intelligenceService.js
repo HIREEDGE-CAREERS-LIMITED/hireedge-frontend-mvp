@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 // ── Role Intelligence ──────────────────────────────────────────────────────
 
 export async function fetchRoleProfile(slug) {
-  return _get(`/api/role-intelligence?action=profile&slug=${enc(slug)}`);
+  return _get(`/api/career-intelligence/role-intelligence?action=profile&slug=${enc(slug)}`);
 }
 
 export async function searchRoles(query, { category, seniority, limit } = {}) {
@@ -16,40 +16,40 @@ export async function searchRoles(query, { category, seniority, limit } = {}) {
   if (category) p.set("category", category);
   if (seniority) p.set("seniority", seniority);
   if (limit) p.set("limit", String(limit));
-  return _get(`/api/role-intelligence?${p}`);
+  return _get(`/api/career-intelligence/role-intelligence?${p}`);
 }
 
 export async function compareRoles(slugA, slugB) {
-  return _get(`/api/role-intelligence?action=compare&slugA=${enc(slugA)}&slugB=${enc(slugB)}`);
+  return _get(`/api/career-intelligence/role-intelligence?action=compare&slugA=${enc(slugA)}&slugB=${enc(slugB)}`);
 }
 
 export async function fetchCategories() {
-  return _get("/api/role-intelligence?action=categories");
+  return _get("/api/career-intelligence/role-intelligence?action=categories");
 }
 
 export async function fetchCategoryIntelligence(category) {
-  return _get(`/api/role-intelligence?action=category&category=${enc(category)}`);
+  return _get(`/api/career-intelligence/role-intelligence?action=category&category=${enc(category)}`);
 }
 
 // ── Role Path ──────────────────────────────────────────────────────────────
 
 export async function fetchShortestPath(from, to) {
-  return _get(`/api/role-path?action=shortest&from=${enc(from)}&to=${enc(to)}`);
+  return _get(`/api/career-intelligence/role-path?action=shortest&from=${enc(from)}&to=${enc(to)}`);
 }
 
 export async function fetchAllPaths(from, to, { maxDepth, maxResults } = {}) {
   const p = new URLSearchParams({ action: "all", from, to });
   if (maxDepth) p.set("maxDepth", String(maxDepth));
   if (maxResults) p.set("maxResults", String(maxResults));
-  return _get(`/api/role-path?${p}`);
+  return _get(`/api/career-intelligence/role-path?${p}`);
 }
 
 export async function fetchNextMoves(slug, sortBy = "salary") {
-  return _get(`/api/role-path?action=next&slug=${enc(slug)}&sortBy=${enc(sortBy)}`);
+  return _get(`/api/career-intelligence/role-path?action=next&slug=${enc(slug)}&sortBy=${enc(sortBy)}`);
 }
 
 export async function fetchPreviousMoves(slug) {
-  return _get(`/api/role-path?action=previous&slug=${enc(slug)}`);
+  return _get(`/api/career-intelligence/role-path?action=previous&slug=${enc(slug)}`);
 }
 
 // ── Salary Intelligence ────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export async function matchSkillsToRoles(skills, { category, limit } = {}) {
 // ── Graph ──────────────────────────────────────────────────────────────────
 
 export async function fetchRoleGraph(slug, depth = 2) {
-  return _get(`/api/role-graph?slug=${enc(slug)}&depth=${depth}`);
+  return _get(`/api/career-intelligence/role-graph?slug=${enc(slug)}&depth=${depth}`);
 }
 
 export async function fetchGraphStats() {
@@ -109,7 +109,14 @@ function enc(s) {
 
 async function _get(endpoint) {
   const res = await fetch(`${API_BASE}${endpoint}`);
-  const json = await res.json();
+  const text = await res.text();
+
+  let json;
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(text || "Non-JSON response from API");
+  }
 
   if (!res.ok) {
     const e = new Error(json.message || json.error || "Intelligence API error");
