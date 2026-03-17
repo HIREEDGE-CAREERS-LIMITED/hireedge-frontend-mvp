@@ -1,99 +1,143 @@
 // ============================================================================
 // components/intelligence/CareerPathVisualizer.js
-// HireEdge Frontend — Career path step visualizer
+// HireEdge Frontend — Safe career path renderer
 // ============================================================================
 
-export default function CareerPathVisualizer({ pathData, loading, onStepClick }) {
-  if (loading) return <PathSkeleton />;
-  if (!pathData) return null;
+function formatTitle(slugOrTitle) {
+  if (!slugOrTitle) return "Unknown Role";
+  return String(slugOrTitle)
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
-  const { path, edges, steps, totalYears, totalDifficulty, totalSalaryGrowthPct } = pathData;
+function formatSalary(salary) {
+  if (!salary || typeof salary !== "object") return null;
+
+  const min = salary.min ?? null;
+  const max = salary.max ?? null;
+  const mean = salary.mean ?? null;
+
+  if (min && max) {
+    return `£${Number(min).toLocaleString()} – £${Number(max).toLocaleString()}`;
+  }
+
+  if (mean) {
+    return `£${Number(mean).toLocaleString()}`;
+  }
+
+  if (min) {
+    return `From £${Number(min).toLocaleString()}`;
+  }
+
+  if (max) {
+    return `Up to £${Number(max).toLocaleString()}`;
+  }
+
+  return null;
+}
+
+function normalizePathData(pathData) {
+  if (!pathData || typeof pathData !== "object") {
+    return [];
+  }
+
+  // Preferred: roles array from backend
+  if (Array.isArray(pathData.roles) && pathData.roles.length > 0) {
+    return pathData.roles.map((role, index) => ({
+      key: role.slug || `role-${index}`,
+      slug: role.slug || "",
+      title: role.title || formatTitle(role.slug),
+      category: role.category || null,
+      seniority: role.seniority || null,
+      salary_uk: role.salary_uk || null,
+    }));
+  }
+
+  // Fallback: plain slug path array
+  if (Array.isArray(pathData.path) && pathData.path.length > 0) {
+    return pathData.path.map((slug, index) => ({
+      key: slug || `step-${index}`,
+      slug: slug || "",
+      title: formatTitle(slug),
+      category: null,
+      seniority: null,
+      salary_uk: null,
+    }));
+  }
+
+  return [];
+}
+
+export default function CareerPathVisualizer({ pathData, onStepClick }) {
+  const roles = normalizePathData(pathData);
+
+  if (!roles.length) {
+    return (
+      <div className="dash-empty">
+        <div className="dash-empty__icon">🗺️</div>
+        <p className="dash-empty__text">No path data available</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="path-viz">
-      {/* Summary strip */}
-      <div className="path-viz__summary">
-        <div className="path-viz__stat">
-          <span className="path-viz__stat-value">{steps}</span>
-          <span className="path-viz__stat-label">step{steps !== 1 ? "s" : ""}</span>
-        </div>
-        <div className="path-viz__stat">
-          <span className="path-viz__stat-value">~{totalYears}yr</span>
-          <span className="path-viz__stat-label">estimated</span>
-        </div>
-        <div className="path-viz__stat">
-          <span className="path-viz__stat-value">+{totalSalaryGrowthPct}%</span>
-          <span className="path-viz__stat-label">salary growth</span>
-        </div>
-        <div className="path-viz__stat">
-          <span className="path-viz__stat-value">{totalDifficulty}</span>
-          <span className="path-viz__stat-label">difficulty</span>
-        </div>
+    <div className="intel-path-vis">
+      <div className="intel-path-vis__meta">
+        <span className="intel-path-vis__badge">
+          {typeof pathData?.steps === "number"
+            ? `${pathData.steps} step${pathData.steps === 1 ? "" : "s"}`
+            : `${Math.max(roles.length - 1, 0)} step${roles.length - 1 === 1 ? "" : "s"}`}
+        </span>
+
+        {pathData?.totalYears ? (
+          <span className="intel-path-vis__badge">
+            ~{pathData.totalYears} years
+          </span>
+        ) : null}
+
+        {pathData?.totalSalaryGrowthPct ? (
+          <span className="intel-path-vis__badge">
+            +{pathData.totalSalaryGrowthPct}% salary growth
+          </span>
+        ) : null}
       </div>
 
-      {/* Step chain */}
-      <div className="path-viz__chain">
-        {path.map((slug, i) => {
-          const edge = edges[i] || null;       // edge leading INTO this step (index offset)
-          const edgeIn = i > 0 ? edges[i - 1] : null;
-          const isFirst = i === 0;
-          const isLast = i === path.length - 1;
-          const title = isFirst
-            ? edges[0]?.from ? _slugToTitle(edges[0].from) : _slugToTitle(slug)
-            : (edgeIn?.title || _slugToTitle(slug));
+      <div className="intel-path-vis__chain">
+        {roles.map((role, index) => {
+          const salaryText = formatSalary(role.salary_uk);
 
           return (
-            <div key={slug} className="path-step-wrap">
-              {/* Connector line + edge label */}
-              {!isFirst && edgeIn && (
-                <div className="path-connector">
-                  <div className="path-connector__line" />
-                  <div className="path-connector__label">
-                    <span className={`path-connector__diff path-connector__diff--${edgeIn.difficulty_label}`}>
-                      {edgeIn.difficulty_label}
-                    </span>
-                    <span className="path-connector__years">~{edgeIn.estimated_years}yr</span>
-                    <span className="path-connector__growth">+{edgeIn.salary_growth_pct}%</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Step node */}
+            <div key={role.key} className="intel-path-step">
               <button
-                className={`path-step ${isFirst ? "path-step--start" : ""} ${isLast ? "path-step--end" : ""}`}
-                onClick={() => onStepClick?.(slug)}
+                type="button"
+                className="intel-path-step__card"
+                onClick={() => role.slug && onStepClick?.(role.slug)}
               >
-                <div className="path-step__dot" />
-                <div className="path-step__title">
-                  {isFirst ? _slugToTitle(slug) : title}
+                <div className="intel-path-step__index">{index + 1}</div>
+
+                <div className="intel-path-step__body">
+                  <div className="intel-path-step__title">{role.title}</div>
+
+                  {(role.category || role.seniority) && (
+                    <div className="intel-path-step__meta">
+                      {role.category ? <span>{role.category}</span> : null}
+                      {role.category && role.seniority ? <span>•</span> : null}
+                      {role.seniority ? <span>{role.seniority}</span> : null}
+                    </div>
+                  )}
+
+                  {salaryText && (
+                    <div className="intel-path-step__salary">{salaryText}</div>
+                  )}
                 </div>
-                <div className="path-step__slug">{slug}</div>
               </button>
+
+              {index < roles.length - 1 && (
+                <div className="intel-path-step__arrow">→</div>
+              )}
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function _slugToTitle(slug) {
-  return slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function PathSkeleton() {
-  return (
-    <div className="path-viz">
-      <div className="path-viz__summary">
-        {[1, 2, 3, 4].map(i => <div key={i} className="skel skel--sm" style={{ width: 60 }} />)}
-      </div>
-      <div className="path-viz__chain">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="path-step-wrap">
-            {i > 1 && <div className="path-connector"><div className="path-connector__line" /></div>}
-            <div className="path-step"><div className="skel skel--md" /></div>
-          </div>
-        ))}
       </div>
     </div>
   );
