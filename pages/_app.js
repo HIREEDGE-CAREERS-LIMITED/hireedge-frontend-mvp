@@ -9,6 +9,12 @@
 import AppShell from "../components/layout/AppShell";
 import "../styles/globals.css";
 import "../styles/app-shell.css";
+import "../styles/copilot.css";
+import "../styles/dashboard.css";
+import "../styles/intelligence.css";
+import "../styles/tools.css";
+import "../styles/career-pack.css";
+import "../styles/billing.css";
 
 export default function HireEdgeApp({ Component, pageProps }) {
   // If the page exports a getLayout function, use it (for custom layouts)
