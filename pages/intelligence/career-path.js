@@ -3,6 +3,8 @@
 // HireEdge Frontend — Career path finder
 // ============================================================================
 
+import "../../styles/career-path.css";
+
 import { useState } from "react";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import CareerPathVisualizer from "../../components/intelligence/CareerPathVisualizer";
