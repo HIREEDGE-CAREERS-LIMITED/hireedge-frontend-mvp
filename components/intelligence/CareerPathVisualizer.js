@@ -1,6 +1,6 @@
 // ============================================================================
 // components/intelligence/CareerPathVisualizer.js
-// HireEdge Frontend — Safe career path renderer
+// HireEdge Frontend — Styled career path renderer
 // ============================================================================
 
 function formatTitle(slugOrTitle) {
@@ -25,23 +25,12 @@ function formatSalary(salary) {
     return `£${Number(mean).toLocaleString()}`;
   }
 
-  if (min) {
-    return `From £${Number(min).toLocaleString()}`;
-  }
-
-  if (max) {
-    return `Up to £${Number(max).toLocaleString()}`;
-  }
-
   return null;
 }
 
-function normalizePathData(pathData) {
-  if (!pathData || typeof pathData !== "object") {
-    return [];
-  }
+function normalizeRoles(pathData) {
+  if (!pathData || typeof pathData !== "object") return [];
 
-  // Preferred: roles array from backend
   if (Array.isArray(pathData.roles) && pathData.roles.length > 0) {
     return pathData.roles.map((role, index) => ({
       key: role.slug || `role-${index}`,
@@ -53,7 +42,6 @@ function normalizePathData(pathData) {
     }));
   }
 
-  // Fallback: plain slug path array
   if (Array.isArray(pathData.path) && pathData.path.length > 0) {
     return pathData.path.map((slug, index) => ({
       key: slug || `step-${index}`,
@@ -69,71 +57,114 @@ function normalizePathData(pathData) {
 }
 
 export default function CareerPathVisualizer({ pathData, onStepClick }) {
-  const roles = normalizePathData(pathData);
+  const roles = normalizeRoles(pathData);
 
   if (!roles.length) {
-    return (
-      <div className="dash-empty">
-        <div className="dash-empty__icon">🗺️</div>
-        <p className="dash-empty__text">No path data available</p>
-      </div>
-    );
+    return null;
   }
 
+  const steps =
+    typeof pathData?.steps === "number"
+      ? pathData.steps
+      : Math.max(roles.length - 1, 0);
+
   return (
-    <div className="intel-path-vis">
-      <div className="intel-path-vis__meta">
-        <span className="intel-path-vis__badge">
-          {typeof pathData?.steps === "number"
-            ? `${pathData.steps} step${pathData.steps === 1 ? "" : "s"}`
-            : `${Math.max(roles.length - 1, 0)} step${roles.length - 1 === 1 ? "" : "s"}`}
-        </span>
-
-        {pathData?.totalYears ? (
-          <span className="intel-path-vis__badge">
-            ~{pathData.totalYears} years
-          </span>
-        ) : null}
-
-        {pathData?.totalSalaryGrowthPct ? (
-          <span className="intel-path-vis__badge">
-            +{pathData.totalSalaryGrowthPct}% salary growth
-          </span>
-        ) : null}
+    <div>
+      <div style={{ marginBottom: "16px", color: "var(--text-secondary)" }}>
+        {steps} step{steps === 1 ? "" : "s"}
       </div>
 
-      <div className="intel-path-vis__chain">
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: "12px",
+          marginBottom: "20px",
+        }}
+      >
         {roles.map((role, index) => {
-          const salaryText = formatSalary(role.salary_uk);
+          const salary = formatSalary(role.salary_uk);
 
           return (
-            <div key={role.key} className="intel-path-step">
+            <div
+              key={role.key}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
               <button
                 type="button"
-                className="intel-path-step__card"
                 onClick={() => role.slug && onStepClick?.(role.slug)}
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "14px",
+                  padding: "14px 16px",
+                  minWidth: "220px",
+                  textAlign: "left",
+                  color: "var(--text-primary)",
+                  cursor: role.slug ? "pointer" : "default",
+                }}
               >
-                <div className="intel-path-step__index">{index + 1}</div>
-
-                <div className="intel-path-step__body">
-                  <div className="intel-path-step__title">{role.title}</div>
-
-                  {(role.category || role.seniority) && (
-                    <div className="intel-path-step__meta">
-                      {role.category ? <span>{role.category}</span> : null}
-                      {role.category && role.seniority ? <span>•</span> : null}
-                      {role.seniority ? <span>{role.seniority}</span> : null}
-                    </div>
-                  )}
-
-                  {salaryText && (
-                    <div className="intel-path-step__salary">{salaryText}</div>
-                  )}
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--text-secondary)",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Step {index + 1}
                 </div>
+
+                <div
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    marginBottom: "6px",
+                  }}
+                >
+                  {role.title}
+                </div>
+
+                {(role.category || role.seniority) && (
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--text-secondary)",
+                      marginBottom: salary ? "6px" : "0",
+                    }}
+                  >
+                    {role.category || ""}
+                    {role.category && role.seniority ? " • " : ""}
+                    {role.seniority || ""}
+                  </div>
+                )}
+
+                {salary && (
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--accent-primary, #34d399)",
+                    }}
+                  >
+                    {salary}
+                  </div>
+                )}
               </button>
 
               {index < roles.length - 1 && (
-                <div className="intel-path-step__arrow">→</div>
+                <div
+                  style={{
+                    fontSize: "20px",
+                    color: "var(--text-secondary)",
+                    padding: "0 2px",
+                  }}
+                >
+                  →
+                </div>
               )}
             </div>
           );
