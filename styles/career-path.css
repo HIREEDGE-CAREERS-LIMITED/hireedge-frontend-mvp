@@ -1,93 +1,65 @@
-
-/* ===========================================================================
-   styles/career-path.css
-   HireEdge — Scoped styles for the Career Path Finder enriched visualizer.
-   All classes prefixed with he-path- to avoid collisions.
-   =========================================================================== */
-
-/* ── Enriched chain container ──────────────────────────────────────────── */
-
 .he-path-enriched {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 12px;
 }
 
 .he-path-wrap {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  gap: 10px;
 }
-
-/* ── Step card ─────────────────────────────────────────────────────────── */
 
 .he-path-step {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  text-align: left;
+  gap: 16px;
   width: 100%;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #f8fafc;
+  text-align: left;
   cursor: pointer;
-  font-family: inherit;
-  transition: border-color var(--duration-fast) var(--ease-out),
-              background var(--duration-fast) var(--ease-out);
 }
 
 .he-path-step:hover {
-  border-color: var(--border-hover);
-  background: var(--bg-tertiary);
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .he-path-step--start {
-  border-color: rgba(16, 185, 129, 0.25);
-  background: rgba(16, 185, 129, 0.03);
-}
-
-.he-path-step--start:hover {
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(52, 211, 153, 0.28);
 }
 
 .he-path-step--end {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(52, 211, 153, 0.4);
 }
-
-.he-path-step--end:hover {
-  border-color: rgba(16, 185, 129, 0.5);
-}
-
-/* Step number circle */
 
 .he-path-num {
   width: 32px;
   height: 32px;
+  min-width: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-full);
-  background: var(--bg-elevated);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .he-path-num--start {
-  background: var(--accent-600);
+  background: #10b981;
   color: white;
 }
 
 .he-path-num--end {
-  background: var(--accent-400);
-  color: var(--ink-900);
+  background: #34d399;
+  color: #052e16;
 }
-
-/* Step info block */
 
 .he-path-info {
   flex: 1;
@@ -95,158 +67,146 @@
 }
 
 .he-path-title {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-  line-height: 1.3;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
 }
 
 .he-path-meta {
   display: flex;
-  gap: var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  margin-top: 2px;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.7);
 }
-
-/* Salary column */
 
 .he-path-salary {
   text-align: right;
-  flex-shrink: 0;
+  min-width: 140px;
 }
 
 .he-path-salary-amount {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
   display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
 }
 
 .he-path-salary-delta {
-  font-size: var(--text-xs);
-  font-family: var(--font-mono);
-  font-weight: var(--weight-semibold);
   display: block;
-  margin-top: 1px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .he-path-salary-delta--up {
-  color: var(--accent-400);
+  color: #34d399;
 }
 
 .he-path-salary-delta--down {
-  color: var(--red-400);
+  color: #f87171;
 }
-
-/* ── Transition connector ──────────────────────────────────────────────── */
 
 .he-path-connector {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 var(--space-6);
+  gap: 0;
 }
 
 .he-path-connector-line {
   width: 2px;
   height: 12px;
-  background: var(--ink-500);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .he-path-connector-card {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  width: 100%;
-  max-width: 500px;
+  width: calc(100% - 48px);
+  margin-left: 48px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .he-path-connector-row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .he-path-diff {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: capitalize;
-  letter-spacing: 0.02em;
 }
 
-.he-path-years {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-}
-
+.he-path-years,
 .he-path-growth {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.78);
 }
-
-/* Missing skills section inside connector */
 
 .he-path-skills {
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-subtle);
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 10px;
 }
 
 .he-path-skills-label {
-  font-size: 10px;
-  font-weight: var(--weight-semibold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   display: block;
-  margin-bottom: var(--space-1);
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.7);
+  text-transform: uppercase;
 }
 
 .he-path-skills-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
 }
 
 .he-path-skill-tag {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  background: rgba(239, 68, 68, 0.08);
-  color: var(--red-400);
-  border: 1px solid rgba(239, 68, 68, 0.12);
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.16);
+  color: #fca5a5;
+  font-size: 11px;
 }
 
 .he-path-skill-more {
-  font-size: 10px;
-  color: var(--text-muted);
-  padding: 2px 6px;
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: rgba(226, 232, 240, 0.6);
+  font-size: 11px;
 }
-
-/* ── Responsive ────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
   .he-path-step {
     flex-wrap: wrap;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
+    align-items: flex-start;
   }
 
   .he-path-salary {
     text-align: left;
+    min-width: auto;
     width: 100%;
     padding-left: 48px;
   }
 
   .he-path-connector-card {
-    max-width: 100%;
+    width: calc(100% - 24px);
+    margin-left: 24px;
   }
 }
