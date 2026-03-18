@@ -30,6 +30,19 @@ function slugToTitle(slug) {
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Safely extract mean salary from salary_uk in various shapes:
+ *   { mean: 46727, min: 10000, max: 70000 }  → 46727
+ *   46727                                      → 46727
+ *   null / undefined                            → null
+ */
+function extractMean(salaryUk) {
+  if (salaryUk == null) return null;
+  if (typeof salaryUk === "number") return salaryUk;
+  if (typeof salaryUk === "object" && salaryUk.mean != null) return salaryUk.mean;
+  return null;
+}
+
 function findTransitionMeta(fromProfile, toSlug) {
   if (!fromProfile?.transitions?.next) return null;
   const arr = Array.isArray(fromProfile.transitions.next)
@@ -82,20 +95,22 @@ function inferYears(fromProfile, toProfile) {
 
 function enrichPath(pathSlugs, roleProfiles) {
   const enrichedSteps = [];
+  // Index 0 = null (no incoming edge for first step)
+  // Index 1 = edge from step 0 → step 1
+  // Index 2 = edge from step 1 → step 2
   const enrichedEdges = [null];
 
+  let prevSalary = null;
   let prevProfile = null;
 
   for (let i = 0; i < pathSlugs.length; i++) {
     const slug = pathSlugs[i];
     const profile = roleProfiles.get(slug);
 
-    const salary = profile?.salary_uk?.mean || null;
-    const prevSalary = prevProfile?.salary_uk?.mean || null;
-    const salaryChange =
-      salary != null && prevSalary != null && i > 0
-        ? salary - prevSalary
-        : null;
+    const salary = extractMean(profile?.salary_uk);
+    const salaryChange = (salary != null && prevSalary != null && i > 0)
+      ? salary - prevSalary
+      : null;
 
     enrichedSteps.push({
       slug,
@@ -135,9 +150,7 @@ function enrichPath(pathSlugs, roleProfiles) {
       }
 
       if (salaryGrowthPct == null && prevSalary && salary) {
-        salaryGrowthPct = Math.round(
-          ((salary - prevSalary) / prevSalary) * 100
-        );
+        salaryGrowthPct = Math.round(((salary - prevSalary) / prevSalary) * 100);
       }
 
       enrichedEdges.push({
@@ -152,6 +165,7 @@ function enrichPath(pathSlugs, roleProfiles) {
       });
     }
 
+    prevSalary = salary;
     prevProfile = profile;
   }
 
@@ -184,25 +198,14 @@ export default function CareerPathPage() {
     try {
       const [shortest, all] = await Promise.all([
         fetchShortestPath(fromSlug, toSlug),
-        fetchAllPaths(fromSlug, toSlug, {
-          maxDepth: 5,
-          maxResults: 5,
-        }).catch(() => null),
+        fetchAllPaths(fromSlug, toSlug, { maxDepth: 5, maxResults: 5 }).catch(() => null),
       ]);
 
       const shortestData = shortest?.data || shortest;
       const allData = all?.data || all;
 
-      if (
-        !shortestData ||
-        !shortestData.path ||
-        shortestData.path.length === 0
-      ) {
-        setError(
-          `No path found between "${getTitle(fromRole)}" and "${getTitle(
-            toRole
-          )}".`
-        );
+      if (!shortestData || !shortestData.path || shortestData.path.length === 0) {
+        setError(`No path found between "${getTitle(fromRole)}" and "${getTitle(toRole)}".`);
         setLoading(false);
         return;
       }
@@ -210,22 +213,19 @@ export default function CareerPathPage() {
       const pathSlugs = shortestData.path;
       const roleProfiles = new Map();
 
-      const profilePromises = pathSlugs.map(async (slug) => {
-        try {
-          const res = await fetchRoleProfile(slug);
-          const profile = res?.data || res;
-          if (profile) roleProfiles.set(slug, profile);
-        } catch {
-          // Continue without this profile
-        }
-      });
-
-      await Promise.all(profilePromises);
-
-      const { enrichedSteps, enrichedEdges } = enrichPath(
-        pathSlugs,
-        roleProfiles
+      await Promise.all(
+        pathSlugs.map(async (slug) => {
+          try {
+            const res = await fetchRoleProfile(slug);
+            const profile = res?.data || res;
+            if (profile) roleProfiles.set(slug, profile);
+          } catch {
+            // Continue without this profile
+          }
+        })
       );
+
+      const { enrichedSteps, enrichedEdges } = enrichPath(pathSlugs, roleProfiles);
 
       const salaryStart = enrichedSteps[0]?.salary;
       const salaryEnd = enrichedSteps[enrichedSteps.length - 1]?.salary;
@@ -235,15 +235,11 @@ export default function CareerPathPage() {
           : shortestData.totalSalaryGrowthPct;
 
       const totalYears =
-        enrichedEdges
-          .filter(Boolean)
-          .reduce((sum, e) => sum + (e.estimated_years || 0), 0) ||
+        enrichedEdges.filter(Boolean).reduce((sum, e) => sum + (e.estimated_years || 0), 0) ||
         shortestData.totalYears;
 
       const totalDifficulty =
-        enrichedEdges
-          .filter(Boolean)
-          .reduce((sum, e) => sum + (e.difficulty_score || 0), 0) ||
+        enrichedEdges.filter(Boolean).reduce((sum, e) => sum + (e.difficulty_score || 0), 0) ||
         shortestData.totalDifficulty;
 
       setPathData({
@@ -261,11 +257,7 @@ export default function CareerPathPage() {
       setAltPaths(Array.isArray(allData) ? allData.slice(1, 4) : []);
     } catch (err) {
       console.error("[HireEdge] Career path error:", err);
-      setError(
-        err.data?.error ||
-          err.message ||
-          "No path found between these roles."
-      );
+      setError(err.data?.error || err.message || "No path found between these roles.");
     } finally {
       setLoading(false);
     }
@@ -282,45 +274,26 @@ export default function CareerPathPage() {
       <div className="intel-page__header">
         <h1 className="intel-page__title">Career Path Finder</h1>
         <p className="intel-page__subtitle">
-          Find the shortest route between any two roles with salary,
-          difficulty, and skills analysis.
+          Find the shortest route between any two roles with salary, difficulty, and skills analysis.
         </p>
       </div>
 
       <div className="intel-path-inputs">
         <div className="intel-path-input">
           <label className="intel-label">From</label>
-          <RoleSearch
-            onSelect={(r) => setFromRole(r)}
-            placeholder="Current role..."
-          />
-          {fromRole && (
-            <span className="intel-path-selected">
-              {getTitle(fromRole)}
-            </span>
-          )}
+          <RoleSearch onSelect={(r) => setFromRole(r)} placeholder="Current role..." />
+          {fromRole && <span className="intel-path-selected">{getTitle(fromRole)}</span>}
         </div>
 
         <div className="intel-path-arrow">→</div>
 
         <div className="intel-path-input">
           <label className="intel-label">To</label>
-          <RoleSearch
-            onSelect={(r) => setToRole(r)}
-            placeholder="Target role..."
-          />
-          {toRole && (
-            <span className="intel-path-selected">
-              {getTitle(toRole)}
-            </span>
-          )}
+          <RoleSearch onSelect={(r) => setToRole(r)} placeholder="Target role..." />
+          {toRole && <span className="intel-path-selected">{getTitle(toRole)}</span>}
         </div>
 
-        <button
-          className="intel-path-btn"
-          onClick={findPath}
-          disabled={!canSubmit}
-        >
+        <button className="intel-path-btn" onClick={findPath} disabled={!canSubmit}>
           {loading ? "Finding..." : "Find Path"}
         </button>
       </div>
@@ -329,43 +302,26 @@ export default function CareerPathPage() {
 
       {pathData && (
         <div className="intel-page__result">
-          <CareerPathVisualizer
-            pathData={pathData}
-            onStepClick={handleStepClick}
-          />
+          <CareerPathVisualizer pathData={pathData} onStepClick={handleStepClick} />
         </div>
       )}
 
       {altPaths.length > 0 && (
-        <div
-          className="intel-page__result"
-          style={{ marginTop: "var(--space-6)" }}
-        >
-          <h3
-            className="intel-label"
-            style={{ marginBottom: "var(--space-4)" }}
-          >
-            Alternative Routes
-          </h3>
+        <div className="intel-page__result" style={{ marginTop: "var(--space-6)" }}>
+          <h3 className="intel-label" style={{ marginBottom: "var(--space-4)" }}>Alternative Routes</h3>
           {altPaths.map((ap, i) => (
             <div key={i} className="intel-alt-path">
               <div className="intel-alt-path__header">
                 <span>Route {i + 2}</span>
                 <span className="intel-alt-path__meta">
-                  {ap.steps} steps · ~{ap.totalYears}yr · +
-                  {ap.totalSalaryGrowthPct}%
+                  {ap.steps} steps · ~{ap.totalYears}yr · +{ap.totalSalaryGrowthPct}%
                 </span>
               </div>
               <div className="intel-alt-path__chain">
                 {(ap.path || []).map((slug, j) => (
                   <span key={slug}>
-                    {j > 0 && (
-                      <span className="intel-alt-path__arrow">→</span>
-                    )}
-                    <button
-                      className="intel-alt-path__node"
-                      onClick={() => handleStepClick(slug)}
-                    >
+                    {j > 0 && <span className="intel-alt-path__arrow">→</span>}
+                    <button className="intel-alt-path__node" onClick={() => handleStepClick(slug)}>
                       {slugToTitle(slug)}
                     </button>
                   </span>
@@ -377,17 +333,11 @@ export default function CareerPathPage() {
       )}
 
       {!pathData && !loading && !error && (
-        <div
-          className="dash-empty"
-          style={{ marginTop: "var(--space-8)" }}
-        >
+        <div className="dash-empty" style={{ marginTop: "var(--space-8)" }}>
           <div className="dash-empty__icon">🗺️</div>
-          <p className="dash-empty__text">
-            Select a starting role and a target role
-          </p>
+          <p className="dash-empty__text">Select a starting role and a target role</p>
           <p className="dash-empty__hint">
-            We&apos;ll find every possible career path with salary
-            progression, difficulty ratings, and skills gaps.
+            We&apos;ll find every possible career path with salary progression, difficulty ratings, and skills gaps.
           </p>
         </div>
       )}
