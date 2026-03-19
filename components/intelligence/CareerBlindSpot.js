@@ -259,7 +259,7 @@ function RoleCard({ role, isExpanded, onToggle, currentSlug, isFallback }) {
             <button
               className="he-blind-btn he-blind-btn--primary"
               onClick={(e) =>
-                go(e, `/intelligence/role-intelligence?role=${role.role_slug}`)
+                go(e, `/intelligence/role-explorer?slug=${role.role_slug}`)
               }
             >
               View role intelligence →
