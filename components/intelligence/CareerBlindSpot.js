@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import styles from "../../styles/career-blind-spot.module.css";
+
 const DIFFICULTY_CONFIG = {
   low: { label: "Low risk", cls: "he-blind-pill--green" },
   easy: { label: "Low risk", cls: "he-blind-pill--green" },
