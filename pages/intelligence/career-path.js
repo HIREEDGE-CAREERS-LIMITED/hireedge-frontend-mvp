@@ -6,6 +6,7 @@
 import { useState } from "react";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import CareerPathVisualizer from "../../components/intelligence/CareerPathVisualizer";
+import CareerBlindSpot from "../../components/intelligence/CareerBlindSpot";
 import {
   fetchShortestPath,
   fetchAllPaths,
@@ -95,9 +96,6 @@ function inferYears(fromProfile, toProfile) {
 
 function enrichPath(pathSlugs, roleProfiles) {
   const enrichedSteps = [];
-  // Index 0 = null (no incoming edge for first step)
-  // Index 1 = edge from step 0 → step 1
-  // Index 2 = edge from step 1 → step 2
   const enrichedEdges = [null];
 
   let prevSalary = null;
@@ -108,9 +106,10 @@ function enrichPath(pathSlugs, roleProfiles) {
     const profile = roleProfiles.get(slug);
 
     const salary = extractMean(profile?.salary_uk);
-    const salaryChange = (salary != null && prevSalary != null && i > 0)
-      ? salary - prevSalary
-      : null;
+    const salaryChange =
+      salary != null && prevSalary != null && i > 0
+        ? salary - prevSalary
+        : null;
 
     enrichedSteps.push({
       slug,
@@ -301,9 +300,20 @@ export default function CareerPathPage() {
       {error && <div className="intel-path-error">{error}</div>}
 
       {pathData && (
-        <div className="intel-page__result">
-          <CareerPathVisualizer pathData={pathData} onStepClick={handleStepClick} />
-        </div>
+        <>
+          <div className="intel-page__result">
+            <CareerPathVisualizer pathData={pathData} onStepClick={handleStepClick} />
+          </div>
+
+          <div className="intel-page__result" style={{ marginTop: "var(--space-6)" }}>
+            <CareerBlindSpot
+              roleSlug={getSlug(fromRole)}
+              limit={2}
+              minOverlap={0.6}
+              maxHops={2}
+            />
+          </div>
+        </>
       )}
 
       {altPaths.length > 0 && (
