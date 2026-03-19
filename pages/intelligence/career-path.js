@@ -6,7 +6,7 @@
 import { useState } from "react";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import CareerPathVisualizer from "../../components/intelligence/CareerPathVisualizer";
-import CareerBlindSpot from "../../components/intelligence/CareerBlindSpot.jsx";
+import CareerBlindSpot from "../../components/intelligence/CareerBlindSpot";
 import {
   fetchShortestPath,
   fetchAllPaths,
