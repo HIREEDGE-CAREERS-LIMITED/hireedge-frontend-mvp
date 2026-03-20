@@ -1,8 +1,7 @@
 // ============================================================================
 // pages/tools/linkedin-optimiser.js
 // HireEdge Frontend — LinkedIn Optimiser
-//
-// Prefill reads ONLY from router.query. No edgexCtx direct reads.
+// autoComplete="off" prevents Chrome autofill bleeding into fields.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -30,11 +29,9 @@ export default function LinkedinOptimiserPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── Prefill from URL query params ONLY ───────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
-
     if (q.role || q.current) setCurrentRole({ slug: q.role || q.current, title: _slugToTitle(q.role || q.current) });
     if (q.target)            setTargetRole({ slug: q.target, title: _slugToTitle(q.target) });
     if (q.skills)            setSkills(_cleanSkills(q.skills));
@@ -88,8 +85,8 @@ export default function LinkedinOptimiserPage() {
           </p>
         </div>
 
-        <div className="tool-form">
-          {/* Row 1 — Current + Target + Years */}
+        <div className="tool-form" autoComplete="off">
+
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
@@ -116,13 +113,13 @@ export default function LinkedinOptimiserPage() {
               <input
                 className="tool-form__input"
                 type="number" min="0" max="40" placeholder="e.g. 7"
+                autoComplete="off"
                 value={yearsExp}
                 onChange={(e) => setYearsExp(e.target.value)}
               />
             </div>
           </div>
 
-          {/* Row 2 — Skills + Industry */}
           <div className="tool-form__row tool-form__row--2">
             <div className="tool-form__field">
               <label className="tool-form__label">Your Skills</label>
@@ -130,6 +127,7 @@ export default function LinkedinOptimiserPage() {
                 className="tool-form__input"
                 type="text"
                 placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
+                autoComplete="off"
                 value={skills}
                 onChange={(e) => setSkills(e.target.value)}
               />
@@ -141,13 +139,13 @@ export default function LinkedinOptimiserPage() {
               <input
                 className="tool-form__input"
                 type="text" placeholder="e.g. Technology, Financial Services"
+                autoComplete="off"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
               />
             </div>
           </div>
 
-          {/* CV */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               CV / Profile Summary <span className="tool-form__optional">(recommended — enables written About section)</span>
@@ -155,12 +153,12 @@ export default function LinkedinOptimiserPage() {
             <textarea
               className="tool-form__textarea" rows={5}
               placeholder="Paste a summary of your experience or CV text…"
+              autoComplete="off"
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
             />
           </div>
 
-          {/* JD */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               Target Job Description <span className="tool-form__optional">(optional)</span>
@@ -168,6 +166,7 @@ export default function LinkedinOptimiserPage() {
             <textarea
               className="tool-form__textarea" rows={4}
               placeholder="Paste the JD for the role you're targeting…"
+              autoComplete="off"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
             />
