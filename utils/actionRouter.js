@@ -16,26 +16,25 @@
  */
 const ENDPOINT_TO_ROUTE = {
   // Tools
-  "/api/tools/career-roadmap":       "/tools/roadmap",
-  "/api/tools/resume-optimiser":     "/tools/resume",
-  "/api/tools/linkedin-optimiser":   "/tools/linkedin",
-  "/api/tools/interview-prep":       "/tools/interview",
-  "/api/tools/visa-eligibility":     "/tools/visa",
-  "/api/tools/talent-profile":       "/tools/talent-profile",
+  "/api/tools/career-roadmap": "/tools/career-roadmap",
+  "/api/tools/resume-optimiser": "/tools/resume-optimiser",
+  "/api/tools/linkedin-optimiser": "/tools/linkedin-optimiser",
+  "/api/tools/interview-prep": "/tools/interview-prep",
+  "/api/tools/visa-eligibility": "/tools/visa-eligibility",
+  "/api/tools/talent-profile": "/tools/talent-profile",
   "/api/tools/career-gap-explainer": "/tools/career-gap-explainer",
 
   // Career Pack
-  "/api/career-pack/build":          "/career-pack",
-  "/api/career-pack/export":         "/career-pack",
+  "/api/career-pack/build": "/career-pack",
+  "/api/career-pack/export": "/career-pack",
 
   // Intelligence
-  "/api/career-intelligence/role-graph":           "/intelligence/graph",
-  "/api/career-intelligence/skills-gap":           "/intelligence/skills-gap",
-  "/api/career-intelligence/salary-intelligence":  "/intelligence/salary",
-  "/api/career-intelligence/role-intelligence":    "/intelligence",
-  "/api/career-intelligence/role-path":            "/intelligence/career-path",
+  "/api/career-intelligence/role-graph": "/intelligence/graph",
+  "/api/career-intelligence/skills-gap": "/intelligence/skills-gap",
+  "/api/career-intelligence/salary-intelligence": "/intelligence/salary",
+  "/api/career-intelligence/role-intelligence": "/intelligence",
+  "/api/career-intelligence/role-path": "/intelligence/career-path",
 };
-
 /**
  * Map of backend param keys → frontend query param names.
  * Normalises the planner's param names into what the tool pages expect.
