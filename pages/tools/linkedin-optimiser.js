@@ -1,97 +1,81 @@
 // ============================================================================
 // pages/tools/linkedin-optimiser.js
-// HireEdge Frontend — LinkedIn Optimiser page (Production v2)
-//
-// FIX: Replaced useCopilot() with useEDGEXContext() — safe outside
-// CopilotProvider during Next.js static pre-rendering.
+// HireEdge Frontend — LinkedIn Optimiser
+// Uses RoleSearch (1,200+ roles) instead of hardcoded <select> dropdown.
+// useEDGEXContext — safe outside CopilotProvider.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import AppShell from "../../components/layout/AppShell";
+import RoleSearch from "../../components/intelligence/RoleSearch";
 import LinkedinOptimisationCard from "../../components/tools/LinkedinOptimisationCard";
-import { useEDGEXContext } from "../../context/CopilotContext";  // ← FIXED
+import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
-const ROLE_OPTIONS = [
-  { value: "", label: "Select role…" },
-  { value: "product-manager", label: "Product Manager" },
-  { value: "senior-product-manager", label: "Senior Product Manager" },
-  { value: "data-scientist", label: "Data Scientist" },
-  { value: "data-analyst", label: "Data Analyst" },
-  { value: "data-engineer", label: "Data Engineer" },
-  { value: "machine-learning-engineer", label: "Machine Learning Engineer" },
-  { value: "software-engineer", label: "Software Engineer" },
-  { value: "senior-software-engineer", label: "Senior Software Engineer" },
-  { value: "engineering-manager", label: "Engineering Manager" },
-  { value: "ux-designer", label: "UX Designer" },
-  { value: "marketing-manager", label: "Marketing Manager" },
-  { value: "sales-manager", label: "Sales Manager" },
-  { value: "operations-manager", label: "Operations Manager" },
-  { value: "finance-manager", label: "Finance Manager" },
-  { value: "business-analyst", label: "Business Analyst" },
-];
-
 export default function LinkedinOptimiserPage() {
   const router   = useRouter();
-  const edgexCtx = useEDGEXContext() || {};   // ← FIXED: never throws
+  const edgexCtx = useEDGEXContext() || {};
   const autoRan  = useRef(false);
 
-  const [form, setForm] = useState({
-    currentRole:    "",
-    targetRole:     "",
-    skills:         "",
-    yearsExp:       "",
-    industry:       "",
-    resumeText:     "",
-    jobDescription: "",
-  });
+  const [currentRole,    setCurrentRole]    = useState(null);
+  const [targetRole,     setTargetRole]     = useState(null);
+  const [skills,         setSkills]         = useState("");
+  const [yearsExp,       setYearsExp]       = useState("");
+  const [industry,       setIndustry]       = useState("");
+  const [resumeText,     setResumeText]     = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+
   const [result,  setResult]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── EDGEX prefill ──────────────────────────────────────────────────────────
+  // ── EDGEX / query prefill ─────────────────────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
-    const prefill = {
-      currentRole:    q.role     || q.current || edgexCtx.role   || "",
-      targetRole:     q.target              || edgexCtx.target  || "",
-      skills:         q.skills              || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""),
-      yearsExp:       q.yearsExp            || edgexCtx.yearsExp || "",
-      resumeText:     q.resume              || "",
-      industry:       q.industry            || "",
-      jobDescription: q.jd                  || "",
-    };
-    setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(prefill).filter(([, v]) => v)) }));
+
+    if ((q.role || q.current || edgexCtx.role) && !currentRole) {
+      const slug = q.role || q.current || edgexCtx.role;
+      setCurrentRole({ slug, title: _slugToTitle(slug) });
+    }
+    if ((q.target || edgexCtx.target) && !targetRole) {
+      const slug = q.target || edgexCtx.target;
+      setTargetRole({ slug, title: _slugToTitle(slug) });
+    }
+    if (q.skills || edgexCtx.skills) {
+      setSkills(q.skills || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""));
+    }
+    if (q.yearsExp || edgexCtx.yearsExp) setYearsExp(q.yearsExp || edgexCtx.yearsExp || "");
+    if (q.industry) setIndustry(q.industry);
+    if (q.resume)   setResumeText(q.resume);
+    if (q.jd)       setJobDescription(q.jd);
   }, [router.isReady, router.query]);
 
   // ── Auto-run ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !form.currentRole) return;
+    if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !currentRole) return;
     autoRan.current = true;
-    _submit(form);
-  }, [form.currentRole, router.isReady]);
+    _submit();
+  }, [currentRole, router.isReady]);
 
-  async function _submit(values) {
-    if (!values.currentRole) { setError("Please select your current role."); return; }
-    setLoading(true);
-    setError(null);
-    setResult(null);
+  async function _submit() {
+    if (!currentRole) { setError("Please select your current role."); return; }
+    setLoading(true); setError(null); setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/linkedin-optimiser`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentRole:    values.currentRole,
-          targetRole:     values.targetRole     || undefined,
-          skills:         values.skills,
-          yearsExp:       values.yearsExp ? parseInt(values.yearsExp) : null,
-          industry:       values.industry       || undefined,
-          resumeText:     values.resumeText     || undefined,
-          jobDescription: values.jobDescription || undefined,
+          currentRole:    currentRole.slug,
+          targetRole:     targetRole?.slug  || undefined,
+          skills,
+          yearsExp:       yearsExp ? parseInt(yearsExp) : null,
+          industry:       industry       || undefined,
+          resumeText:     resumeText     || undefined,
+          jobDescription: jobDescription || undefined,
         }),
       });
       const json = await r.json();
@@ -103,9 +87,6 @@ export default function LinkedinOptimiserPage() {
       setLoading(false);
     }
   }
-
-  function handleSubmit(e) { e.preventDefault(); _submit(form); }
-  function set(k) { return (e) => setForm((f) => ({ ...f, [k]: e.target.value })); }
 
   return (
     <AppShell>
@@ -120,60 +101,101 @@ export default function LinkedinOptimiserPage() {
           </p>
         </div>
 
-        <form className="tool-form" onSubmit={handleSubmit}>
+        <div className="tool-form">
+          {/* Row 1 — Roles */}
           <div className="tool-form__grid">
             <div className="tool-form__field">
-              <label className="tool-form__label">Current role <span className="tool-form__req">*</span></label>
-              <select className="tool-form__select" value={form.currentRole} onChange={set("currentRole")} required>
-                {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
+              <RoleSearch
+                placeholder="Search your current role..."
+                onSelect={(r) => setCurrentRole(r)}
+                initialValue={currentRole?.title || ""}
+              />
+              {currentRole && <span className="tool-form__selected">✓ {currentRole.title}</span>}
             </div>
 
             <div className="tool-form__field">
-              <label className="tool-form__label">Target role <span className="tool-form__optional">(optional — for transition)</span></label>
-              <select className="tool-form__select" value={form.targetRole} onChange={set("targetRole")}>
-                {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label || "None"}</option>)}
-              </select>
+              <label className="tool-form__label">Target Role <span className="tool-form__optional">(optional — for transition)</span></label>
+              <RoleSearch
+                placeholder="Search target role..."
+                onSelect={(r) => setTargetRole(r)}
+                initialValue={targetRole?.title || ""}
+              />
+              {targetRole && <span className="tool-form__selected">✓ {targetRole.title}</span>}
             </div>
+          </div>
 
+          {/* Row 2 — Years + Industry */}
+          <div className="tool-form__grid">
             <div className="tool-form__field">
-              <label className="tool-form__label">Years of experience</label>
-              <input className="tool-form__input" type="number" min="0" max="40" placeholder="e.g. 7"
-                value={form.yearsExp} onChange={set("yearsExp")} />
+              <label className="tool-form__label">Years of Experience</label>
+              <input
+                className="tool-form__input"
+                type="number" min="0" max="40" placeholder="e.g. 7"
+                value={yearsExp}
+                onChange={(e) => setYearsExp(e.target.value)}
+              />
             </div>
 
             <div className="tool-form__field">
               <label className="tool-form__label">Industry</label>
-              <input className="tool-form__input" type="text" placeholder="e.g. Technology, Financial Services"
-                value={form.industry} onChange={set("industry")} />
+              <input
+                className="tool-form__input"
+                type="text" placeholder="e.g. Technology, Financial Services"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+              />
             </div>
+          </div>
 
-            <div className="tool-form__field tool-form__field--full">
-              <label className="tool-form__label">Your skills</label>
-              <input className="tool-form__input" type="text" placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
-                value={form.skills} onChange={set("skills")} />
-              <span className="tool-form__hint">Comma-separated</span>
-            </div>
+          {/* Skills */}
+          <div className="tool-form__field">
+            <label className="tool-form__label">Your Skills</label>
+            <input
+              className="tool-form__input"
+              type="text" placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+            />
+            <span className="tool-form__hint">Comma-separated</span>
+          </div>
 
-            <div className="tool-form__field tool-form__field--full">
-              <label className="tool-form__label">CV / Profile summary <span className="tool-form__optional">(recommended — enables written About section)</span></label>
-              <textarea className="tool-form__textarea" rows={5} placeholder="Paste a summary of your experience or CV text…"
-                value={form.resumeText} onChange={set("resumeText")} />
-            </div>
+          {/* CV */}
+          <div className="tool-form__field">
+            <label className="tool-form__label">
+              CV / Profile Summary <span className="tool-form__optional">(recommended — enables written About section)</span>
+            </label>
+            <textarea
+              className="tool-form__textarea" rows={5}
+              placeholder="Paste a summary of your experience or CV text…"
+              value={resumeText}
+              onChange={(e) => setResumeText(e.target.value)}
+            />
+          </div>
 
-            <div className="tool-form__field tool-form__field--full">
-              <label className="tool-form__label">Target job description <span className="tool-form__optional">(optional)</span></label>
-              <textarea className="tool-form__textarea" rows={4} placeholder="Paste the JD for the role you're targeting…"
-                value={form.jobDescription} onChange={set("jobDescription")} />
-            </div>
+          {/* JD */}
+          <div className="tool-form__field">
+            <label className="tool-form__label">
+              Target Job Description <span className="tool-form__optional">(optional)</span>
+            </label>
+            <textarea
+              className="tool-form__textarea" rows={4}
+              placeholder="Paste the JD for the role you're targeting…"
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+            />
           </div>
 
           {error && <div className="tool-form__error">{error}</div>}
 
-          <button className="tool-form__submit" type="submit" disabled={loading}>
+          <button
+            className="tool-form__submit"
+            onClick={_submit}
+            disabled={loading || !currentRole}
+          >
             {loading ? "Optimising your profile…" : "Optimise LinkedIn Profile"}
           </button>
-        </form>
+        </div>
 
         {loading && (
           <div className="tool-loading">
@@ -186,4 +208,9 @@ export default function LinkedinOptimiserPage() {
       </div>
     </AppShell>
   );
+}
+
+function _slugToTitle(slug) {
+  if (!slug) return "";
+  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
