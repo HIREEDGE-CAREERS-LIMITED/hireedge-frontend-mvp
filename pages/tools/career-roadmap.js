@@ -1,8 +1,7 @@
 // ============================================================================
 // pages/tools/career-roadmap.js
 // HireEdge Frontend — Career Roadmap
-//
-// Prefill reads ONLY from router.query. No edgexCtx direct reads.
+// autoComplete="off" prevents Chrome autofill bleeding into fields.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -33,11 +32,9 @@ export default function CareerRoadmapPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── Prefill from URL query params ONLY ───────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
-
     if (q.from || q.current) setFromRole({ slug: q.from || q.current, title: _slugToTitle(q.from || q.current) });
     if (q.to   || q.target)  setToRole({ slug: q.to || q.target, title: _slugToTitle(q.to || q.target) });
     if (q.skills)            setSkills(_cleanSkills(q.skills));
@@ -89,8 +86,8 @@ export default function CareerRoadmapPage() {
           </p>
         </div>
 
-        <div className="tool-form">
-          {/* Row 1 — Current + Target + Strategy */}
+        <div className="tool-form" autoComplete="off">
+
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
@@ -129,13 +126,13 @@ export default function CareerRoadmapPage() {
             </div>
           </div>
 
-          {/* Skills */}
           <div className="tool-form__field">
             <label className="tool-form__label">Your Current Skills <span className="tool-form__optional">(optional)</span></label>
             <input
               className="tool-form__input"
               type="text"
               placeholder="e.g. SQL, Python, Stakeholder Management"
+              autoComplete="off"
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
             />
