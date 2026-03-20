@@ -1,99 +1,171 @@
 // ============================================================================
 // pages/tools/career-roadmap.js
-// HireEdge Frontend — Career Roadmap tool
-//
-// CHANGED: reads router.query params (from, to, strategy) on mount and
-// passes them as defaultValues into ToolForm so EDGEX action chips
-// pre-populate the form when navigating from the chat.
+// HireEdge Frontend — Career Roadmap page (Production v2)
 // ============================================================================
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import ToolShell from "../../components/tools/ToolShell";
-import ToolForm from "../../components/tools/ToolForm";
+import Head from "next/head";
+import AppShell from "../../components/layout/AppShell";
 import RoadmapCard from "../../components/tools/RoadmapCard";
-import { fetchCareerRoadmap } from "../../services/toolsService";
+import { useCopilot } from "../../context/CopilotContext";
 
-const BASE_FIELDS = [
-  { key: "from",     label: "Current Role", type: "role",   placeholder: "Where you are..."        },
-  { key: "to",       label: "Target Role",  type: "role",   placeholder: "Where you want to go..."  },
-  { key: "strategy", label: "Strategy",     type: "select", defaultValue: "fastest", options: [
-    { value: "fastest",     label: "Fastest"     },
-    { value: "easiest",     label: "Easiest"     },
-    { value: "highest_paid", label: "Highest Paid" },
-  ]},
+const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
+
+const ROLE_OPTIONS = [
+  { value: "", label: "Select role…" },
+  { value: "product-manager", label: "Product Manager" },
+  { value: "senior-product-manager", label: "Senior Product Manager" },
+  { value: "director-of-product", label: "Director of Product" },
+  { value: "data-scientist", label: "Data Scientist" },
+  { value: "data-analyst", label: "Data Analyst" },
+  { value: "data-engineer", label: "Data Engineer" },
+  { value: "analytics-manager", label: "Analytics Manager" },
+  { value: "machine-learning-engineer", label: "Machine Learning Engineer" },
+  { value: "software-engineer", label: "Software Engineer" },
+  { value: "senior-software-engineer", label: "Senior Software Engineer" },
+  { value: "engineering-manager", label: "Engineering Manager" },
+  { value: "ux-designer", label: "UX Designer" },
+  { value: "marketing-manager", label: "Marketing Manager" },
+  { value: "sales-manager", label: "Sales Manager" },
+  { value: "operations-manager", label: "Operations Manager" },
+  { value: "finance-manager", label: "Finance Manager" },
+  { value: "business-analyst", label: "Business Analyst" },
+  { value: "strategy-consultant", label: "Strategy Consultant" },
+  { value: "chief-product-officer", label: "Chief Product Officer" },
+];
+
+const STRATEGIES = [
+  { value: "fastest",      label: "Fastest — minimise time" },
+  { value: "easiest",      label: "Easiest — minimise difficulty" },
+  { value: "highest_paid", label: "Highest paid — maximise salary" },
 ];
 
 export default function CareerRoadmapPage() {
   const router  = useRouter();
+  const { context: edgexCtx } = useCopilot?.() || {};
+  const autoRan = useRef(false);
+
+  const [form, setForm] = useState({
+    fromRole: "",
+    toRole:   "",
+    strategy: "fastest",
+    skills:   "",
+  });
   const [result,  setResult]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── Pre-populate from EDGEX query params ──────────────────────────────
-  // When EDGEX routes here, it appends ?from=X&to=Y to the URL.
-  // We auto-submit if both from and to are present.
-  const [fields, setFields] = useState(BASE_FIELDS);
-  const [autoSubmitted, setAutoSubmitted] = useState(false);
-
+  // ── EDGEX prefill ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!router.isReady) return;
-    const { from, to, strategy } = router.query;
-
-    // Inject defaultValues from query params
-    const updated = BASE_FIELDS.map((f) => {
-      if (f.key === "from"     && from)     return { ...f, defaultValue: from };
-      if (f.key === "to"       && to)       return { ...f, defaultValue: to };
-      if (f.key === "strategy" && strategy) return { ...f, defaultValue: strategy };
-      return f;
-    });
-    setFields(updated);
-
-    // Auto-submit if we have enough context to run immediately
-    if (from && to && !autoSubmitted) {
-      setAutoSubmitted(true);
-      _submit({ from, to, strategy: strategy || "fastest" });
-    }
+    const q = router.query;
+    const prefill = {
+      fromRole: q.from    || q.current || edgexCtx?.currentRole || "",
+      toRole:   q.to      || q.target  || edgexCtx?.targetRole  || "",
+      strategy: q.strategy || "fastest",
+      skills:   q.skills  || (Array.isArray(edgexCtx?.skills) ? edgexCtx.skills.join(", ") : edgexCtx?.skills || ""),
+    };
+    setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(prefill).filter(([, v]) => v)) }));
   }, [router.isReady, router.query]);
 
-  const _submit = async (values) => {
-    if (!values.from || !values.to) return;
+  // ── Auto-run ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !form.fromRole || !form.toRole) return;
+    autoRan.current = true;
+    _submit(form);
+  }, [form.fromRole, form.toRole, router.isReady]);
+
+  async function _submit(values) {
+    if (!values.fromRole) { setError("Please select your current role."); return; }
+    if (!values.toRole)   { setError("Please select your target role."); return; }
+    if (values.fromRole === values.toRole) { setError("Current and target role must be different."); return; }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const res = await fetchCareerRoadmap({
-        from:     values.from,
-        to:       values.to,
-        strategy: values.strategy || "fastest",
+      const r = await fetch(`${API}/api/tools/career-roadmap`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromRole: values.fromRole,
+          toRole:   values.toRole,
+          strategy: values.strategy,
+          skills:   values.skills,
+        }),
       });
-      setResult(res.data);
+      const json = await r.json();
+      if (!json.ok) throw new Error(json.error || "Something went wrong");
+      setResult(json.data);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleSubmit = (values) => {
-    if (!values.from || !values.to) return;
-    _submit(values);
-  };
+  function handleSubmit(e) { e.preventDefault(); _submit(form); }
+  function set(k) { return (e) => setForm((f) => ({ ...f, [k]: e.target.value })); }
 
   return (
-    <ToolShell
-      title="Career Roadmap"
-      description="Build a step-by-step path from your current role to your target."
-      icon="🗺️"
-    >
-      <ToolForm
-        fields={fields}
-        onSubmit={handleSubmit}
-        loading={loading}
-        submitLabel="Build Roadmap"
-      />
-      {error  && <div className="tool-error">{error}</div>}
-      <RoadmapCard data={result} />
-    </ToolShell>
+    <AppShell>
+      <Head><title>Career Roadmap — HireEdge</title></Head>
+
+      <div className="tool-page">
+        <div className="tool-page__header">
+          <div className="tool-page__badge">EDGEX</div>
+          <h1 className="tool-page__title">Career Roadmap</h1>
+          <p className="tool-page__sub">
+            Step-by-step path, salary trajectory, top blockers, and your first 3 actions — including bridge routes when no direct path exists.
+          </p>
+        </div>
+
+        <form className="tool-form" onSubmit={handleSubmit}>
+          <div className="tool-form__grid">
+            <div className="tool-form__field">
+              <label className="tool-form__label">Current role <span className="tool-form__req">*</span></label>
+              <select className="tool-form__select" value={form.fromRole} onChange={set("fromRole")} required>
+                {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+
+            <div className="tool-form__field">
+              <label className="tool-form__label">Target role <span className="tool-form__req">*</span></label>
+              <select className="tool-form__select" value={form.toRole} onChange={set("toRole")} required>
+                {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+
+            <div className="tool-form__field">
+              <label className="tool-form__label">Strategy</label>
+              <select className="tool-form__select" value={form.strategy} onChange={set("strategy")}>
+                {STRATEGIES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+
+            <div className="tool-form__field">
+              <label className="tool-form__label">Your current skills <span className="tool-form__optional">(optional)</span></label>
+              <input className="tool-form__input" type="text" placeholder="e.g. SQL, Python, Stakeholder Management"
+                value={form.skills} onChange={set("skills")} />
+              <span className="tool-form__hint">Comma-separated — improves blockers analysis</span>
+            </div>
+          </div>
+
+          {error && <div className="tool-form__error">{error}</div>}
+
+          <button className="tool-form__submit" type="submit" disabled={loading}>
+            {loading ? "Building roadmap…" : "Build My Roadmap"}
+          </button>
+        </form>
+
+        {loading && (
+          <div className="tool-loading">
+            <div className="tool-loading__spinner" />
+            <p>EDGEX is mapping your career path…</p>
+          </div>
+        )}
+
+        {result && <RoadmapCard data={result} />}
+      </div>
+    </AppShell>
   );
 }
