@@ -1,7 +1,8 @@
 // ============================================================================
 // pages/tools/career-roadmap.js
 // HireEdge Frontend — Career Roadmap
-// autoComplete="off" prevents Chrome autofill bleeding into fields.
+//
+// URL prefill: ONLY role slugs. Skills always start empty.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -23,22 +24,26 @@ export default function CareerRoadmapPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
 
+  // Role state — prefilled from clean URL slugs only
   const [fromRole, setFromRole] = useState(null);
   const [toRole,   setToRole]   = useState(null);
-  const [skills,   setSkills]   = useState("");
   const [strategy, setStrategy] = useState("fastest");
+
+  // User-entered — always start empty
+  const [skills, setSkills] = useState("");
 
   const [result,  setResult]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
+  // ── Only role slugs and strategy from URL ─────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
     if (q.from || q.current) setFromRole({ slug: q.from || q.current, title: _slugToTitle(q.from || q.current) });
     if (q.to   || q.target)  setToRole({ slug: q.to || q.target, title: _slugToTitle(q.to || q.target) });
-    if (q.skills)            setSkills(_cleanSkills(q.skills));
-    if (q.strategy)          setStrategy(q.strategy);
+    if (q.strategy && ["fastest","easiest","highest_paid"].includes(q.strategy)) setStrategy(q.strategy);
+    // skills NOT read from URL — comes as dirty formatted string from EDGEX context
   }, [router.isReady]);
 
   useEffect(() => {
@@ -86,8 +91,7 @@ export default function CareerRoadmapPage() {
           </p>
         </div>
 
-        <div className="tool-form" autoComplete="off">
-
+        <div className="tool-form">
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
@@ -166,10 +170,4 @@ export default function CareerRoadmapPage() {
 function _slugToTitle(slug) {
   if (!slug) return "";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function _cleanSkills(raw) {
-  if (!raw) return "";
-  if (Array.isArray(raw)) return raw.join(", ");
-  return raw.replace(/[•\-\*]\s*/g, "").replace(/\s{2,}/g, " ").trim();
 }
