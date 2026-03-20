@@ -7,10 +7,10 @@ import Link from "next/link";
 
 const ACTIONS = [
   {
-    id: "copilot",
-    title: "Ask Copilot",
-    description: "Get career advice in seconds",
-    href: "/copilot",
+    id: "edgex",                              // was: "copilot"
+    title: "Ask EDGEX",                       // was: "Ask Copilot"
+    description: "AI career intelligence",    // was: "Get career advice in seconds"
+    href: "/copilot",                         // route unchanged
     icon: "✦",
     accent: true,
   },
