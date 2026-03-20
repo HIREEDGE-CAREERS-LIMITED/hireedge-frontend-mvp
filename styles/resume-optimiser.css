@@ -262,3 +262,80 @@
   .resume-tool__loading-pulse,
   .resume-result__pulse { animation: none; }
 }
+
+/* ─── v2 additions ────────────────────────────────────────────────────────── */
+
+/* Quality badges */
+.resume-result__badges {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;
+}
+.resume-result__badge-item {
+  font-size: 11px; font-weight: 500; color: var(--rt-text-2);
+  background: var(--rt-surface-2); border: 1px solid var(--rt-border);
+  padding: 4px 12px; border-radius: 20px;
+}
+.resume-result__badge-item--premium {
+  background: var(--rt-teal-10); border-color: var(--rt-teal); color: var(--rt-teal);
+}
+
+/* Summary bar top row */
+.resume-result__summary-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+
+/* Score explanation */
+.resume-result__score-explanation {
+  border-top: 1px solid var(--rt-border);
+  padding-top: 12px; margin-top: 4px;
+}
+.resume-result__score-exp-title {
+  font-size: 11px; font-weight: 600; color: var(--rt-text-2);
+  text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;
+}
+.resume-result__score-exp-list {
+  margin: 0; padding-left: 16px;
+}
+.resume-result__score-exp-list li {
+  font-size: 12px; color: var(--rt-text-2); line-height: 1.6; margin-bottom: 3px;
+}
+
+/* Generic panel */
+.resume-result__panel {
+  background: var(--rt-surface);
+  border: 1px solid var(--rt-border);
+  border-radius: var(--rt-radius);
+  padding: 18px 20px;
+}
+.resume-result__panel--split {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+}
+@media (max-width: 620px) { .resume-result__panel--split { grid-template-columns: 1fr; } }
+.resume-result__panel-title {
+  font-size: 13px; font-weight: 700; color: var(--rt-text); margin: 0 0 6px;
+}
+.resume-result__panel-sub {
+  font-size: 12px; color: var(--rt-text-3); margin: 0 0 12px;
+}
+
+/* Keyword placement */
+.resume-result__placement-list {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.resume-result__placement-item {
+  padding: 10px 12px; border-radius: 7px; background: var(--rt-surface-2);
+  border: 1px solid var(--rt-border);
+}
+.resume-result__placement-top {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.resume-result__placement-kw {
+  font-size: 12px; font-weight: 600; color: var(--rt-teal);
+  background: var(--rt-teal-10); padding: 2px 8px; border-radius: 20px;
+}
+.resume-result__placement-section {
+  font-size: 12px; color: var(--rt-text-2); font-weight: 500;
+}
+.resume-result__placement-rationale {
+  font-size: 11px; color: var(--rt-text-3); margin: 5px 0 0; line-height: 1.5;
+}
