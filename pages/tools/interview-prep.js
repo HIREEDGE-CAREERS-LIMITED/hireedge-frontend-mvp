@@ -1,14 +1,13 @@
 // ============================================================================
 // pages/tools/interview-prep.js
 // HireEdge Frontend — Interview Prep
-// Uses RoleSearch (1,200+ roles) instead of hardcoded <select> dropdown.
-// useEDGEXContext — safe outside CopilotProvider.
+// NO AppShell import — _app.js already wraps every page in AppShell once.
+// Importing AppShell inside the page caused the double sidebar panel.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import AppShell from "../../components/layout/AppShell";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import InterviewPrepCard from "../../components/tools/InterviewPrepCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
@@ -20,8 +19,8 @@ export default function InterviewPrepPage() {
   const edgexCtx = useEDGEXContext() || {};
   const autoRan  = useRef(false);
 
-  const [targetRole,     setTargetRole]     = useState(null);   // { slug, title }
-  const [currentRole,    setCurrentRole]    = useState(null);   // { slug, title }
+  const [targetRole,     setTargetRole]     = useState(null);
+  const [currentRole,    setCurrentRole]    = useState(null);
   const [skills,         setSkills]         = useState("");
   const [yearsExp,       setYearsExp]       = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -52,7 +51,6 @@ export default function InterviewPrepPage() {
     if (q.resume) setResumeText(q.resume);
   }, [router.isReady, router.query]);
 
-  // ── Auto-run ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !targetRole) return;
     autoRan.current = true;
@@ -86,7 +84,7 @@ export default function InterviewPrepPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <Head><title>Interview Prep — HireEdge</title></Head>
 
       <div className="tool-page">
@@ -99,12 +97,12 @@ export default function InterviewPrepPage() {
         </div>
 
         <div className="tool-form">
-          {/* Row 1 — Roles */}
-          <div className="tool-form__grid">
+          {/* Row 1 — Target + Current + Years */}
+          <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Target Role <span className="tool-form__req">*</span></label>
               <RoleSearch
-                placeholder="Search any role — e.g. Product Manager..."
+                placeholder="Role you're interviewing for..."
                 onSelect={(r) => setTargetRole(r)}
                 initialValue={targetRole?.title || ""}
               />
@@ -114,16 +112,13 @@ export default function InterviewPrepPage() {
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__optional">(optional)</span></label>
               <RoleSearch
-                placeholder="Search your current role..."
+                placeholder="Your current role..."
                 onSelect={(r) => setCurrentRole(r)}
                 initialValue={currentRole?.title || ""}
               />
               {currentRole && <span className="tool-form__selected">✓ {currentRole.title}</span>}
             </div>
-          </div>
 
-          {/* Row 2 — Years + Skills */}
-          <div className="tool-form__grid">
             <div className="tool-form__field">
               <label className="tool-form__label">Years of Experience</label>
               <input
@@ -133,23 +128,24 @@ export default function InterviewPrepPage() {
                 onChange={(e) => setYearsExp(e.target.value)}
               />
             </div>
+          </div>
 
-            <div className="tool-form__field">
-              <label className="tool-form__label">Your Skills</label>
-              <input
-                className="tool-form__input"
-                type="text" placeholder="e.g. SQL, Python, Stakeholder Management"
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
-              />
-              <span className="tool-form__hint">Comma-separated</span>
-            </div>
+          {/* Skills */}
+          <div className="tool-form__field">
+            <label className="tool-form__label">Your Skills</label>
+            <input
+              className="tool-form__input"
+              type="text" placeholder="e.g. SQL, Python, Stakeholder Management, Product Strategy"
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+            />
+            <span className="tool-form__hint">Comma-separated</span>
           </div>
 
           {/* Job Description */}
           <div className="tool-form__field">
             <label className="tool-form__label">
-              Job Description <span className="tool-form__optional">(optional — improves precision)</span>
+              Job Description <span className="tool-form__optional">(optional — greatly improves output)</span>
             </label>
             <textarea
               className="tool-form__textarea" rows={5}
@@ -159,7 +155,7 @@ export default function InterviewPrepPage() {
             />
           </div>
 
-          {/* CV / Profile */}
+          {/* CV */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               CV / Profile Summary <span className="tool-form__optional">(optional)</span>
@@ -179,7 +175,11 @@ export default function InterviewPrepPage() {
             onClick={_submit}
             disabled={loading || !targetRole}
           >
-            {loading ? "Preparing your pack…" : "Generate Interview Pack"}
+            {loading ? (
+              <><span className="tool-form__spinner" /> Preparing your pack…</>
+            ) : (
+              "Generate Interview Pack"
+            )}
           </button>
         </div>
 
@@ -192,7 +192,7 @@ export default function InterviewPrepPage() {
 
         {result && <InterviewPrepCard data={result} />}
       </div>
-    </AppShell>
+    </>
   );
 }
 
