@@ -53,10 +53,10 @@ export default function PricingCard({ plan, isCurrentPlan, onSelect, billingCycl
         )}
       </div>
 
-      {/* Limits summary */}
+      {/* CHANGED: "Copilot/day" → "EDGEX/day" */}
       <div className="pricing-card__limits">
         <span className="pricing-card__limit">
-          {plan.copilot_per_day === Infinity ? "Unlimited" : plan.copilot_per_day} Copilot/day
+          {plan.copilot_per_day === Infinity ? "Unlimited" : plan.copilot_per_day} EDGEX/day
         </span>
         <span className="pricing-card__limit-sep">·</span>
         <span className="pricing-card__limit">

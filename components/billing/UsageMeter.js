@@ -18,8 +18,9 @@ export default function UsageMeter({ compact }) {
 
   return (
     <div className={`usage-meter ${compact ? "usage-meter--compact" : ""}`}>
+      {/* CHANGED: label "Copilot" → "EDGEX" */}
       <MeterBar
-        label="Copilot"
+        label="EDGEX"
         used={limits.copilot.used}
         limit={limits.copilot.limit}
         pct={limits.copilot.pct}
