@@ -1,7 +1,8 @@
 // ============================================================================
 // pages/tools/linkedin-optimiser.js
 // HireEdge Frontend — LinkedIn Optimiser
-// NO AppShell — _app.js handles the shell. Double-import caused double sidebar.
+//
+// Prefill reads ONLY from router.query. No edgexCtx direct reads.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -14,9 +15,8 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
 export default function LinkedinOptimiserPage() {
-  const router   = useRouter();
-  const edgexCtx = useEDGEXContext() || {};
-  const autoRan  = useRef(false);
+  const router  = useRouter();
+  const autoRan = useRef(false);
 
   const [currentRole,    setCurrentRole]    = useState(null);
   const [targetRole,     setTargetRole]     = useState(null);
@@ -30,26 +30,17 @@ export default function LinkedinOptimiserPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
+  // ── Prefill from URL query params ONLY ───────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
 
-    if ((q.role || q.current || edgexCtx.role) && !currentRole) {
-      const slug = q.role || q.current || edgexCtx.role;
-      setCurrentRole({ slug, title: _slugToTitle(slug) });
-    }
-    if ((q.target || edgexCtx.target) && !targetRole) {
-      const slug = q.target || edgexCtx.target;
-      setTargetRole({ slug, title: _slugToTitle(slug) });
-    }
-    if (q.skills || edgexCtx.skills) {
-      setSkills(q.skills || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""));
-    }
-    if (q.yearsExp || edgexCtx.yearsExp) setYearsExp(q.yearsExp || edgexCtx.yearsExp || "");
-    if (q.industry) setIndustry(q.industry);
-    if (q.resume)   setResumeText(q.resume);
-    if (q.jd)       setJobDescription(q.jd);
-  }, [router.isReady, router.query]);
+    if (q.role || q.current) setCurrentRole({ slug: q.role || q.current, title: _slugToTitle(q.role || q.current) });
+    if (q.target)            setTargetRole({ slug: q.target, title: _slugToTitle(q.target) });
+    if (q.skills)            setSkills(_cleanSkills(q.skills));
+    if (q.yearsExp)          setYearsExp(q.yearsExp);
+    if (q.industry)          setIndustry(q.industry);
+  }, [router.isReady]);
 
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !currentRole) return;
@@ -137,7 +128,8 @@ export default function LinkedinOptimiserPage() {
               <label className="tool-form__label">Your Skills</label>
               <input
                 className="tool-form__input"
-                type="text" placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
+                type="text"
+                placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
                 value={skills}
                 onChange={(e) => setSkills(e.target.value)}
               />
@@ -188,11 +180,7 @@ export default function LinkedinOptimiserPage() {
             onClick={_submit}
             disabled={loading || !currentRole}
           >
-            {loading ? (
-              <><span className="tool-form__spinner" /> Optimising your profile…</>
-            ) : (
-              "Optimise LinkedIn Profile"
-            )}
+            {loading ? "Optimising your profile…" : "Optimise LinkedIn Profile"}
           </button>
         </div>
 
@@ -212,4 +200,10 @@ export default function LinkedinOptimiserPage() {
 function _slugToTitle(slug) {
   if (!slug) return "";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function _cleanSkills(raw) {
+  if (!raw) return "";
+  if (Array.isArray(raw)) return raw.join(", ");
+  return raw.replace(/[•\-\*]\s*/g, "").replace(/\s{2,}/g, " ").trim();
 }
