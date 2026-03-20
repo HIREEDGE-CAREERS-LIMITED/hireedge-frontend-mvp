@@ -8,11 +8,11 @@
 
 export const NAV_SECTIONS = [
   {
-    id: "copilot",
-    label: "Copilot",
+    id: "edgex",                        // was: "copilot"
+    label: "EDGEX",                     // was: "Copilot"
     icon: "spark",
-    href: "/copilot",
-    description: "AI career assistant",
+    href: "/copilot",                   // route unchanged
+    description: "AI career intelligence", // was: "AI career assistant"
     plan: "free",
     primary: true,
   },
@@ -24,9 +24,9 @@ export const NAV_SECTIONS = [
     description: "Your career overview",
     plan: "free",
     children: [
-      { id: "dashboard-home", label: "Overview", href: "/dashboard", icon: "grid" },
-      { id: "saved-roles", label: "Saved Roles", href: "/dashboard/saved-roles", icon: "bookmark" },
-      { id: "activity", label: "Activity", href: "/dashboard/activity", icon: "clock" },
+      { id: "dashboard-home", label: "Overview",    href: "/dashboard",             icon: "grid"     },
+      { id: "saved-roles",    label: "Saved Roles", href: "/dashboard/saved-roles", icon: "bookmark" },
+      { id: "activity",       label: "Activity",    href: "/dashboard/activity",    icon: "clock"    },
     ],
   },
   {
@@ -37,10 +37,10 @@ export const NAV_SECTIONS = [
     description: "Career data & insights",
     plan: "free",
     children: [
-      { id: "role-explorer", label: "Role Explorer", href: "/intelligence", icon: "search" },
-      { id: "salary", label: "Salary Intel", href: "/intelligence/salary", icon: "currency" },
-      { id: "skills-gap", label: "Skills Gap", href: "/intelligence/skills-gap", icon: "target" },
-      { id: "career-graph", label: "Career Graph", href: "/intelligence/graph", icon: "network" },
+      { id: "role-explorer", label: "Role Explorer", href: "/intelligence",              icon: "search"   },
+      { id: "salary",        label: "Salary Intel",  href: "/intelligence/salary",       icon: "currency" },
+      { id: "skills-gap",    label: "Skills Gap",    href: "/intelligence/skills-gap",   icon: "target"   },
+      { id: "career-graph",  label: "Career Graph",  href: "/intelligence/graph",        icon: "network"  },
     ],
   },
   {
@@ -51,11 +51,11 @@ export const NAV_SECTIONS = [
     description: "Career preparation tools",
     plan: "free",
     children: [
-      { id: "roadmap", label: "Roadmap", href: "/tools/roadmap", icon: "map" },
-      { id: "resume", label: "Resume", href: "/tools/resume", icon: "file-text", plan: "pro" },
-      { id: "linkedin", label: "LinkedIn", href: "/tools/linkedin", icon: "linkedin", plan: "pro" },
-      { id: "interview", label: "Interview", href: "/tools/interview", icon: "mic", plan: "pro" },
-      { id: "visa", label: "Visa", href: "/tools/visa", icon: "globe", plan: "pro" },
+      { id: "roadmap",   label: "Roadmap",   href: "/tools/roadmap",   icon: "map"       },
+      { id: "resume",    label: "Resume",    href: "/tools/resume",    icon: "file-text", plan: "pro" },
+      { id: "linkedin",  label: "LinkedIn",  href: "/tools/linkedin",  icon: "linkedin",  plan: "pro" },
+      { id: "interview", label: "Interview", href: "/tools/interview", icon: "mic",       plan: "pro" },
+      { id: "visa",      label: "Visa",      href: "/tools/visa",      icon: "globe",     plan: "pro" },
     ],
   },
   {
@@ -70,12 +70,12 @@ export const NAV_SECTIONS = [
 ];
 
 export const ACCOUNT_NAV = [
-  { id: "account", label: "Account", href: "/account", icon: "user" },
+  { id: "account", label: "Account", href: "/account", icon: "user"        },
   { id: "billing", label: "Billing", href: "/billing", icon: "credit-card" },
 ];
 
 export const AUTH_NAV = [
-  { id: "login", label: "Log in", href: "/login" },
+  { id: "login",  label: "Log in",  href: "/login"  },
   { id: "signup", label: "Sign up", href: "/signup" },
 ];
 
