@@ -1,8 +1,10 @@
 // ============================================================================
 // pages/tools/interview-prep.js
 // HireEdge Frontend — Interview Prep
-// NO AppShell import — _app.js already wraps every page in AppShell once.
-// Importing AppShell inside the page caused the double sidebar panel.
+//
+// Prefill reads ONLY from router.query (clean URL params set by actionRouter).
+// edgexCtx is NOT used directly — it caused "access_denied" and bullet-point
+// strings bleeding into form fields from dirty sessionStorage context.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -16,7 +18,6 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.ver
 
 export default function InterviewPrepPage() {
   const router   = useRouter();
-  const edgexCtx = useEDGEXContext() || {};
   const autoRan  = useRef(false);
 
   const [targetRole,     setTargetRole]     = useState(null);
@@ -30,27 +31,20 @@ export default function InterviewPrepPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── EDGEX / query prefill ─────────────────────────────────────────────────
+  // ── Prefill from URL query params ONLY ───────────────────────────────────
+  // actionRouter puts clean slugs into the URL — read from there, not context
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
 
-    if ((q.target || edgexCtx.target) && !targetRole) {
-      const slug = q.target || edgexCtx.target;
-      setTargetRole({ slug, title: _slugToTitle(slug) });
-    }
-    if ((q.current || edgexCtx.role) && !currentRole) {
-      const slug = q.current || edgexCtx.role;
-      setCurrentRole({ slug, title: _slugToTitle(slug) });
-    }
-    if (q.skills || edgexCtx.skills) {
-      setSkills(q.skills || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""));
-    }
-    if (q.yearsExp || edgexCtx.yearsExp) setYearsExp(q.yearsExp || edgexCtx.yearsExp || "");
-    if (q.jd)     setJobDescription(q.jd);
-    if (q.resume) setResumeText(q.resume);
-  }, [router.isReady, router.query]);
+    if (q.target)   setTargetRole({ slug: q.target,  title: _slugToTitle(q.target) });
+    if (q.current)  setCurrentRole({ slug: q.current, title: _slugToTitle(q.current) });
+    if (q.skills)   setSkills(_cleanSkills(q.skills));
+    if (q.yearsExp) setYearsExp(q.yearsExp);
+    if (q.jd)       setJobDescription(q.jd);
+  }, [router.isReady]);
 
+  // ── Auto-run when launched from EDGEX with autorun=1 ─────────────────────
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !targetRole) return;
     autoRan.current = true;
@@ -135,7 +129,8 @@ export default function InterviewPrepPage() {
             <label className="tool-form__label">Your Skills</label>
             <input
               className="tool-form__input"
-              type="text" placeholder="e.g. SQL, Python, Stakeholder Management, Product Strategy"
+              type="text"
+              placeholder="e.g. SQL, Python, Stakeholder Management, Product Strategy"
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
             />
@@ -175,11 +170,7 @@ export default function InterviewPrepPage() {
             onClick={_submit}
             disabled={loading || !targetRole}
           >
-            {loading ? (
-              <><span className="tool-form__spinner" /> Preparing your pack…</>
-            ) : (
-              "Generate Interview Pack"
-            )}
+            {loading ? "Preparing your pack…" : "Generate Interview Pack"}
           </button>
         </div>
 
@@ -196,7 +187,17 @@ export default function InterviewPrepPage() {
   );
 }
 
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
 function _slugToTitle(slug) {
   if (!slug) return "";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Ensure skills is always a clean comma-separated string
+function _cleanSkills(raw) {
+  if (!raw) return "";
+  if (Array.isArray(raw)) return raw.join(", ");
+  // Strip bullet points if present
+  return raw.replace(/[•\-\*]\s*/g, "").replace(/\s{2,}/g, " ").trim();
 }
