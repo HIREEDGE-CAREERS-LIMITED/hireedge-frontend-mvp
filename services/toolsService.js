@@ -1,42 +1,100 @@
 // ============================================================================
 // services/toolsService.js
 // HireEdge Frontend — Career Tools API service
+//
+// ADDED: runResumeOptimiser() — calls the new POST /api/tools/resume-optimiser
+// endpoint that runs the full AI rewrite + ATS analysis pipeline.
+// All existing methods are unchanged.
 // ============================================================================
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
+// ── Resume Optimiser (new AI-powered POST endpoint) ────────────────────────
+
+/**
+ * Full AI resume optimiser / generator.
+ * Calls POST /api/tools/resume-optimiser.
+ *
+ * @param {object} params
+ * @param {string} params.cvText           - Pasted CV text (empty = generate mode)
+ * @param {string} params.targetRole       - Slug e.g. "product-manager"
+ * @param {string} params.targetRoleTitle  - Human title e.g. "Product Manager"
+ * @param {string} params.currentRole      - Slug of current role
+ * @param {string} params.skills           - Comma-separated skills string
+ * @param {number} params.yearsExp         - Years of experience
+ * @param {string} params.jobDescription   - Optional: target job description
+ * @returns {Promise<object>}              - Full { ok, mode, summary, resume, keywords, improvements }
+ */
+export async function runResumeOptimiser({
+  cvText = "",
+  targetRole = "",
+  targetRoleTitle = "",
+  currentRole = "",
+  skills = "",
+  yearsExp = null,
+  jobDescription = "",
+}) {
+  const res = await fetch(`${API_BASE}/api/tools/resume-optimiser`, {
+    method:  "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-HireEdge-Plan": typeof window !== "undefined"
+        ? (localStorage.getItem("hireedge_plan") || "free")
+        : "free",
+    },
+    body: JSON.stringify({
+      cvText, targetRole, targetRoleTitle,
+      currentRole, skills, yearsExp, jobDescription,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.ok) {
+    const e = new Error(json.error || "Resume optimiser failed");
+    e.status = res.status;
+    e.reason = json.reason;
+    e.upgrade_to = json.upgrade_to;
+    throw e;
+  }
+  return json;
+}
+
+// ── Resume Blueprint (legacy GET endpoint — kept for Career Pack) ──────────
+
 export async function fetchResumeBlueprint({ target, skills, current, yearsExp }) {
   const p = new URLSearchParams({ action: "blueprint", target, skills: skills.join(",") });
-  if (current) p.set("current", current);
+  if (current)  p.set("current", current);
   if (yearsExp != null) p.set("yearsExp", String(yearsExp));
   return _get(`/api/tools/resume-optimiser?${p}`);
 }
 
+// ── All other existing methods (unchanged) ─────────────────────────────────
+
 export async function fetchLinkedinOptimisation({ role, skills, yearsExp, target, industry }) {
   const p = new URLSearchParams({ role, skills: skills.join(",") });
-  if (yearsExp != null) p.set("yearsExp", String(yearsExp));
-  if (target) p.set("target", target);
-  if (industry) p.set("industry", industry);
+  if (yearsExp != null)  p.set("yearsExp", String(yearsExp));
+  if (target)    p.set("target",   target);
+  if (industry)  p.set("industry", industry);
   return _get(`/api/tools/linkedin-optimiser?${p}`);
 }
 
 export async function fetchInterviewPrep({ target, skills, current, yearsExp }) {
   const p = new URLSearchParams({ target, skills: skills.join(",") });
-  if (current) p.set("current", current);
+  if (current)  p.set("current", current);
   if (yearsExp != null) p.set("yearsExp", String(yearsExp));
   return _get(`/api/tools/interview-prep?${p}`);
 }
 
 export async function fetchTalentProfile({ role, skills, yearsExp, target }) {
   const p = new URLSearchParams({ role, skills: skills.join(",") });
-  if (yearsExp != null) p.set("yearsExp", String(yearsExp));
-  if (target) p.set("target", target);
+  if (yearsExp != null)  p.set("yearsExp", String(yearsExp));
+  if (target)    p.set("target", target);
   return _get(`/api/tools/talent-profile?${p}`);
 }
 
 export async function fetchCareerRoadmap({ from, to, strategy }) {
   const p = new URLSearchParams({ action: "build", from, to });
-  if (strategy) p.set("strategy", strategy);
+  if (strategy)  p.set("strategy", strategy);
   return _get(`/api/tools/career-roadmap?${p}`);
 }
 
@@ -46,28 +104,32 @@ export async function fetchGapExplainer({ from, to }) {
 
 export async function fetchVisaEligibility({ role, salary, age, hasUkDegree, skills }) {
   const p = new URLSearchParams({ action: "assess", role });
-  if (salary != null) p.set("salary", String(salary));
-  if (age != null) p.set("age", String(age));
-  if (hasUkDegree != null) p.set("hasUkDegree", String(hasUkDegree));
-  if (skills?.length) p.set("skills", skills.join(","));
+  if (salary != null)      p.set("salary",      String(salary));
+  if (age != null)         p.set("age",          String(age));
+  if (hasUkDegree != null) p.set("hasUkDegree",  String(hasUkDegree));
+  if (skills?.length)      p.set("skills",       skills.join(","));
   return _get(`/api/tools/visa-eligibility?${p}`);
 }
+
+// ===========================================================================
 
 function enc(s) { return encodeURIComponent(s); }
 
 async function _get(endpoint) {
   const res = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
-      "X-HireEdge-Plan": typeof window !== "undefined" ? (localStorage.getItem("hireedge_plan") || "free") : "free",
+      "X-HireEdge-Plan": typeof window !== "undefined"
+        ? (localStorage.getItem("hireedge_plan") || "free")
+        : "free",
     },
   });
   const json = await res.json();
   if (!res.ok) {
     const e = new Error(json.message || json.error || "Tool API error");
-    e.status = res.status;
-    e.reason = json.reason;
+    e.status    = res.status;
+    e.reason    = json.reason;
     e.upgrade_to = json.upgrade_to;
-    e.data = json;
+    e.data      = json;
     throw e;
   }
   return json;
