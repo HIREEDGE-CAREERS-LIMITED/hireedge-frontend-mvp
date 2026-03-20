@@ -13,24 +13,23 @@ import {
   getSavedRoleSlugs,
   getLocalActivity,
 } from "../../services/dashboardService";
-import ProfileSummary from "../../components/dashboard/ProfileSummary";
-import SavedRolesList from "../../components/dashboard/SavedRolesList";
-import RecommendationFeed from "../../components/dashboard/RecommendationFeed";
-import ActivityTimeline from "../../components/dashboard/ActivityTimeline";
-import QuickActionCard from "../../components/dashboard/QuickActionCard";
+import ProfileSummary      from "../../components/dashboard/ProfileSummary";
+import SavedRolesList      from "../../components/dashboard/SavedRolesList";
+import RecommendationFeed  from "../../components/dashboard/RecommendationFeed";
+import ActivityTimeline    from "../../components/dashboard/ActivityTimeline";
+import QuickActionCard     from "../../components/dashboard/QuickActionCard";
 
 export default function DashboardPage() {
-  const [profile, setProfile] = useState(null);
-  const [savedRoles, setSavedRoles] = useState(null);
+  const [profile,         setProfile]         = useState(null);
+  const [savedRoles,      setSavedRoles]      = useState(null);
   const [recommendations, setRecommendations] = useState(null);
-  const [activity, setActivity] = useState(null);
+  const [activity,        setActivity]        = useState(null);
   const [loading, setLoading] = useState({ profile: true, saved: true, recs: true, activity: true });
   const [careerCtx, setCareerCtx] = useState(null);
 
   useEffect(() => {
     const ctx = loadCareerContext();
 
-    // If no career context stored, show onboarding state
     if (!ctx || !ctx.role) {
       setLoading({ profile: false, saved: false, recs: false, activity: false });
       return;
@@ -39,13 +38,11 @@ export default function DashboardPage() {
     setCareerCtx(ctx);
     const { role, skills, yearsExp, target } = ctx;
 
-    // Fetch profile
     fetchProfile({ role, skills, yearsExp, target })
       .then((res) => setProfile(res.data))
       .catch(() => {})
       .finally(() => setLoading((p) => ({ ...p, profile: false })));
 
-    // Fetch saved roles
     const slugs = getSavedRoleSlugs();
     if (slugs.length > 0) {
       fetchSavedRoles({ roles: slugs, current: role, skills })
@@ -57,13 +54,11 @@ export default function DashboardPage() {
       setLoading((p) => ({ ...p, saved: false }));
     }
 
-    // Fetch recommendations
     fetchRecommendations({ role, skills, target, yearsExp })
       .then((res) => setRecommendations(res.data))
       .catch(() => {})
       .finally(() => setLoading((p) => ({ ...p, recs: false })));
 
-    // Fetch activity
     const localActivity = getLocalActivity();
     fetchActivity(localActivity)
       .then((res) => setActivity(res.data))
@@ -81,12 +76,14 @@ export default function DashboardPage() {
         <div className="dash__onboarding">
           <div className="dash__onboarding-icon shimmer-text">✦</div>
           <h2 className="dash__onboarding-title">Welcome to HireEdge</h2>
+          {/* CHANGED: "Copilot" → "EDGEX" in onboarding copy */}
           <p className="dash__onboarding-text">
-            Start by telling the Copilot about your current role and skills.
+            Start by telling EDGEX about your current role and skills.
             Your personalised dashboard will build itself as you explore.
           </p>
+          {/* CHANGED: "Open Copilot" → "Open EDGEX" */}
           <a href="/copilot" className="dash__onboarding-cta">
-            Open Copilot
+            Open EDGEX
             <span>→</span>
           </a>
         </div>
@@ -107,36 +104,21 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Hero: Profile Summary */}
       <ProfileSummary
         profile={profile?.profile_summary}
         salary={profile?.salary_snapshot}
         readiness={profile?.readiness}
       />
 
-      {/* Quick Actions */}
       <QuickActionCard />
 
-      {/* Two-column layout */}
       <div className="dash__grid">
-        {/* Left column */}
         <div className="dash__col">
-          <RecommendationFeed
-            recommendations={recommendations}
-            loading={loading.recs}
-          />
+          <RecommendationFeed recommendations={recommendations} loading={loading.recs} />
         </div>
-
-        {/* Right column */}
         <div className="dash__col dash__col--narrow">
-          <SavedRolesList
-            roles={savedRoles}
-            loading={loading.saved}
-          />
-          <ActivityTimeline
-            activity={activity}
-            loading={loading.activity}
-          />
+          <SavedRolesList roles={savedRoles} loading={loading.saved} />
+          <ActivityTimeline activity={activity} loading={loading.activity} />
         </div>
       </div>
     </div>
