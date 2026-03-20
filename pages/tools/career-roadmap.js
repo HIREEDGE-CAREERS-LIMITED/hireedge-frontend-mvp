@@ -1,14 +1,12 @@
 // ============================================================================
 // pages/tools/career-roadmap.js
 // HireEdge Frontend — Career Roadmap
-// Uses RoleSearch (1,200+ roles) instead of hardcoded <select> dropdown.
-// useEDGEXContext — safe outside CopilotProvider.
+// NO AppShell — _app.js handles the shell. Double-import caused double sidebar.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import AppShell from "../../components/layout/AppShell";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import RoadmapCard from "../../components/tools/RoadmapCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
@@ -16,9 +14,9 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
 const STRATEGIES = [
-  { value: "fastest",      label: "⚡ Fastest — minimise time" },
-  { value: "easiest",      label: "🟢 Easiest — minimise difficulty" },
-  { value: "highest_paid", label: "💰 Highest paid — maximise salary" },
+  { value: "fastest",      label: "⚡ Fastest" },
+  { value: "easiest",      label: "🟢 Easiest" },
+  { value: "highest_paid", label: "💰 Highest Paid" },
 ];
 
 export default function CareerRoadmapPage() {
@@ -35,7 +33,6 @@ export default function CareerRoadmapPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── EDGEX / query prefill ─────────────────────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
@@ -54,7 +51,6 @@ export default function CareerRoadmapPage() {
     if (q.strategy) setStrategy(q.strategy);
   }, [router.isReady, router.query]);
 
-  // ── Auto-run ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !fromRole || !toRole) return;
     autoRan.current = true;
@@ -88,7 +84,7 @@ export default function CareerRoadmapPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <Head><title>Career Roadmap — HireEdge</title></Head>
 
       <div className="tool-page">
@@ -101,12 +97,12 @@ export default function CareerRoadmapPage() {
         </div>
 
         <div className="tool-form">
-          {/* Row 1 — Roles */}
-          <div className="tool-form__grid">
+          {/* Row 1 — Current + Target + Strategy */}
+          <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
               <RoleSearch
-                placeholder="Search your current role..."
+                placeholder="Where you are now..."
                 onSelect={(r) => setFromRole(r)}
                 initialValue={fromRole?.title || ""}
               />
@@ -116,19 +112,16 @@ export default function CareerRoadmapPage() {
             <div className="tool-form__field">
               <label className="tool-form__label">Target Role <span className="tool-form__req">*</span></label>
               <RoleSearch
-                placeholder="Search target role..."
+                placeholder="Where you want to go..."
                 onSelect={(r) => setToRole(r)}
                 initialValue={toRole?.title || ""}
               />
               {toRole && <span className="tool-form__selected">✓ {toRole.title}</span>}
             </div>
-          </div>
 
-          {/* Row 2 — Strategy + Skills */}
-          <div className="tool-form__grid">
             <div className="tool-form__field">
               <label className="tool-form__label">Optimise For</label>
-              <div className="tool-form__strategy-row">
+              <div className="tool-form__toggle-row">
                 {STRATEGIES.map((s) => (
                   <button
                     key={s.value}
@@ -141,17 +134,18 @@ export default function CareerRoadmapPage() {
                 ))}
               </div>
             </div>
+          </div>
 
-            <div className="tool-form__field">
-              <label className="tool-form__label">Your Current Skills <span className="tool-form__optional">(optional)</span></label>
-              <input
-                className="tool-form__input"
-                type="text" placeholder="e.g. SQL, Python, Stakeholder Management"
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
-              />
-              <span className="tool-form__hint">Comma-separated — improves blockers analysis</span>
-            </div>
+          {/* Skills */}
+          <div className="tool-form__field">
+            <label className="tool-form__label">Your Current Skills <span className="tool-form__optional">(optional)</span></label>
+            <input
+              className="tool-form__input"
+              type="text" placeholder="e.g. SQL, Python, Stakeholder Management"
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+            />
+            <span className="tool-form__hint">Comma-separated — improves blockers analysis</span>
           </div>
 
           {error && <div className="tool-form__error">{error}</div>}
@@ -161,7 +155,11 @@ export default function CareerRoadmapPage() {
             onClick={_submit}
             disabled={loading || !fromRole || !toRole}
           >
-            {loading ? "Building roadmap…" : "Build My Roadmap"}
+            {loading ? (
+              <><span className="tool-form__spinner" /> Building roadmap…</>
+            ) : (
+              "Build My Roadmap"
+            )}
           </button>
         </div>
 
@@ -174,7 +172,7 @@ export default function CareerRoadmapPage() {
 
         {result && <RoadmapCard data={result} />}
       </div>
-    </AppShell>
+    </>
   );
 }
 
