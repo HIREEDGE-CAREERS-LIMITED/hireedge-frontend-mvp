@@ -4,10 +4,10 @@
 // ============================================================================
 
 const TYPE_META = {
-  role_view: { icon: "👁️", label: "Viewed role" },
-  tool_use: { icon: "🔧", label: "Used tool" },
-  query: { icon: "💬", label: "Asked Copilot" },
-  pack_build: { icon: "📦", label: "Built pack" },
+  role_view:  { icon: "👁️", label: "Viewed role"   },
+  tool_use:   { icon: "🔧", label: "Used tool"     },
+  query:      { icon: "💬", label: "Asked EDGEX"   }, // was: "Asked Copilot"
+  pack_build: { icon: "📦", label: "Built pack"    },
 };
 
 function relativeTime(ts) {
