@@ -1,10 +1,8 @@
 // ============================================================================
 // pages/tools/interview-prep.js
 // HireEdge Frontend — Interview Prep
-//
-// Prefill reads ONLY from router.query (clean URL params set by actionRouter).
-// edgexCtx is NOT used directly — it caused "access_denied" and bullet-point
-// strings bleeding into form fields from dirty sessionStorage context.
+// autoComplete="off" on all fields prevents Chrome autofill bleeding in
+// previous session data (skills bullet strings, access_denied text, CV data).
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -17,8 +15,8 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
 export default function InterviewPrepPage() {
-  const router   = useRouter();
-  const autoRan  = useRef(false);
+  const router  = useRouter();
+  const autoRan = useRef(false);
 
   const [targetRole,     setTargetRole]     = useState(null);
   const [currentRole,    setCurrentRole]    = useState(null);
@@ -31,12 +29,10 @@ export default function InterviewPrepPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── Prefill from URL query params ONLY ───────────────────────────────────
-  // actionRouter puts clean slugs into the URL — read from there, not context
+  // Prefill from URL query params only
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
-
     if (q.target)   setTargetRole({ slug: q.target,  title: _slugToTitle(q.target) });
     if (q.current)  setCurrentRole({ slug: q.current, title: _slugToTitle(q.current) });
     if (q.skills)   setSkills(_cleanSkills(q.skills));
@@ -44,7 +40,6 @@ export default function InterviewPrepPage() {
     if (q.jd)       setJobDescription(q.jd);
   }, [router.isReady]);
 
-  // ── Auto-run when launched from EDGEX with autorun=1 ─────────────────────
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !targetRole) return;
     autoRan.current = true;
@@ -90,8 +85,9 @@ export default function InterviewPrepPage() {
           </p>
         </div>
 
-        <div className="tool-form">
-          {/* Row 1 — Target + Current + Years */}
+        {/* autoComplete="off" on the form wrapper blocks Chrome autofill */}
+        <div className="tool-form" autoComplete="off">
+
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Target Role <span className="tool-form__req">*</span></label>
@@ -118,26 +114,26 @@ export default function InterviewPrepPage() {
               <input
                 className="tool-form__input"
                 type="number" min="0" max="40" placeholder="e.g. 5"
+                autoComplete="off"
                 value={yearsExp}
                 onChange={(e) => setYearsExp(e.target.value)}
               />
             </div>
           </div>
 
-          {/* Skills */}
           <div className="tool-form__field">
             <label className="tool-form__label">Your Skills</label>
             <input
               className="tool-form__input"
               type="text"
               placeholder="e.g. SQL, Python, Stakeholder Management, Product Strategy"
+              autoComplete="off"
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
             />
             <span className="tool-form__hint">Comma-separated</span>
           </div>
 
-          {/* Job Description */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               Job Description <span className="tool-form__optional">(optional — greatly improves output)</span>
@@ -145,12 +141,12 @@ export default function InterviewPrepPage() {
             <textarea
               className="tool-form__textarea" rows={5}
               placeholder="Paste the full job description here…"
+              autoComplete="off"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
             />
           </div>
 
-          {/* CV */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               CV / Profile Summary <span className="tool-form__optional">(optional)</span>
@@ -158,6 +154,7 @@ export default function InterviewPrepPage() {
             <textarea
               className="tool-form__textarea" rows={4}
               placeholder="Paste a summary of your experience or CV…"
+              autoComplete="off"
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
             />
@@ -187,17 +184,13 @@ export default function InterviewPrepPage() {
   );
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
-
 function _slugToTitle(slug) {
   if (!slug) return "";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Ensure skills is always a clean comma-separated string
 function _cleanSkills(raw) {
   if (!raw) return "";
   if (Array.isArray(raw)) return raw.join(", ");
-  // Strip bullet points if present
   return raw.replace(/[•\-\*]\s*/g, "").replace(/\s{2,}/g, " ").trim();
 }
