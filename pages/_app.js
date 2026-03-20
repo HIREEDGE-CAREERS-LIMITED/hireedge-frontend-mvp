@@ -17,6 +17,7 @@ import "../styles/career-pack.css";
 import "../styles/billing.css";
 import "../styles/career-path.css";
 import "../styles/career-blind-spot.css";
+import "../styles/resume-optimiser.css";
 
 export default function HireEdgeApp({ Component, pageProps }) {
   // If the page exports a getLayout function, use it (for custom layouts)
