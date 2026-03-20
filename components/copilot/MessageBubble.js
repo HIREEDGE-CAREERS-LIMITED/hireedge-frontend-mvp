@@ -20,7 +20,7 @@ export default function MessageBubble({ message, onAction }) {
           <div className="bubble__avatar-user">U</div>
         ) : (
           <div className="bubble__avatar-ai">
-            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 1v4M9 13v4M1 9h4M13 9h4M3.5 3.5l2.8 2.8M11.7 11.7l2.8 2.8M3.5 14.5l2.8-2.8M11.7 6.3l2.8-2.8"/>
             </svg>
           </div>
@@ -29,9 +29,9 @@ export default function MessageBubble({ message, onAction }) {
 
       {/* Content */}
       <div className="bubble__body">
-        {/* Header: role label + intent badge */}
         <div className="bubble__header">
-          <span className="bubble__sender">{isUser ? "You" : "HireEdge"}</span>
+          {/* CHANGED: "HireEdge" → "EDGEX" */}
+          <span className="bubble__sender">{isUser ? "You" : "EDGEX"}</span>
           {intent && !isError && (
             <span className="bubble__intent">
               {intent.name?.replace(/_/g, " ")}
@@ -45,10 +45,8 @@ export default function MessageBubble({ message, onAction }) {
           )}
         </div>
 
-        {/* Message text */}
         <div className="bubble__text">{message.content}</div>
 
-        {/* Recommendations (assistant only) */}
         {!isUser && recommendations.length > 0 && (
           <div className="bubble__recs">
             <div className="bubble__recs-title">Recommendations</div>
@@ -66,12 +64,10 @@ export default function MessageBubble({ message, onAction }) {
           </div>
         )}
 
-        {/* Next actions (assistant only) */}
         {!isUser && nextActions.length > 0 && (
           <ActionChips actions={nextActions} onAction={onAction} />
         )}
 
-        {/* Upgrade prompt for billing errors */}
         {isError && message.data?.upgrade_to && (
           <div className="bubble__upgrade">
             <a href="/billing" className="bubble__upgrade-btn">
@@ -80,7 +76,6 @@ export default function MessageBubble({ message, onAction }) {
           </div>
         )}
 
-        {/* Timestamp */}
         <div className="bubble__time">
           {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </div>
