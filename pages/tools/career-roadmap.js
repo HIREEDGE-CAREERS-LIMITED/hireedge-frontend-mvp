@@ -1,6 +1,9 @@
 // ============================================================================
 // pages/tools/career-roadmap.js
 // HireEdge Frontend — Career Roadmap page (Production v2)
+//
+// FIX: Replaced useCopilot() with useEDGEXContext() — safe outside
+// CopilotProvider during Next.js static pre-rendering.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -8,7 +11,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import AppShell from "../../components/layout/AppShell";
 import RoadmapCard from "../../components/tools/RoadmapCard";
-import { useCopilot } from "../../context/CopilotContext";
+import { useEDGEXContext } from "../../context/CopilotContext";  // ← FIXED
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
@@ -42,9 +45,9 @@ const STRATEGIES = [
 ];
 
 export default function CareerRoadmapPage() {
-  const router  = useRouter();
-  const { context: edgexCtx } = useCopilot?.() || {};
-  const autoRan = useRef(false);
+  const router   = useRouter();
+  const edgexCtx = useEDGEXContext() || {};   // ← FIXED: never throws
+  const autoRan  = useRef(false);
 
   const [form, setForm] = useState({
     fromRole: "",
@@ -58,12 +61,13 @@ export default function CareerRoadmapPage() {
 
   // ── EDGEX prefill ──────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!router.isReady) return;
     const q = router.query;
     const prefill = {
-      fromRole: q.from    || q.current || edgexCtx?.currentRole || "",
-      toRole:   q.to      || q.target  || edgexCtx?.targetRole  || "",
+      fromRole: q.from     || q.current || edgexCtx.role   || "",
+      toRole:   q.to       || q.target  || edgexCtx.target || "",
       strategy: q.strategy || "fastest",
-      skills:   q.skills  || (Array.isArray(edgexCtx?.skills) ? edgexCtx.skills.join(", ") : edgexCtx?.skills || ""),
+      skills:   q.skills   || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""),
     };
     setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(prefill).filter(([, v]) => v)) }));
   }, [router.isReady, router.query]);
@@ -84,7 +88,7 @@ export default function CareerRoadmapPage() {
     setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/career-roadmap`, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fromRole: values.fromRole,
