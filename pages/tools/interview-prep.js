@@ -1,6 +1,15 @@
 // ============================================================================
 // pages/tools/interview-prep.js
 // HireEdge Frontend — Interview Prep page (Production v2)
+//
+// FIX: Replaced useCopilot() with useEDGEXContext().
+//
+// useCopilot() throws "must be used within a CopilotProvider" during
+// Next.js static pre-rendering because tool pages are NOT wrapped in
+// CopilotProvider. useCopilot?.() does NOT prevent this — optional
+// chaining only skips the call if the function itself is null/undefined,
+// not if the function throws. useEDGEXContext() is safe: it calls
+// useContext() directly and returns null instead of throwing.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -8,7 +17,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import AppShell from "../../components/layout/AppShell";
 import InterviewPrepCard from "../../components/tools/InterviewPrepCard";
-import { useCopilot } from "../../context/CopilotContext";
+import { useEDGEXContext } from "../../context/CopilotContext";  // ← FIXED
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
@@ -32,9 +41,9 @@ const ROLE_OPTIONS = [
 ];
 
 export default function InterviewPrepPage() {
-  const router   = useRouter();
-  const { context: edgexCtx } = useCopilot?.() || {};
-  const autoRan  = useRef(false);
+  const router    = useRouter();
+  const edgexCtx  = useEDGEXContext() || {};   // ← FIXED: never throws
+  const autoRan   = useRef(false);
 
   const [form, setForm] = useState({
     targetRole:     "",
@@ -50,14 +59,15 @@ export default function InterviewPrepPage() {
 
   // ── EDGEX prefill ──────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!router.isReady) return;
     const q = router.query;
     const prefill = {
-      targetRole:  q.target      || edgexCtx?.targetRole  || "",
-      currentRole: q.current     || edgexCtx?.currentRole || "",
-      skills:      q.skills      || (Array.isArray(edgexCtx?.skills) ? edgexCtx.skills.join(", ") : edgexCtx?.skills || ""),
-      yearsExp:    q.yearsExp    || edgexCtx?.yearsExp    || "",
-      jobDescription: q.jd      || "",
-      resumeText:  q.resume      || edgexCtx?.resumeText  || "",
+      targetRole:     q.target   || edgexCtx.target  || edgexCtx.role   || "",
+      currentRole:    q.current  || edgexCtx.role    || "",
+      skills:         q.skills   || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""),
+      yearsExp:       q.yearsExp || edgexCtx.yearsExp || "",
+      jobDescription: q.jd       || "",
+      resumeText:     q.resume   || "",
     };
     setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(prefill).filter(([, v]) => v)) }));
   }, [router.isReady, router.query]);
@@ -79,7 +89,7 @@ export default function InterviewPrepPage() {
     setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/interview-prep`, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           targetRole:     values.targetRole,
@@ -100,11 +110,7 @@ export default function InterviewPrepPage() {
     }
   }
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    _submit(form);
-  }
-
+  function handleSubmit(e) { e.preventDefault(); _submit(form); }
   function set(k) { return (e) => setForm((f) => ({ ...f, [k]: e.target.value })); }
 
   return (
