@@ -1,14 +1,12 @@
 // ============================================================================
 // pages/tools/linkedin-optimiser.js
 // HireEdge Frontend — LinkedIn Optimiser
-// Uses RoleSearch (1,200+ roles) instead of hardcoded <select> dropdown.
-// useEDGEXContext — safe outside CopilotProvider.
+// NO AppShell — _app.js handles the shell. Double-import caused double sidebar.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import AppShell from "../../components/layout/AppShell";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import LinkedinOptimisationCard from "../../components/tools/LinkedinOptimisationCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
@@ -32,7 +30,6 @@ export default function LinkedinOptimiserPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── EDGEX / query prefill ─────────────────────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
@@ -54,7 +51,6 @@ export default function LinkedinOptimiserPage() {
     if (q.jd)       setJobDescription(q.jd);
   }, [router.isReady, router.query]);
 
-  // ── Auto-run ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !currentRole) return;
     autoRan.current = true;
@@ -89,7 +85,7 @@ export default function LinkedinOptimiserPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <Head><title>LinkedIn Optimiser — HireEdge</title></Head>
 
       <div className="tool-page">
@@ -102,12 +98,12 @@ export default function LinkedinOptimiserPage() {
         </div>
 
         <div className="tool-form">
-          {/* Row 1 — Roles */}
-          <div className="tool-form__grid">
+          {/* Row 1 — Current + Target + Years */}
+          <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
               <RoleSearch
-                placeholder="Search your current role..."
+                placeholder="Your current role..."
                 onSelect={(r) => setCurrentRole(r)}
                 initialValue={currentRole?.title || ""}
               />
@@ -115,18 +111,15 @@ export default function LinkedinOptimiserPage() {
             </div>
 
             <div className="tool-form__field">
-              <label className="tool-form__label">Target Role <span className="tool-form__optional">(optional — for transition)</span></label>
+              <label className="tool-form__label">Target Role <span className="tool-form__optional">(optional)</span></label>
               <RoleSearch
-                placeholder="Search target role..."
+                placeholder="Role you're moving toward..."
                 onSelect={(r) => setTargetRole(r)}
                 initialValue={targetRole?.title || ""}
               />
               {targetRole && <span className="tool-form__selected">✓ {targetRole.title}</span>}
             </div>
-          </div>
 
-          {/* Row 2 — Years + Industry */}
-          <div className="tool-form__grid">
             <div className="tool-form__field">
               <label className="tool-form__label">Years of Experience</label>
               <input
@@ -136,9 +129,23 @@ export default function LinkedinOptimiserPage() {
                 onChange={(e) => setYearsExp(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Row 2 — Skills + Industry */}
+          <div className="tool-form__row tool-form__row--2">
+            <div className="tool-form__field">
+              <label className="tool-form__label">Your Skills</label>
+              <input
+                className="tool-form__input"
+                type="text" placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
+                value={skills}
+                onChange={(e) => setSkills(e.target.value)}
+              />
+              <span className="tool-form__hint">Comma-separated</span>
+            </div>
 
             <div className="tool-form__field">
-              <label className="tool-form__label">Industry</label>
+              <label className="tool-form__label">Industry <span className="tool-form__optional">(optional)</span></label>
               <input
                 className="tool-form__input"
                 type="text" placeholder="e.g. Technology, Financial Services"
@@ -146,18 +153,6 @@ export default function LinkedinOptimiserPage() {
                 onChange={(e) => setIndustry(e.target.value)}
               />
             </div>
-          </div>
-
-          {/* Skills */}
-          <div className="tool-form__field">
-            <label className="tool-form__label">Your Skills</label>
-            <input
-              className="tool-form__input"
-              type="text" placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-            />
-            <span className="tool-form__hint">Comma-separated</span>
           </div>
 
           {/* CV */}
@@ -193,7 +188,11 @@ export default function LinkedinOptimiserPage() {
             onClick={_submit}
             disabled={loading || !currentRole}
           >
-            {loading ? "Optimising your profile…" : "Optimise LinkedIn Profile"}
+            {loading ? (
+              <><span className="tool-form__spinner" /> Optimising your profile…</>
+            ) : (
+              "Optimise LinkedIn Profile"
+            )}
           </button>
         </div>
 
@@ -206,7 +205,7 @@ export default function LinkedinOptimiserPage() {
 
         {result && <LinkedinOptimisationCard data={result} />}
       </div>
-    </AppShell>
+    </>
   );
 }
 
