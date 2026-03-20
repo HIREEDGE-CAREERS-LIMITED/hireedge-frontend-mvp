@@ -1,7 +1,8 @@
 // ============================================================================
 // pages/tools/linkedin-optimiser.js
 // HireEdge Frontend — LinkedIn Optimiser
-// autoComplete="off" prevents Chrome autofill bleeding into fields.
+//
+// URL prefill: ONLY role slugs. Skills/JD/CV always start empty.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -17,8 +18,11 @@ export default function LinkedinOptimiserPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
 
-  const [currentRole,    setCurrentRole]    = useState(null);
-  const [targetRole,     setTargetRole]     = useState(null);
+  // Role state — prefilled from clean URL slugs only
+  const [currentRole, setCurrentRole] = useState(null);
+  const [targetRole,  setTargetRole]  = useState(null);
+
+  // User-entered — always start empty
   const [skills,         setSkills]         = useState("");
   const [yearsExp,       setYearsExp]       = useState("");
   const [industry,       setIndustry]       = useState("");
@@ -29,14 +33,14 @@ export default function LinkedinOptimiserPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
+  // ── Only role slugs from URL ───────────────────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
     if (q.role || q.current) setCurrentRole({ slug: q.role || q.current, title: _slugToTitle(q.role || q.current) });
     if (q.target)            setTargetRole({ slug: q.target, title: _slugToTitle(q.target) });
-    if (q.skills)            setSkills(_cleanSkills(q.skills));
-    if (q.yearsExp)          setYearsExp(q.yearsExp);
-    if (q.industry)          setIndustry(q.industry);
+    if (q.yearsExp && !isNaN(parseInt(q.yearsExp))) setYearsExp(q.yearsExp);
+    // skills/industry/resumeText/jobDescription NOT read from URL
   }, [router.isReady]);
 
   useEffect(() => {
@@ -85,8 +89,7 @@ export default function LinkedinOptimiserPage() {
           </p>
         </div>
 
-        <div className="tool-form" autoComplete="off">
-
+        <div className="tool-form">
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
@@ -199,10 +202,4 @@ export default function LinkedinOptimiserPage() {
 function _slugToTitle(slug) {
   if (!slug) return "";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function _cleanSkills(raw) {
-  if (!raw) return "";
-  if (Array.isArray(raw)) return raw.join(", ");
-  return raw.replace(/[•\-\*]\s*/g, "").replace(/\s{2,}/g, " ").trim();
 }
