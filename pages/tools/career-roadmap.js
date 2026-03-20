@@ -1,100 +1,80 @@
 // ============================================================================
 // pages/tools/career-roadmap.js
-// HireEdge Frontend — Career Roadmap page (Production v2)
-//
-// FIX: Replaced useCopilot() with useEDGEXContext() — safe outside
-// CopilotProvider during Next.js static pre-rendering.
+// HireEdge Frontend — Career Roadmap
+// Uses RoleSearch (1,200+ roles) instead of hardcoded <select> dropdown.
+// useEDGEXContext — safe outside CopilotProvider.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import AppShell from "../../components/layout/AppShell";
+import RoleSearch from "../../components/intelligence/RoleSearch";
 import RoadmapCard from "../../components/tools/RoadmapCard";
-import { useEDGEXContext } from "../../context/CopilotContext";  // ← FIXED
+import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
-const ROLE_OPTIONS = [
-  { value: "", label: "Select role…" },
-  { value: "product-manager", label: "Product Manager" },
-  { value: "senior-product-manager", label: "Senior Product Manager" },
-  { value: "director-of-product", label: "Director of Product" },
-  { value: "data-scientist", label: "Data Scientist" },
-  { value: "data-analyst", label: "Data Analyst" },
-  { value: "data-engineer", label: "Data Engineer" },
-  { value: "analytics-manager", label: "Analytics Manager" },
-  { value: "machine-learning-engineer", label: "Machine Learning Engineer" },
-  { value: "software-engineer", label: "Software Engineer" },
-  { value: "senior-software-engineer", label: "Senior Software Engineer" },
-  { value: "engineering-manager", label: "Engineering Manager" },
-  { value: "ux-designer", label: "UX Designer" },
-  { value: "marketing-manager", label: "Marketing Manager" },
-  { value: "sales-manager", label: "Sales Manager" },
-  { value: "operations-manager", label: "Operations Manager" },
-  { value: "finance-manager", label: "Finance Manager" },
-  { value: "business-analyst", label: "Business Analyst" },
-  { value: "strategy-consultant", label: "Strategy Consultant" },
-  { value: "chief-product-officer", label: "Chief Product Officer" },
-];
-
 const STRATEGIES = [
-  { value: "fastest",      label: "Fastest — minimise time" },
-  { value: "easiest",      label: "Easiest — minimise difficulty" },
-  { value: "highest_paid", label: "Highest paid — maximise salary" },
+  { value: "fastest",      label: "⚡ Fastest — minimise time" },
+  { value: "easiest",      label: "🟢 Easiest — minimise difficulty" },
+  { value: "highest_paid", label: "💰 Highest paid — maximise salary" },
 ];
 
 export default function CareerRoadmapPage() {
   const router   = useRouter();
-  const edgexCtx = useEDGEXContext() || {};   // ← FIXED: never throws
+  const edgexCtx = useEDGEXContext() || {};
   const autoRan  = useRef(false);
 
-  const [form, setForm] = useState({
-    fromRole: "",
-    toRole:   "",
-    strategy: "fastest",
-    skills:   "",
-  });
+  const [fromRole, setFromRole] = useState(null);
+  const [toRole,   setToRole]   = useState(null);
+  const [skills,   setSkills]   = useState("");
+  const [strategy, setStrategy] = useState("fastest");
+
   const [result,  setResult]  = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // ── EDGEX prefill ──────────────────────────────────────────────────────────
+  // ── EDGEX / query prefill ─────────────────────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
-    const prefill = {
-      fromRole: q.from     || q.current || edgexCtx.role   || "",
-      toRole:   q.to       || q.target  || edgexCtx.target || "",
-      strategy: q.strategy || "fastest",
-      skills:   q.skills   || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""),
-    };
-    setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(prefill).filter(([, v]) => v)) }));
+
+    if ((q.from || q.current || edgexCtx.role) && !fromRole) {
+      const slug = q.from || q.current || edgexCtx.role;
+      setFromRole({ slug, title: _slugToTitle(slug) });
+    }
+    if ((q.to || q.target || edgexCtx.target) && !toRole) {
+      const slug = q.to || q.target || edgexCtx.target;
+      setToRole({ slug, title: _slugToTitle(slug) });
+    }
+    if (q.skills || edgexCtx.skills) {
+      setSkills(q.skills || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""));
+    }
+    if (q.strategy) setStrategy(q.strategy);
   }, [router.isReady, router.query]);
 
   // ── Auto-run ───────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !form.fromRole || !form.toRole) return;
+    if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !fromRole || !toRole) return;
     autoRan.current = true;
-    _submit(form);
-  }, [form.fromRole, form.toRole, router.isReady]);
+    _submit();
+  }, [fromRole, toRole, router.isReady]);
 
-  async function _submit(values) {
-    if (!values.fromRole) { setError("Please select your current role."); return; }
-    if (!values.toRole)   { setError("Please select your target role."); return; }
-    if (values.fromRole === values.toRole) { setError("Current and target role must be different."); return; }
-    setLoading(true);
-    setError(null);
-    setResult(null);
+  async function _submit() {
+    if (!fromRole) { setError("Please select your current role."); return; }
+    if (!toRole)   { setError("Please select your target role."); return; }
+    if (fromRole.slug === toRole.slug) { setError("Current and target role must be different."); return; }
+    setLoading(true); setError(null); setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/career-roadmap`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fromRole: values.fromRole,
-          toRole:   values.toRole,
-          strategy: values.strategy,
-          skills:   values.skills,
+          fromRole: fromRole.slug,
+          toRole:   toRole.slug,
+          strategy,
+          skills,
         }),
       });
       const json = await r.json();
@@ -106,9 +86,6 @@ export default function CareerRoadmapPage() {
       setLoading(false);
     }
   }
-
-  function handleSubmit(e) { e.preventDefault(); _submit(form); }
-  function set(k) { return (e) => setForm((f) => ({ ...f, [k]: e.target.value })); }
 
   return (
     <AppShell>
@@ -123,43 +100,70 @@ export default function CareerRoadmapPage() {
           </p>
         </div>
 
-        <form className="tool-form" onSubmit={handleSubmit}>
+        <div className="tool-form">
+          {/* Row 1 — Roles */}
           <div className="tool-form__grid">
             <div className="tool-form__field">
-              <label className="tool-form__label">Current role <span className="tool-form__req">*</span></label>
-              <select className="tool-form__select" value={form.fromRole} onChange={set("fromRole")} required>
-                {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
+              <RoleSearch
+                placeholder="Search your current role..."
+                onSelect={(r) => setFromRole(r)}
+                initialValue={fromRole?.title || ""}
+              />
+              {fromRole && <span className="tool-form__selected">✓ {fromRole.title}</span>}
             </div>
 
             <div className="tool-form__field">
-              <label className="tool-form__label">Target role <span className="tool-form__req">*</span></label>
-              <select className="tool-form__select" value={form.toRole} onChange={set("toRole")} required>
-                {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              <label className="tool-form__label">Target Role <span className="tool-form__req">*</span></label>
+              <RoleSearch
+                placeholder="Search target role..."
+                onSelect={(r) => setToRole(r)}
+                initialValue={toRole?.title || ""}
+              />
+              {toRole && <span className="tool-form__selected">✓ {toRole.title}</span>}
+            </div>
+          </div>
+
+          {/* Row 2 — Strategy + Skills */}
+          <div className="tool-form__grid">
+            <div className="tool-form__field">
+              <label className="tool-form__label">Optimise For</label>
+              <div className="tool-form__strategy-row">
+                {STRATEGIES.map((s) => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    className={`tool-form__toggle ${strategy === s.value ? "tool-form__toggle--active" : ""}`}
+                    onClick={() => setStrategy(s.value)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="tool-form__field">
-              <label className="tool-form__label">Strategy</label>
-              <select className="tool-form__select" value={form.strategy} onChange={set("strategy")}>
-                {STRATEGIES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </div>
-
-            <div className="tool-form__field">
-              <label className="tool-form__label">Your current skills <span className="tool-form__optional">(optional)</span></label>
-              <input className="tool-form__input" type="text" placeholder="e.g. SQL, Python, Stakeholder Management"
-                value={form.skills} onChange={set("skills")} />
+              <label className="tool-form__label">Your Current Skills <span className="tool-form__optional">(optional)</span></label>
+              <input
+                className="tool-form__input"
+                type="text" placeholder="e.g. SQL, Python, Stakeholder Management"
+                value={skills}
+                onChange={(e) => setSkills(e.target.value)}
+              />
               <span className="tool-form__hint">Comma-separated — improves blockers analysis</span>
             </div>
           </div>
 
           {error && <div className="tool-form__error">{error}</div>}
 
-          <button className="tool-form__submit" type="submit" disabled={loading}>
+          <button
+            className="tool-form__submit"
+            onClick={_submit}
+            disabled={loading || !fromRole || !toRole}
+          >
             {loading ? "Building roadmap…" : "Build My Roadmap"}
           </button>
-        </form>
+        </div>
 
         {loading && (
           <div className="tool-loading">
@@ -172,4 +176,9 @@ export default function CareerRoadmapPage() {
       </div>
     </AppShell>
   );
+}
+
+function _slugToTitle(slug) {
+  if (!slug) return "";
+  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
