@@ -1,8 +1,12 @@
 // ============================================================================
 // pages/tools/interview-prep.js
 // HireEdge Frontend — Interview Prep
-// autoComplete="off" on all fields prevents Chrome autofill bleeding in
-// previous session data (skills bullet strings, access_denied text, CV data).
+//
+// URL prefill: ONLY role slugs (target, current) — these are always clean.
+// Skills, JD, CV text are NEVER read from URL params because the EDGEX
+// actionRouter puts raw chat context strings there (bullet-formatted,
+// "access_denied" fields, education text, etc.) which corrupt the fields.
+// Users fill those manually. Roles pre-fill from EDGEX navigation.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -18,8 +22,11 @@ export default function InterviewPrepPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
 
-  const [targetRole,     setTargetRole]     = useState(null);
-  const [currentRole,    setCurrentRole]    = useState(null);
+  // Role state — prefilled from clean URL slugs
+  const [targetRole,  setTargetRole]  = useState(null);
+  const [currentRole, setCurrentRole] = useState(null);
+
+  // User-entered fields — always start empty, never prefilled from URL
   const [skills,         setSkills]         = useState("");
   const [yearsExp,       setYearsExp]       = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -29,15 +36,16 @@ export default function InterviewPrepPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
-  // Prefill from URL query params only
+  // ── Only read role slugs from URL — everything else stays empty ───────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
-    if (q.target)   setTargetRole({ slug: q.target,  title: _slugToTitle(q.target) });
-    if (q.current)  setCurrentRole({ slug: q.current, title: _slugToTitle(q.current) });
-    if (q.skills)   setSkills(_cleanSkills(q.skills));
-    if (q.yearsExp) setYearsExp(q.yearsExp);
-    if (q.jd)       setJobDescription(q.jd);
+    // target / current are always clean role slugs from actionRouter
+    if (q.target)  setTargetRole({ slug: q.target,  title: _slugToTitle(q.target) });
+    if (q.current) setCurrentRole({ slug: q.current, title: _slugToTitle(q.current) });
+    // yearsExp is a plain number — safe to read
+    if (q.yearsExp && !isNaN(parseInt(q.yearsExp))) setYearsExp(q.yearsExp);
+    // skills/jd/resume deliberately NOT read — they come as dirty strings from EDGEX context
   }, [router.isReady]);
 
   useEffect(() => {
@@ -85,9 +93,8 @@ export default function InterviewPrepPage() {
           </p>
         </div>
 
-        {/* autoComplete="off" on the form wrapper blocks Chrome autofill */}
-        <div className="tool-form" autoComplete="off">
-
+        <div className="tool-form">
+          {/* Row 1 — Target + Current + Years */}
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Target Role <span className="tool-form__req">*</span></label>
@@ -121,6 +128,7 @@ export default function InterviewPrepPage() {
             </div>
           </div>
 
+          {/* Skills — always blank on load */}
           <div className="tool-form__field">
             <label className="tool-form__label">Your Skills</label>
             <input
@@ -134,6 +142,7 @@ export default function InterviewPrepPage() {
             <span className="tool-form__hint">Comma-separated</span>
           </div>
 
+          {/* Job Description — always blank on load */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               Job Description <span className="tool-form__optional">(optional — greatly improves output)</span>
@@ -147,6 +156,7 @@ export default function InterviewPrepPage() {
             />
           </div>
 
+          {/* CV — always blank on load */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               CV / Profile Summary <span className="tool-form__optional">(optional)</span>
@@ -187,10 +197,4 @@ export default function InterviewPrepPage() {
 function _slugToTitle(slug) {
   if (!slug) return "";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function _cleanSkills(raw) {
-  if (!raw) return "";
-  if (Array.isArray(raw)) return raw.join(", ");
-  return raw.replace(/[•\-\*]\s*/g, "").replace(/\s{2,}/g, " ").trim();
 }
