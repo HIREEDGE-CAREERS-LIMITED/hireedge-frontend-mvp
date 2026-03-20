@@ -1,6 +1,9 @@
 // ============================================================================
 // pages/tools/linkedin-optimiser.js
 // HireEdge Frontend — LinkedIn Optimiser page (Production v2)
+//
+// FIX: Replaced useCopilot() with useEDGEXContext() — safe outside
+// CopilotProvider during Next.js static pre-rendering.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -8,7 +11,7 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import AppShell from "../../components/layout/AppShell";
 import LinkedinOptimisationCard from "../../components/tools/LinkedinOptimisationCard";
-import { useCopilot } from "../../context/CopilotContext";
+import { useEDGEXContext } from "../../context/CopilotContext";  // ← FIXED
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
@@ -32,9 +35,9 @@ const ROLE_OPTIONS = [
 ];
 
 export default function LinkedinOptimiserPage() {
-  const router  = useRouter();
-  const { context: edgexCtx } = useCopilot?.() || {};
-  const autoRan = useRef(false);
+  const router   = useRouter();
+  const edgexCtx = useEDGEXContext() || {};   // ← FIXED: never throws
+  const autoRan  = useRef(false);
 
   const [form, setForm] = useState({
     currentRole:    "",
@@ -51,15 +54,16 @@ export default function LinkedinOptimiserPage() {
 
   // ── EDGEX prefill ──────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!router.isReady) return;
     const q = router.query;
     const prefill = {
-      currentRole:    q.role      || q.current    || edgexCtx?.currentRole || "",
-      targetRole:     q.target                    || edgexCtx?.targetRole  || "",
-      skills:         q.skills    || (Array.isArray(edgexCtx?.skills) ? edgexCtx.skills.join(", ") : edgexCtx?.skills || ""),
-      yearsExp:       q.yearsExp                  || edgexCtx?.yearsExp    || "",
-      resumeText:     q.resume                    || edgexCtx?.resumeText  || "",
-      industry:       q.industry                  || "",
-      jobDescription: q.jd                        || "",
+      currentRole:    q.role     || q.current || edgexCtx.role   || "",
+      targetRole:     q.target              || edgexCtx.target  || "",
+      skills:         q.skills              || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""),
+      yearsExp:       q.yearsExp            || edgexCtx.yearsExp || "",
+      resumeText:     q.resume              || "",
+      industry:       q.industry            || "",
+      jobDescription: q.jd                  || "",
     };
     setForm((f) => ({ ...f, ...Object.fromEntries(Object.entries(prefill).filter(([, v]) => v)) }));
   }, [router.isReady, router.query]);
@@ -78,7 +82,7 @@ export default function LinkedinOptimiserPage() {
     setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/linkedin-optimiser`, {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           currentRole:    values.currentRole,
