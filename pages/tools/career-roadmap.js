@@ -1,7 +1,8 @@
 // ============================================================================
 // pages/tools/career-roadmap.js
 // HireEdge Frontend — Career Roadmap
-// NO AppShell — _app.js handles the shell. Double-import caused double sidebar.
+//
+// Prefill reads ONLY from router.query. No edgexCtx direct reads.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -20,9 +21,8 @@ const STRATEGIES = [
 ];
 
 export default function CareerRoadmapPage() {
-  const router   = useRouter();
-  const edgexCtx = useEDGEXContext() || {};
-  const autoRan  = useRef(false);
+  const router  = useRouter();
+  const autoRan = useRef(false);
 
   const [fromRole, setFromRole] = useState(null);
   const [toRole,   setToRole]   = useState(null);
@@ -33,23 +33,16 @@ export default function CareerRoadmapPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
+  // ── Prefill from URL query params ONLY ───────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
 
-    if ((q.from || q.current || edgexCtx.role) && !fromRole) {
-      const slug = q.from || q.current || edgexCtx.role;
-      setFromRole({ slug, title: _slugToTitle(slug) });
-    }
-    if ((q.to || q.target || edgexCtx.target) && !toRole) {
-      const slug = q.to || q.target || edgexCtx.target;
-      setToRole({ slug, title: _slugToTitle(slug) });
-    }
-    if (q.skills || edgexCtx.skills) {
-      setSkills(q.skills || (Array.isArray(edgexCtx.skills) ? edgexCtx.skills.join(", ") : edgexCtx.skills || ""));
-    }
-    if (q.strategy) setStrategy(q.strategy);
-  }, [router.isReady, router.query]);
+    if (q.from || q.current) setFromRole({ slug: q.from || q.current, title: _slugToTitle(q.from || q.current) });
+    if (q.to   || q.target)  setToRole({ slug: q.to || q.target, title: _slugToTitle(q.to || q.target) });
+    if (q.skills)            setSkills(_cleanSkills(q.skills));
+    if (q.strategy)          setStrategy(q.strategy);
+  }, [router.isReady]);
 
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !fromRole || !toRole) return;
@@ -141,7 +134,8 @@ export default function CareerRoadmapPage() {
             <label className="tool-form__label">Your Current Skills <span className="tool-form__optional">(optional)</span></label>
             <input
               className="tool-form__input"
-              type="text" placeholder="e.g. SQL, Python, Stakeholder Management"
+              type="text"
+              placeholder="e.g. SQL, Python, Stakeholder Management"
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
             />
@@ -155,11 +149,7 @@ export default function CareerRoadmapPage() {
             onClick={_submit}
             disabled={loading || !fromRole || !toRole}
           >
-            {loading ? (
-              <><span className="tool-form__spinner" /> Building roadmap…</>
-            ) : (
-              "Build My Roadmap"
-            )}
+            {loading ? "Building roadmap…" : "Build My Roadmap"}
           </button>
         </div>
 
@@ -179,4 +169,10 @@ export default function CareerRoadmapPage() {
 function _slugToTitle(slug) {
   if (!slug) return "";
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function _cleanSkills(raw) {
+  if (!raw) return "";
+  if (Array.isArray(raw)) return raw.join(", ");
+  return raw.replace(/[•\-\*]\s*/g, "").replace(/\s{2,}/g, " ").trim();
 }
