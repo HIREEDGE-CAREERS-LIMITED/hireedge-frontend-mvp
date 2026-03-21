@@ -1,25 +1,22 @@
 // ============================================================================
 // components/tools/TalentProfileCard.js
-// HireEdge — Talent Profile Card (v1)
+// HireEdge — Talent Profile Card (v2)
 //
-// 10 sections in order:
-//   1. Hero — Talent Score ring + status + verdict + risk
-//   2. Executive Summary — 4 insight blocks
-//   3. Transition Confidence — probability gauge + explanation
-//   4. Core Scorecards — 5 dimensions with bars + labels
-//   5. Strengths — 4–6 specific advantage cards
-//   6. Critical Gaps — 3–5 gap cards with urgency + impact
-//   7. Market Positioning — 3 insight blocks
-//   8. Strategic Recommendation — path card with key bets
-//   9. Action Priorities — 3 ordered action cards
-//  10. Outcome & ROI — salary growth + potential + timeline
+// Upgrades over v1:
+//   - NAV REMOVED → pure continuous scroll story
+//   - Hero: 3 inline key metrics (confidence, timeline, salary growth)
+//   - Section 3: Career DNA Snapshot (NEW)
+//   - Transition Confidence: upgraded with success/risk factor lists
+//   - Action Priorities: urgency tags (#MUST DO THIS WEEK etc) + impact
+//   - Section 11: Risk Warning (NEW) — what happens if no action taken
+//   - All sections polished: spacing, hierarchy, rhythm
 // ============================================================================
-
-import { useState } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Atoms
 // ─────────────────────────────────────────────────────────────────────────────
+
+import { useState } from "react";
 
 function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false);
@@ -31,9 +28,7 @@ function CopyBtn({ text }) {
     }
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
-  return (
-    <button className="tp-copy" onClick={go}>{copied ? "✓" : "Copy"}</button>
-  );
+  return <button className="tp-copy" onClick={go}>{copied ? "✓" : "Copy"}</button>;
 }
 
 function UrgencyPip({ urgency }) {
@@ -47,7 +42,8 @@ function ScoreLbl({ label }) {
 }
 
 function ImpactPip({ impact }) {
-  return <span className={`tp-impact tp-impact--${impact === "High" ? "high" : "med"}`}>{impact} impact</span>;
+  const c = impact === "High" ? "tp-impact--high" : impact === "Low" ? "tp-impact--low" : "tp-impact--med";
+  return <span className={`tp-impact ${c}`}>{impact} impact</span>;
 }
 
 function RiskPill({ level }) {
@@ -56,17 +52,26 @@ function RiskPill({ level }) {
 }
 
 function PathPill({ path }) {
-  const c = { "Safe path":"tp-path--safe", "Fast path":"tp-path--fast", "Hybrid path":"tp-path--hybrid" }[path] || "tp-path--safe";
+  const c = { "Safe path":"tp-path--safe","Fast path":"tp-path--fast","Hybrid path":"tp-path--hybrid" }[path] || "tp-path--safe";
   return <span className={`tp-path-pill ${c}`}>{path}</span>;
 }
 
-// Section wrapper
-function Section({ id, title, subtitle, children, accent }) {
+function SectionDivider({ label }) {
   return (
-    <section className={`tp-section ${accent ? "tp-section--accent" : ""}`} id={id}>
+    <div className="tp-divider">
+      <div className="tp-divider__line" />
+      {label && <span className="tp-divider__label">{label}</span>}
+      <div className="tp-divider__line" />
+    </div>
+  );
+}
+
+function Section({ id, title, tag, children, variant }) {
+  return (
+    <section className={`tp-section tp-section--${variant || "default"}`} id={id}>
       <div className="tp-section__header">
+        {tag && <span className="tp-section__tag">{tag}</span>}
         <h2 className="tp-section__title">{title}</h2>
-        {subtitle && <p className="tp-section__sub">{subtitle}</p>}
       </div>
       <div className="tp-section__body">{children}</div>
     </section>
@@ -74,17 +79,21 @@ function Section({ id, title, subtitle, children, accent }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Hero — Talent Score
+// STATUS CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-  "Strong Fit":        { colour: "#059669", bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.25)" },
-  "High Potential":    { colour: "#2563eb", bg: "rgba(37,99,235,0.08)",  border: "rgba(37,99,235,0.25)" },
-  "Needs Development": { colour: "#d97706", bg: "rgba(217,119,6,0.08)",  border: "rgba(217,119,6,0.25)" },
-  "Weak Position":     { colour: "#dc2626", bg: "rgba(220,38,38,0.08)",  border: "rgba(220,38,38,0.25)" },
+  "Strong Fit":        { colour: "#059669", bg: "rgba(16,185,129,0.08)",  border: "rgba(16,185,129,0.25)" },
+  "High Potential":    { colour: "#2563eb", bg: "rgba(37,99,235,0.08)",   border: "rgba(37,99,235,0.25)" },
+  "Needs Development": { colour: "#d97706", bg: "rgba(217,119,6,0.08)",   border: "rgba(217,119,6,0.25)" },
+  "Weak Position":     { colour: "#dc2626", bg: "rgba(220,38,38,0.08)",   border: "rgba(220,38,38,0.25)" },
 };
 
-function TalentScoreHero({ score, currentRole, targetRole }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. HERO — upgraded with 3 inline key metrics
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TalentScoreHero({ score, currentRole, targetRole, confidence, roi, recommendation }) {
   if (!score) return null;
   const cfg    = STATUS_CONFIG[score.status] || STATUS_CONFIG["High Potential"];
   const colour = cfg.colour;
@@ -92,30 +101,36 @@ function TalentScoreHero({ score, currentRole, targetRole }) {
 
   return (
     <div className="tp-hero" style={{ "--tp-colour": colour, "--tp-bg": cfg.bg, "--tp-border": cfg.border }}>
-      {/* Route */}
+
+      {/* Route breadcrumb */}
       <div className="tp-hero__route">
         <span className="tp-hero__role">{currentRole?.title}</span>
         {targetRole && (
           <>
-            <span className="tp-hero__arrow">→</span>
+            <svg className="tp-hero__route-arrow" viewBox="0 0 20 20" fill="none">
+              <path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
             <span className="tp-hero__role tp-hero__role--target">{targetRole.title}</span>
           </>
         )}
+        <span className="tp-hero__report-label">Career Intelligence Report</span>
       </div>
 
+      {/* Main hero body */}
       <div className="tp-hero__main">
+
         {/* Score ring */}
         <div className="tp-hero__ring-wrap">
           <div className="tp-score-ring" style={{ "--tp-pct": pct, "--tp-colour": colour }}>
             <div className="tp-score-ring__inner">
               <span className="tp-score-ring__num" style={{ color: colour }}>{score.score}</span>
-              <span className="tp-score-ring__label">/ 100</span>
+              <span className="tp-score-ring__sublabel">/ 100</span>
             </div>
           </div>
           <span className="tp-score-ring__caption">Talent Score</span>
         </div>
 
-        {/* Status + verdict */}
+        {/* Verdict + status */}
         <div className="tp-hero__content">
           <div className="tp-hero__status-row">
             <span className="tp-hero__status" style={{ color: colour, background: cfg.bg, borderColor: cfg.border }}>
@@ -124,6 +139,30 @@ function TalentScoreHero({ score, currentRole, targetRole }) {
             {score.risk_level && <RiskPill level={score.risk_level} />}
           </div>
           <p className="tp-hero__verdict">"{score.verdict}"</p>
+
+          {/* 3 key metrics inline */}
+          <div className="tp-hero__metrics">
+            <div className="tp-hero__metric">
+              <span className="tp-hero__metric-val" style={{ color: colour }}>
+                {confidence?.probability ?? "—"}%
+              </span>
+              <span className="tp-hero__metric-label">Transition Confidence</span>
+            </div>
+            <div className="tp-hero__metric-sep" />
+            <div className="tp-hero__metric">
+              <span className="tp-hero__metric-val">
+                {recommendation?.timeline || "—"}
+              </span>
+              <span className="tp-hero__metric-label">Est. Timeline</span>
+            </div>
+            <div className="tp-hero__metric-sep" />
+            <div className="tp-hero__metric">
+              <span className="tp-hero__metric-val tp-hero__metric-val--green">
+                {roi?.salary_growth || "—"}
+              </span>
+              <span className="tp-hero__metric-label">Salary Growth</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -137,17 +176,16 @@ function TalentScoreHero({ score, currentRole, targetRole }) {
 function ExecutiveSummary({ summary }) {
   if (!summary) return null;
   const blocks = [
-    { label: "Who you are",          text: summary.who_they_are,      icon: "◈" },
-    { label: "How the market sees you", text: summary.market_perception, icon: "◉" },
-    { label: "Strongest asset",      text: summary.biggest_strength,   icon: "✦" },
-    { label: "What's holding you back", text: summary.holding_them_back, icon: "⚡" },
+    { label: "Who you are",             text: summary.who_they_are,       icon: "◈", variant: "" },
+    { label: "How the market sees you", text: summary.market_perception,  icon: "◉", variant: "" },
+    { label: "Strongest asset",         text: summary.biggest_strength,   icon: "✦", variant: "strength" },
+    { label: "What's holding you back", text: summary.holding_them_back,  icon: "⚡", variant: "barrier" },
   ];
-
   return (
-    <Section id="executive-summary" title="Executive Summary">
+    <Section id="executive-summary" title="Executive Summary" tag="01">
       <div className="tp-exec-grid">
         {blocks.map((b, i) => (
-          <div key={i} className={`tp-exec-block ${i === 2 ? "tp-exec-block--strength" : i === 3 ? "tp-exec-block--barrier" : ""}`}>
+          <div key={i} className={`tp-exec-block tp-exec-block--${b.variant || "default"}`}>
             <span className="tp-exec-block__icon">{b.icon}</span>
             <span className="tp-exec-block__label">{b.label}</span>
             <p className="tp-exec-block__text">{b.text}</p>
@@ -160,15 +198,74 @@ function ExecutiveSummary({ summary }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Transition Confidence
+// 3. CAREER DNA SNAPSHOT (NEW)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function TransitionConfidence({ confidence }) {
+function CareerDNA({ score, currentRole, targetRole, scorecards, strengths, gaps }) {
+  // Build DNA statements from existing data — no new API fields needed
+  const statements = [];
+
+  // From scorecards
+  if (scorecards?.length) {
+    const top    = [...scorecards].sort((a, b) => b.score - a.score)[0];
+    const bottom = [...scorecards].sort((a, b) => a.score - b.score)[0];
+    if (top)    statements.push({ text: `${top.dimension} is your standout dimension — ${top.note}`, type: "strength" });
+    if (bottom) statements.push({ text: `${bottom.dimension} is the area most in need of attention — ${bottom.note}`, type: "gap" });
+  }
+
+  // From strengths
+  if (strengths?.length >= 1) {
+    statements.push({ text: strengths[0].strength + (strengths[0].detail ? ` — ${strengths[0].detail}` : ""), type: "strength" });
+  }
+
+  // From gaps
+  if (gaps?.length >= 1) {
+    statements.push({ text: gaps[0].gap + (gaps[0].impact ? `. ${gaps[0].impact}` : ""), type: "gap" });
+  }
+
+  // Core identity from score
+  const coreIdentity = score?.verdict || null;
+
+  if (!statements.length && !coreIdentity) return null;
+
+  return (
+    <Section id="career-dna" title="Career DNA Snapshot" tag="02" variant="dna">
+      <p className="tp-dna__intro">
+        A snapshot of who you are as a professional — derived from your skills, experience, and market positioning.
+      </p>
+
+      <div className="tp-dna__statements">
+        {statements.map((s, i) => (
+          <div key={i} className={`tp-dna__statement tp-dna__statement--${s.type}`}>
+            <span className="tp-dna__statement-bullet">
+              {s.type === "strength" ? "▲" : "▼"}
+            </span>
+            <p className="tp-dna__statement-text">{s.text}</p>
+          </div>
+        ))}
+      </div>
+
+      {coreIdentity && (
+        <div className="tp-dna__core">
+          <span className="tp-dna__core-label">Core Identity</span>
+          <p className="tp-dna__core-text">"{coreIdentity}"</p>
+          <CopyBtn text={coreIdentity} />
+        </div>
+      )}
+    </Section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. Transition Confidence — UPGRADED with success/risk factor lists
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TransitionConfidence({ confidence, strengths, gaps }) {
   if (!confidence) return null;
   const pct    = confidence.probability ?? 0;
   const colour = pct >= 70 ? "#059669" : pct >= 45 ? "#d97706" : "#dc2626";
 
-  // SVG semicircle gauge
+  // SVG semicircle
   const r   = 52, cx = 60, cy = 60;
   const deg = (pct / 100) * 180;
   const rad = (deg - 180) * (Math.PI / 180);
@@ -176,33 +273,79 @@ function TransitionConfidence({ confidence }) {
   const y   = cy + r * Math.sin(rad);
   const lg  = deg > 180 ? 1 : 0;
 
+  // Build success factors from strengths, risk factors from gaps
+  const successFactors = (strengths || []).slice(0, 3).map(s => s.strength);
+  const riskFactors    = (gaps || []).slice(0, 3).map(g => g.gap);
+
   return (
-    <Section id="transition-confidence" title="Transition Confidence">
-      <div className="tp-confidence">
-        <div className="tp-confidence__gauge-wrap">
-          <svg viewBox="0 0 120 72" className="tp-confidence__gauge">
-            <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke="var(--bg-elevated)" strokeWidth="10" strokeLinecap="round"/>
-            {pct > 0 && <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 ${lg} 1 ${x} ${y}`} fill="none" stroke={colour} strokeWidth="10" strokeLinecap="round"/>}
-          </svg>
-          <div className="tp-confidence__val" style={{ color: colour }}>{pct}<span className="tp-confidence__pct">%</span></div>
-          <div className="tp-confidence__label">{confidence.label}</div>
+    <Section id="transition-confidence" title="Transition Confidence" tag="04">
+      <div className="tp-confidence-v2">
+
+        {/* Gauge + score */}
+        <div className="tp-confidence-v2__top">
+          <div className="tp-confidence-v2__gauge-wrap">
+            <svg viewBox="0 0 120 72" className="tp-confidence__gauge">
+              <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke="var(--bg-elevated)" strokeWidth="10" strokeLinecap="round"/>
+              {pct > 0 && <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 ${lg} 1 ${x} ${y}`} fill="none" stroke={colour} strokeWidth="10" strokeLinecap="round"/>}
+            </svg>
+            <div className="tp-confidence__val" style={{ color: colour }}>{pct}<span className="tp-confidence__pct">%</span></div>
+            <div className="tp-confidence__label">{confidence.label}</div>
+          </div>
+          <div className="tp-confidence-v2__explanation">
+            <p className="tp-confidence__explanation">{confidence.explanation}</p>
+          </div>
         </div>
-        <div className="tp-confidence__detail">
-          <p className="tp-confidence__explanation">{confidence.explanation}</p>
+
+        {/* Success / Risk factor lists */}
+        <div className="tp-confidence-v2__factors">
+          <div className="tp-confidence-v2__factor-col tp-confidence-v2__factor-col--up">
+            <div className="tp-confidence-v2__factor-header">
+              <span className="tp-confidence-v2__factor-icon">↑</span>
+              <span className="tp-confidence-v2__factor-title">What increases success</span>
+            </div>
+            {successFactors.length > 0 ? (
+              successFactors.map((f, i) => (
+                <div key={i} className="tp-confidence-v2__factor-item tp-confidence-v2__factor-item--up">
+                  <span className="tp-confidence-v2__factor-dot" />
+                  <p className="tp-confidence-v2__factor-text">{f}</p>
+                </div>
+              ))
+            ) : (
+              <p className="tp-confidence-v2__factor-empty">Add your CV for personalised factors</p>
+            )}
+          </div>
+
+          <div className="tp-confidence-v2__factor-col tp-confidence-v2__factor-col--down">
+            <div className="tp-confidence-v2__factor-header">
+              <span className="tp-confidence-v2__factor-icon tp-confidence-v2__factor-icon--red">↓</span>
+              <span className="tp-confidence-v2__factor-title">What reduces success</span>
+            </div>
+            {riskFactors.length > 0 ? (
+              riskFactors.map((f, i) => (
+                <div key={i} className="tp-confidence-v2__factor-item tp-confidence-v2__factor-item--down">
+                  <span className="tp-confidence-v2__factor-dot tp-confidence-v2__factor-dot--red" />
+                  <p className="tp-confidence-v2__factor-text">{f}</p>
+                </div>
+              ))
+            ) : (
+              <p className="tp-confidence-v2__factor-empty">Add your CV for personalised factors</p>
+            )}
+          </div>
         </div>
+
       </div>
     </Section>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. Core Scorecards
+// 5. Scorecards
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Scorecards({ cards }) {
   if (!cards?.length) return null;
   return (
-    <Section id="scorecards" title="Career Health Scorecards">
+    <Section id="scorecards" title="Career Health Scorecards" tag="05">
       <div className="tp-scorecards">
         {cards.map((c, i) => {
           const colour = c.score >= 70 ? "#059669" : c.score >= 45 ? "#d97706" : "#dc2626";
@@ -228,13 +371,13 @@ function Scorecards({ cards }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Strengths
+// 6. Strengths
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Strengths({ strengths }) {
   if (!strengths?.length) return null;
   return (
-    <Section id="strengths" title="Strengths to Leverage">
+    <Section id="strengths" title="Strengths to Leverage" tag="06">
       <div className="tp-strengths">
         {strengths.map((s, i) => (
           <div key={i} className="tp-strength-card">
@@ -251,13 +394,13 @@ function Strengths({ strengths }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. Critical Gaps
+// 7. Critical Gaps
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CriticalGaps({ gaps }) {
   if (!gaps?.length) return null;
   return (
-    <Section id="critical-gaps" title="Critical Gaps">
+    <Section id="critical-gaps" title="Critical Gaps" tag="07">
       <div className="tp-gaps">
         {gaps.map((g, i) => (
           <div key={i} className="tp-gap-card">
@@ -267,7 +410,7 @@ function CriticalGaps({ gaps }) {
             </div>
             {g.impact && (
               <div className="tp-gap-card__impact">
-                <span className="tp-gap-card__impact-label">Impact</span>
+                <span className="tp-gap-card__impact-label">Market impact</span>
                 <p className="tp-gap-card__impact-text">{g.impact}</p>
               </div>
             )}
@@ -279,20 +422,20 @@ function CriticalGaps({ gaps }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 7. Market Positioning
+// 8. Market Positioning
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MarketPositioning({ positioning }) {
   if (!positioning) return null;
   return (
-    <Section id="market-positioning" title="Market Positioning">
+    <Section id="market-positioning" title="Market Positioning" tag="08">
       <div className="tp-positioning">
         <div className="tp-positioning-block tp-positioning-block--perception">
           <span className="tp-positioning-block__label">How recruiters see you today</span>
           <p className="tp-positioning-block__text">{positioning.how_recruiters_see}</p>
         </div>
         <div className="tp-positioning-block tp-positioning-block--fit">
-          <span className="tp-positioning-block__label">Where you realistically fit now</span>
+          <span className="tp-positioning-block__label">Where you realistically fit right now</span>
           <p className="tp-positioning-block__text tp-positioning-block__text--role">{positioning.fits_today}</p>
         </div>
         <div className="tp-positioning-block tp-positioning-block--change">
@@ -305,25 +448,23 @@ function MarketPositioning({ positioning }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. Strategic Recommendation
+// 9. Strategic Recommendation
 // ─────────────────────────────────────────────────────────────────────────────
 
 function StrategicRecommendation({ rec }) {
   if (!rec) return null;
   return (
-    <Section id="strategic-recommendation" title="Strategic Recommendation" accent>
+    <Section id="strategic-recommendation" title="Strategic Recommendation" tag="09" variant="accent">
       <div className="tp-strategy-card">
         <div className="tp-strategy-card__header">
           <div className="tp-strategy-card__meta">
-            {rec.path      && <PathPill path={rec.path} />}
-            {rec.risk_level && <RiskPill level={rec.risk_level} />}
-            {rec.timeline   && <span className="tp-strategy-card__timeline">⏱ {rec.timeline}</span>}
+            {rec.path       && <PathPill path={rec.path} />}
+            {rec.risk_level  && <RiskPill level={rec.risk_level} />}
+            {rec.timeline    && <span className="tp-strategy-card__timeline">⏱ {rec.timeline}</span>}
           </div>
           <span className="tp-strategy-card__label">{rec.path_label}</span>
         </div>
-
         <p className="tp-strategy-card__why">{rec.why_best}</p>
-
         {rec.key_bets?.length > 0 && (
           <div className="tp-strategy-card__bets">
             <span className="tp-strategy-card__bets-label">Critical success factors</span>
@@ -341,31 +482,32 @@ function StrategicRecommendation({ rec }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 9. Action Priorities
+// 10. Action Priority Plan — UPGRADED with urgency tags
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PRIORITY_COLOURS = ["#059669", "#d97706", "#2563eb"];
+const ACTION_URGENCY = [
+  { tag: "MUST DO THIS WEEK", colour: "#dc2626", bg: "rgba(220,38,38,0.1)", border: "rgba(220,38,38,0.25)" },
+  { tag: "DO IN 30 DAYS",     colour: "#d97706", bg: "rgba(217,119,6,0.1)", border: "rgba(217,119,6,0.25)" },
+  { tag: "DO IN 90 DAYS",     colour: "#2563eb", bg: "rgba(37,99,235,0.1)", border: "rgba(37,99,235,0.25)" },
+];
 
 function ActionPriorities({ actions }) {
   if (!actions?.length) return null;
   return (
-    <Section id="action-priorities" title="Action Priority Plan">
-      <p className="tp-section__hint">In order of impact. Start with #1 and don't move on until it's done.</p>
-      <div className="tp-actions">
+    <Section id="action-priorities" title="Action Priority Plan" tag="10">
+      <p className="tp-section__hint">Execute in order. Don't start #2 until #1 is done.</p>
+      <div className="tp-actions-v2">
         {actions.map((a, i) => {
-          const colour = PRIORITY_COLOURS[i] || "#2563eb";
+          const urgency = ACTION_URGENCY[i] || ACTION_URGENCY[2];
           return (
-            <div key={i} className="tp-action" style={{ "--tp-action-colour": colour }}>
-              <div className="tp-action__num" style={{ background: colour }}>{a.priority}</div>
-              <div className="tp-action__body">
-                <div className="tp-action__header">
-                  <span className="tp-action__text">{a.action}</span>
-                  <div className="tp-action__pills">
-                    {a.impact && <ImpactPip impact={a.impact} />}
-                    {a.timeframe && <span className="tp-action__timeframe">{a.timeframe}</span>}
-                  </div>
-                </div>
-                {a.why && <p className="tp-action__why">{a.why}</p>}
+            <div key={i} className="tp-action-v2" style={{ "--act-colour": urgency.colour, "--act-bg": urgency.bg, "--act-border": urgency.border }}>
+              <div className="tp-action-v2__urgency-strip">
+                <span className="tp-action-v2__urgency-tag">#{a.priority} {urgency.tag}</span>
+                {a.impact && <ImpactPip impact={a.impact} />}
+              </div>
+              <div className="tp-action-v2__body">
+                <p className="tp-action-v2__text">{a.action}</p>
+                {a.why && <p className="tp-action-v2__why">{a.why}</p>}
               </div>
             </div>
           );
@@ -376,13 +518,58 @@ function ActionPriorities({ actions }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 10. Outcome / ROI
+// 11. RISK WARNING (NEW)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEFAULT_RISK_WARNINGS = [
+  "Skill gap widens relative to market as competitors upskill",
+  "Transition difficulty increases significantly after 18 months of inaction",
+  "Recruiters re-categorise your profile into a narrower, lower-demand niche",
+  "Target role salary bands move upward while your positioning stays static",
+];
+
+function RiskWarning({ gaps, currentRole, targetRole }) {
+  // Generate warnings from gaps + generic market risks
+  const gapWarnings = (gaps || []).slice(0, 2).map(g =>
+    `${g.gap} remains unaddressed — ${g.impact || "this will cost you opportunities"}`
+  );
+  const warnings = [...gapWarnings, ...DEFAULT_RISK_WARNINGS].slice(0, 4);
+
+  return (
+    <Section id="risk-warning" title="What Happens If You Take No Action" tag="11" variant="warning">
+      <div className="tp-risk-warning">
+        <div className="tp-risk-warning__header">
+          <span className="tp-risk-warning__icon">⚠</span>
+          <p className="tp-risk-warning__intro">
+            Based on your current profile and the {targetRole?.title || "target role"} market, inaction carries real cost.
+          </p>
+        </div>
+        <div className="tp-risk-warning__items">
+          {warnings.map((w, i) => (
+            <div key={i} className="tp-risk-warning__item">
+              <span className="tp-risk-warning__item-dot" />
+              <p className="tp-risk-warning__item-text">{w}</p>
+            </div>
+          ))}
+        </div>
+        <div className="tp-risk-warning__cta">
+          <span className="tp-risk-warning__cta-text">
+            The optimal window for this transition is <strong>now</strong>. Start with Action #1 above.
+          </span>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. Outcome / ROI
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OutcomeROI({ roi }) {
   if (!roi) return null;
   return (
-    <Section id="outcome-roi" title="Expected Outcome &amp; ROI">
+    <Section id="outcome-roi" title="Expected Outcome &amp; ROI" tag="12">
       <div className="tp-roi">
         <div className="tp-roi-metric tp-roi-metric--salary">
           <span className="tp-roi-metric__icon">£</span>
@@ -391,7 +578,6 @@ function OutcomeROI({ roi }) {
             <span className="tp-roi-metric__val">{roi.salary_growth}</span>
           </div>
         </div>
-
         <div className="tp-roi-metric tp-roi-metric--time">
           <span className="tp-roi-metric__icon">⏱</span>
           <div>
@@ -399,7 +585,6 @@ function OutcomeROI({ roi }) {
             <span className="tp-roi-metric__val">{roi.time_to_results}</span>
           </div>
         </div>
-
         {roi.growth_potential && (
           <div className="tp-roi-potential">
             <span className="tp-roi-potential__label">Career growth potential</span>
@@ -412,46 +597,7 @@ function OutcomeROI({ roi }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sticky nav — jump to sections
-// ─────────────────────────────────────────────────────────────────────────────
-
-const NAV_ITEMS = [
-  ["executive-summary",        "Summary"],
-  ["transition-confidence",    "Confidence"],
-  ["scorecards",               "Scorecards"],
-  ["strengths",                "Strengths"],
-  ["critical-gaps",            "Gaps"],
-  ["market-positioning",       "Positioning"],
-  ["strategic-recommendation", "Strategy"],
-  ["action-priorities",        "Actions"],
-  ["outcome-roi",              "ROI"],
-];
-
-function ProfileNav() {
-  const [active, setActive] = useState("executive-summary");
-
-  function scrollTo(id) {
-    setActive(id);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  return (
-    <nav className="tp-nav">
-      {NAV_ITEMS.map(([id, label]) => (
-        <button
-          key={id}
-          className={`tp-nav__item ${active === id ? "tp-nav__item--active" : ""}`}
-          onClick={() => scrollTo(id)}
-        >
-          {label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main export
+// Main export — NO TABS, pure scroll story
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function TalentProfileCard({ data }) {
@@ -473,27 +619,90 @@ export default function TalentProfileCard({ data }) {
   } = data;
 
   return (
-    <div className="tp-report">
+    <div className="tp-report tp-report--v2">
 
-      {/* Hero */}
-      <TalentScoreHero score={talent_score} currentRole={current_role} targetRole={target_role} />
+      {/* 1. Hero — with key metrics */}
+      <TalentScoreHero
+        score={talent_score}
+        currentRole={current_role}
+        targetRole={target_role}
+        confidence={transition_confidence}
+        roi={outcome_roi}
+        recommendation={strategic_recommendation}
+      />
 
-      {/* Section nav */}
-      <ProfileNav />
+      {/* Report flow — continuous scroll */}
+      <div className="tp-report__flow">
 
-      {/* Report body */}
-      <div className="tp-report__body">
-        <ExecutiveSummary       summary={executive_summary} />
-        <TransitionConfidence   confidence={transition_confidence} />
-        <Scorecards             cards={scorecards} />
-        <Strengths              strengths={strengths} />
-        <CriticalGaps           gaps={critical_gaps} />
-        <MarketPositioning      positioning={market_positioning} />
+        {/* 2. Executive Summary */}
+        <ExecutiveSummary summary={executive_summary} />
+
+        <SectionDivider />
+
+        {/* 3. Career DNA Snapshot (NEW) */}
+        <CareerDNA
+          score={talent_score}
+          currentRole={current_role}
+          targetRole={target_role}
+          scorecards={scorecards}
+          strengths={strengths}
+          gaps={critical_gaps}
+        />
+
+        <SectionDivider />
+
+        {/* 4. Transition Confidence (UPGRADED) */}
+        <TransitionConfidence
+          confidence={transition_confidence}
+          strengths={strengths}
+          gaps={critical_gaps}
+        />
+
+        <SectionDivider />
+
+        {/* 5. Scorecards */}
+        <Scorecards cards={scorecards} />
+
+        <SectionDivider />
+
+        {/* 6. Strengths */}
+        <Strengths strengths={strengths} />
+
+        <SectionDivider />
+
+        {/* 7. Critical Gaps */}
+        <CriticalGaps gaps={critical_gaps} />
+
+        <SectionDivider />
+
+        {/* 8. Market Positioning */}
+        <MarketPositioning positioning={market_positioning} />
+
+        <SectionDivider />
+
+        {/* 9. Strategic Recommendation */}
         <StrategicRecommendation rec={strategic_recommendation} />
-        <ActionPriorities       actions={action_priorities} />
-        <OutcomeROI             roi={outcome_roi} />
-      </div>
 
+        <SectionDivider />
+
+        {/* 10. Action Priorities (UPGRADED) */}
+        <ActionPriorities actions={action_priorities} />
+
+        <SectionDivider />
+
+        {/* 11. Risk Warning (NEW) */}
+        <RiskWarning
+          gaps={critical_gaps}
+          currentRole={current_role}
+          targetRole={target_role}
+        />
+
+        <SectionDivider />
+
+        {/* 12. Outcome / ROI */}
+        <OutcomeROI roi={outcome_roi} />
+
+      </div>
     </div>
   );
 }
