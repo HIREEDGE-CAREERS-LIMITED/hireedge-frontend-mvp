@@ -2,17 +2,35 @@
 // pages/tools/career-roadmap.js
 // HireEdge Frontend — Career Roadmap
 //
-// URL prefill: ONLY role slugs. Skills always start empty.
+// FIX: Send X-HireEdge-Plan header. Map billing errors to upgrade prompt.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import RoadmapCard from "../../components/tools/RoadmapCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
+
+function getPlan() {
+  if (typeof window === "undefined") return "free";
+  return localStorage.getItem("hireedge_plan") || "free";
+}
+
+function _friendlyError(json) {
+  const reason = json?.reason || "";
+  const plan   = json?.upgrade_to || "career_pack";
+  if (reason === "access_denied" || reason === "tool_not_in_plan") {
+    return { type: "upgrade", plan, message: `Career Roadmap requires the ${plan.replace(/_/g, " ")} plan or higher.` };
+  }
+  if (reason === "daily_limit_reached") {
+    return { type: "limit", message: "You've reached your daily limit. Upgrade for more." };
+  }
+  return { type: "error", message: json?.error || json?.message || "Something went wrong. Please try again." };
+}
 
 const STRATEGIES = [
   { value: "fastest",      label: "⚡ Fastest" },
@@ -24,26 +42,21 @@ export default function CareerRoadmapPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
 
-  // Role state — prefilled from clean URL slugs only
   const [fromRole, setFromRole] = useState(null);
   const [toRole,   setToRole]   = useState(null);
   const [strategy, setStrategy] = useState("fastest");
+  const [skills,   setSkills]   = useState("");
 
-  // User-entered — always start empty
-  const [skills, setSkills] = useState("");
+  const [result,    setResult]    = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [errorInfo, setErrorInfo] = useState(null);
 
-  const [result,  setResult]  = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
-
-  // ── Only role slugs and strategy from URL ─────────────────────────────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
     if (q.from || q.current) setFromRole({ slug: q.from || q.current, title: _slugToTitle(q.from || q.current) });
     if (q.to   || q.target)  setToRole({ slug: q.to || q.target, title: _slugToTitle(q.to || q.target) });
     if (q.strategy && ["fastest","easiest","highest_paid"].includes(q.strategy)) setStrategy(q.strategy);
-    // skills NOT read from URL — comes as dirty formatted string from EDGEX context
   }, [router.isReady]);
 
   useEffect(() => {
@@ -53,14 +66,17 @@ export default function CareerRoadmapPage() {
   }, [fromRole, toRole, router.isReady]);
 
   async function _submit() {
-    if (!fromRole) { setError("Please select your current role."); return; }
-    if (!toRole)   { setError("Please select your target role."); return; }
-    if (fromRole.slug === toRole.slug) { setError("Current and target role must be different."); return; }
-    setLoading(true); setError(null); setResult(null);
+    if (!fromRole) { setErrorInfo({ type: "error", message: "Please select your current role." }); return; }
+    if (!toRole)   { setErrorInfo({ type: "error", message: "Please select your target role." }); return; }
+    if (fromRole.slug === toRole.slug) { setErrorInfo({ type: "error", message: "Current and target role must be different." }); return; }
+    setLoading(true); setErrorInfo(null); setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/career-roadmap`, {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type":    "application/json",
+          "X-HireEdge-Plan": getPlan(),
+        },
         body: JSON.stringify({
           fromRole: fromRole.slug,
           toRole:   toRole.slug,
@@ -69,10 +85,10 @@ export default function CareerRoadmapPage() {
         }),
       });
       const json = await r.json();
-      if (!json.ok) throw new Error(json.error || "Something went wrong");
+      if (!json.ok) { setErrorInfo(_friendlyError(json)); return; }
       setResult(json.data);
     } catch (e) {
-      setError(e.message);
+      setErrorInfo({ type: "error", message: "Network error — please try again." });
     } finally {
       setLoading(false);
     }
@@ -143,7 +159,26 @@ export default function CareerRoadmapPage() {
             <span className="tool-form__hint">Comma-separated — improves blockers analysis</span>
           </div>
 
-          {error && <div className="tool-form__error">{error}</div>}
+          {errorInfo?.type === "upgrade" && (
+            <div className="tool-upgrade-prompt">
+              <span className="tool-upgrade-prompt__icon">🔒</span>
+              <div>
+                <p className="tool-upgrade-prompt__title">{errorInfo.message}</p>
+                <p className="tool-upgrade-prompt__sub">Upgrade your plan to access Career Roadmap and all premium tools.</p>
+              </div>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">View Plans →</Link>
+            </div>
+          )}
+          {errorInfo?.type === "limit" && (
+            <div className="tool-upgrade-prompt">
+              <span className="tool-upgrade-prompt__icon">⏱</span>
+              <div><p className="tool-upgrade-prompt__title">{errorInfo.message}</p></div>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade →</Link>
+            </div>
+          )}
+          {errorInfo?.type === "error" && (
+            <div className="tool-form__error">{errorInfo.message}</div>
+          )}
 
           <button
             className="tool-form__submit"
