@@ -1,12 +1,13 @@
 // ============================================================================
 // pages/tools/linkedin-optimiser.js
-// HireEdge Frontend — LinkedIn Optimiser
+// HireEdge — LinkedIn Profile Audit (v4)
 //
-// FIX: Send X-HireEdge-Plan header so enforceBilling() in the backend
-// reads the correct plan instead of defaulting to "free" and returning
-// access_denied. The header value is read from localStorage (same as
-// toolsService.js). Also: never render raw backend error strings —
-// map billing errors to a proper upgrade prompt.
+// UX changes:
+//   - Only 4 fields visible by default (role, target, years, skills)
+//   - CV / JD / industry collapsed under "Advanced options" toggle
+//   - Title reframed as "LinkedIn Profile Audit"
+//   - Loading state shows animated step progression
+//   - CTA: "Run Profile Audit"
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -19,42 +20,51 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
-// Read plan from localStorage — same source as billingService.js
 function getPlan() {
   if (typeof window === "undefined") return "free";
   return localStorage.getItem("hireedge_plan") || "free";
 }
 
-// Map backend billing error reasons to friendly messages
 function _friendlyError(json) {
   const reason = json?.reason || "";
   const plan   = json?.upgrade_to || "pro";
-  if (reason === "access_denied" || reason === "tool_not_in_plan") {
-    return { type: "upgrade", plan, message: `LinkedIn Optimiser requires the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan.` };
-  }
-  if (reason === "daily_limit_reached") {
+  if (reason === "access_denied" || reason === "tool_not_in_plan")
+    return { type: "upgrade", plan, message: `LinkedIn Audit requires the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan.` };
+  if (reason === "daily_limit_reached")
     return { type: "limit", message: "You've reached your daily limit. Upgrade for more." };
-  }
   return { type: "error", message: json?.error || json?.message || "Something went wrong. Please try again." };
 }
+
+const LOADING_STEPS = [
+  "Auditing your profile…",
+  "Scoring headline & keywords…",
+  "Writing About section…",
+  "Generating rewrites…",
+];
 
 export default function LinkedinOptimiserPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
 
-  const [currentRole, setCurrentRole] = useState(null);
-  const [targetRole,  setTargetRole]  = useState(null);
+  // Core fields (always visible)
+  const [currentRole,    setCurrentRole]    = useState(null);
+  const [targetRole,     setTargetRole]     = useState(null);
   const [skills,         setSkills]         = useState("");
   const [yearsExp,       setYearsExp]       = useState("");
+
+  // Advanced fields (collapsed by default)
+  const [showAdvanced,   setShowAdvanced]   = useState(false);
   const [industry,       setIndustry]       = useState("");
   const [resumeText,     setResumeText]     = useState("");
   const [jobDescription, setJobDescription] = useState("");
 
-  const [result,    setResult]    = useState(null);
-  const [loading,   setLoading]   = useState(false);
-  const [errorInfo, setErrorInfo] = useState(null); // { type, message, plan? }
+  const [result,       setResult]       = useState(null);
+  const [loading,      setLoading]      = useState(false);
+  const [loadingStep,  setLoadingStep]  = useState(0);
+  const [errorInfo,    setErrorInfo]    = useState(null);
+  const loadingTimer = useRef(null);
 
-  // Only role slugs from URL
+  // URL param pre-fill (slugs only)
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
@@ -69,6 +79,19 @@ export default function LinkedinOptimiserPage() {
     _submit();
   }, [currentRole, router.isReady]);
 
+  // Animate loading steps
+  useEffect(() => {
+    if (loading) {
+      setLoadingStep(0);
+      loadingTimer.current = setInterval(() => {
+        setLoadingStep((s) => (s + 1) % LOADING_STEPS.length);
+      }, 3500);
+    } else {
+      clearInterval(loadingTimer.current);
+    }
+    return () => clearInterval(loadingTimer.current);
+  }, [loading]);
+
   async function _submit() {
     if (!currentRole) { setErrorInfo({ type: "error", message: "Please select your current role." }); return; }
     setLoading(true); setErrorInfo(null); setResult(null);
@@ -77,7 +100,7 @@ export default function LinkedinOptimiserPage() {
         method:  "POST",
         headers: {
           "Content-Type":    "application/json",
-          "X-HireEdge-Plan": getPlan(),   // ← THE FIX: send plan so billing middleware works
+          "X-HireEdge-Plan": getPlan(),
         },
         body: JSON.stringify({
           currentRole:    currentRole.slug,
@@ -89,16 +112,10 @@ export default function LinkedinOptimiserPage() {
           jobDescription: jobDescription || undefined,
         }),
       });
-
       const json = await r.json();
-
-      if (!json.ok) {
-        setErrorInfo(_friendlyError(json));
-        return;
-      }
-
+      if (!json.ok) { setErrorInfo(_friendlyError(json)); return; }
       setResult(json.data);
-    } catch (e) {
+    } catch {
       setErrorInfo({ type: "error", message: "Network error — please try again." });
     } finally {
       setLoading(false);
@@ -107,39 +124,58 @@ export default function LinkedinOptimiserPage() {
 
   return (
     <>
-      <Head><title>LinkedIn Optimiser — HireEdge</title></Head>
+      <Head><title>LinkedIn Profile Audit — HireEdge</title></Head>
 
       <div className="tool-page">
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="tool-page__header">
           <div className="tool-page__badge">EDGEX</div>
-          <h1 className="tool-page__title">LinkedIn Optimiser</h1>
+          <h1 className="tool-page__title">LinkedIn Profile Audit</h1>
           <p className="tool-page__sub">
-            Copy-ready headline options, a written About section, experience bullets, and keyword strategy — tailored to your target role.
+            Score your profile, fix the biggest issues, and get copy-ready rewrites — headline, About section, experience bullets, and keywords.
           </p>
         </div>
 
+        {/* ── Form ───────────────────────────────────────────────────────── */}
         <div className="tool-form">
-          <div className="tool-form__row tool-form__row--3">
+
+          {/* Row 1: roles */}
+          <div className="tool-form__row tool-form__row--2">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
               <RoleSearch
-                placeholder="Your current role..."
-                onSelect={(r) => setCurrentRole(r)}
+                placeholder="Your current role…"
+                onSelect={setCurrentRole}
                 initialValue={currentRole?.title || ""}
               />
               {currentRole && <span className="tool-form__selected">✓ {currentRole.title}</span>}
             </div>
-
             <div className="tool-form__field">
-              <label className="tool-form__label">Target Role <span className="tool-form__optional">(optional)</span></label>
+              <label className="tool-form__label">Target Role <span className="tool-form__optional">(if transitioning)</span></label>
               <RoleSearch
-                placeholder="Role you're moving toward..."
-                onSelect={(r) => setTargetRole(r)}
+                placeholder="Role you're moving toward…"
+                onSelect={setTargetRole}
                 initialValue={targetRole?.title || ""}
               />
               {targetRole && <span className="tool-form__selected">✓ {targetRole.title}</span>}
             </div>
+          </div>
 
+          {/* Row 2: skills + years */}
+          <div className="tool-form__row tool-form__row--2">
+            <div className="tool-form__field">
+              <label className="tool-form__label">Your Key Skills</label>
+              <input
+                className="tool-form__input"
+                type="text"
+                placeholder="e.g. SQL, Product Strategy, Stakeholder Management"
+                autoComplete="off"
+                value={skills}
+                onChange={(e) => setSkills(e.target.value)}
+              />
+              <span className="tool-form__hint">Comma-separated — the more you add, the more personalised the audit</span>
+            </div>
             <div className="tool-form__field">
               <label className="tool-form__label">Years of Experience</label>
               <input
@@ -152,79 +188,83 @@ export default function LinkedinOptimiserPage() {
             </div>
           </div>
 
-          <div className="tool-form__row tool-form__row--2">
-            <div className="tool-form__field">
-              <label className="tool-form__label">Your Skills</label>
-              <input
-                className="tool-form__input"
-                type="text"
-                placeholder="e.g. SQL, Python, Product Strategy, Stakeholder Management"
-                autoComplete="off"
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
-              />
-              <span className="tool-form__hint">Comma-separated</span>
+          {/* Advanced toggle */}
+          <button
+            className="li-advanced-toggle"
+            onClick={() => setShowAdvanced(v => !v)}
+            type="button"
+          >
+            <span className="li-advanced-toggle__icon">{showAdvanced ? "▲" : "▼"}</span>
+            {showAdvanced ? "Hide advanced options" : "Add CV / Job Description for deeper personalisation"}
+            {!showAdvanced && !resumeText && !jobDescription && (
+              <span className="li-advanced-toggle__tip">recommended</span>
+            )}
+            {(resumeText || jobDescription) && (
+              <span className="li-advanced-toggle__added">✓ Added</span>
+            )}
+          </button>
+
+          {showAdvanced && (
+            <div className="li-advanced-fields">
+              <div className="tool-form__field">
+                <label className="tool-form__label">
+                  Paste your CV or profile summary
+                  <span className="tool-form__optional"> — enables written About section and personalised audit</span>
+                </label>
+                <textarea
+                  className="tool-form__textarea" rows={5}
+                  placeholder="Paste your CV text, LinkedIn summary, or any career background…"
+                  autoComplete="off"
+                  value={resumeText}
+                  onChange={(e) => setResumeText(e.target.value)}
+                />
+              </div>
+              <div className="tool-form__row tool-form__row--2">
+                <div className="tool-form__field">
+                  <label className="tool-form__label">
+                    Target Job Description <span className="tool-form__optional">(optional)</span>
+                  </label>
+                  <textarea
+                    className="tool-form__textarea" rows={4}
+                    placeholder="Paste a JD to tailor keywords and positioning…"
+                    autoComplete="off"
+                    value={jobDescription}
+                    onChange={(e) => setJobDescription(e.target.value)}
+                  />
+                </div>
+                <div className="tool-form__field">
+                  <label className="tool-form__label">Industry <span className="tool-form__optional">(optional)</span></label>
+                  <input
+                    className="tool-form__input"
+                    type="text" placeholder="e.g. Technology, Financial Services"
+                    autoComplete="off"
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
+          )}
 
-            <div className="tool-form__field">
-              <label className="tool-form__label">Industry <span className="tool-form__optional">(optional)</span></label>
-              <input
-                className="tool-form__input"
-                type="text" placeholder="e.g. Technology, Financial Services"
-                autoComplete="off"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="tool-form__field">
-            <label className="tool-form__label">
-              CV / Profile Summary <span className="tool-form__optional">(recommended — enables written About section)</span>
-            </label>
-            <textarea
-              className="tool-form__textarea" rows={5}
-              placeholder="Paste a summary of your experience or CV text…"
-              autoComplete="off"
-              value={resumeText}
-              onChange={(e) => setResumeText(e.target.value)}
-            />
-          </div>
-
-          <div className="tool-form__field">
-            <label className="tool-form__label">
-              Target Job Description <span className="tool-form__optional">(optional)</span>
-            </label>
-            <textarea
-              className="tool-form__textarea" rows={4}
-              placeholder="Paste the JD for the role you're targeting…"
-              autoComplete="off"
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-            />
-          </div>
-
-          {/* ── Error states — never show raw backend strings ── */}
-          {errorInfo && errorInfo.type === "upgrade" && (
+          {/* Errors */}
+          {errorInfo?.type === "upgrade" && (
             <div className="tool-upgrade-prompt">
               <span className="tool-upgrade-prompt__icon">🔒</span>
               <div>
                 <p className="tool-upgrade-prompt__title">{errorInfo.message}</p>
-                <p className="tool-upgrade-prompt__sub">Upgrade your plan to access LinkedIn Optimiser and all premium tools.</p>
+                <p className="tool-upgrade-prompt__sub">Upgrade to access the full LinkedIn Audit and all premium tools.</p>
               </div>
               <Link href="/billing" className="tool-upgrade-prompt__btn">View Plans →</Link>
             </div>
           )}
-          {errorInfo && errorInfo.type === "limit" && (
+          {errorInfo?.type === "limit" && (
             <div className="tool-upgrade-prompt">
               <span className="tool-upgrade-prompt__icon">⏱</span>
-              <div>
-                <p className="tool-upgrade-prompt__title">{errorInfo.message}</p>
-              </div>
+              <div><p className="tool-upgrade-prompt__title">{errorInfo.message}</p></div>
               <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade →</Link>
             </div>
           )}
-          {errorInfo && errorInfo.type === "error" && (
+          {errorInfo?.type === "error" && (
             <div className="tool-form__error">{errorInfo.message}</div>
           )}
 
@@ -233,14 +273,24 @@ export default function LinkedinOptimiserPage() {
             onClick={_submit}
             disabled={loading || !currentRole}
           >
-            {loading ? "Optimising your profile…" : "Optimise LinkedIn Profile"}
+            {loading ? LOADING_STEPS[loadingStep] : "Run Profile Audit"}
           </button>
+          {!loading && (
+            <p className="li-form-timing">Takes ~20 seconds · Full audit + rewrites</p>
+          )}
         </div>
 
+        {/* Loading */}
         {loading && (
           <div className="tool-loading">
             <div className="tool-loading__spinner" />
-            <p>EDGEX is writing your LinkedIn content…</p>
+            <div className="li-loading-steps">
+              {LOADING_STEPS.map((step, i) => (
+                <span key={i} className={`li-loading-step ${i === loadingStep ? "li-loading-step--active" : i < loadingStep ? "li-loading-step--done" : ""}`}>
+                  {i < loadingStep ? "✓" : i === loadingStep ? "→" : "·"} {step}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
