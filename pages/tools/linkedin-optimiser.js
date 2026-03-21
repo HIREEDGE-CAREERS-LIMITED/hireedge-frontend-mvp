@@ -2,45 +2,65 @@
 // pages/tools/linkedin-optimiser.js
 // HireEdge Frontend — LinkedIn Optimiser
 //
-// URL prefill: ONLY role slugs. Skills/JD/CV always start empty.
+// FIX: Send X-HireEdge-Plan header so enforceBilling() in the backend
+// reads the correct plan instead of defaulting to "free" and returning
+// access_denied. The header value is read from localStorage (same as
+// toolsService.js). Also: never render raw backend error strings —
+// map billing errors to a proper upgrade prompt.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import LinkedinOptimisationCard from "../../components/tools/LinkedinOptimisationCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
+// Read plan from localStorage — same source as billingService.js
+function getPlan() {
+  if (typeof window === "undefined") return "free";
+  return localStorage.getItem("hireedge_plan") || "free";
+}
+
+// Map backend billing error reasons to friendly messages
+function _friendlyError(json) {
+  const reason = json?.reason || "";
+  const plan   = json?.upgrade_to || "pro";
+  if (reason === "access_denied" || reason === "tool_not_in_plan") {
+    return { type: "upgrade", plan, message: `LinkedIn Optimiser requires the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan.` };
+  }
+  if (reason === "daily_limit_reached") {
+    return { type: "limit", message: "You've reached your daily limit. Upgrade for more." };
+  }
+  return { type: "error", message: json?.error || json?.message || "Something went wrong. Please try again." };
+}
+
 export default function LinkedinOptimiserPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
 
-  // Role state — prefilled from clean URL slugs only
   const [currentRole, setCurrentRole] = useState(null);
   const [targetRole,  setTargetRole]  = useState(null);
-
-  // User-entered — always start empty
   const [skills,         setSkills]         = useState("");
   const [yearsExp,       setYearsExp]       = useState("");
   const [industry,       setIndustry]       = useState("");
   const [resumeText,     setResumeText]     = useState("");
   const [jobDescription, setJobDescription] = useState("");
 
-  const [result,  setResult]  = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+  const [result,    setResult]    = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [errorInfo, setErrorInfo] = useState(null); // { type, message, plan? }
 
-  // ── Only role slugs from URL ───────────────────────────────────────────────
+  // Only role slugs from URL
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
     if (q.role || q.current) setCurrentRole({ slug: q.role || q.current, title: _slugToTitle(q.role || q.current) });
     if (q.target)            setTargetRole({ slug: q.target, title: _slugToTitle(q.target) });
     if (q.yearsExp && !isNaN(parseInt(q.yearsExp))) setYearsExp(q.yearsExp);
-    // skills/industry/resumeText/jobDescription NOT read from URL
   }, [router.isReady]);
 
   useEffect(() => {
@@ -50,12 +70,15 @@ export default function LinkedinOptimiserPage() {
   }, [currentRole, router.isReady]);
 
   async function _submit() {
-    if (!currentRole) { setError("Please select your current role."); return; }
-    setLoading(true); setError(null); setResult(null);
+    if (!currentRole) { setErrorInfo({ type: "error", message: "Please select your current role." }); return; }
+    setLoading(true); setErrorInfo(null); setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/linkedin-optimiser`, {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type":    "application/json",
+          "X-HireEdge-Plan": getPlan(),   // ← THE FIX: send plan so billing middleware works
+        },
         body: JSON.stringify({
           currentRole:    currentRole.slug,
           targetRole:     targetRole?.slug  || undefined,
@@ -66,11 +89,17 @@ export default function LinkedinOptimiserPage() {
           jobDescription: jobDescription || undefined,
         }),
       });
+
       const json = await r.json();
-      if (!json.ok) throw new Error(json.error || "Something went wrong");
+
+      if (!json.ok) {
+        setErrorInfo(_friendlyError(json));
+        return;
+      }
+
       setResult(json.data);
     } catch (e) {
-      setError(e.message);
+      setErrorInfo({ type: "error", message: "Network error — please try again." });
     } finally {
       setLoading(false);
     }
@@ -175,7 +204,29 @@ export default function LinkedinOptimiserPage() {
             />
           </div>
 
-          {error && <div className="tool-form__error">{error}</div>}
+          {/* ── Error states — never show raw backend strings ── */}
+          {errorInfo && errorInfo.type === "upgrade" && (
+            <div className="tool-upgrade-prompt">
+              <span className="tool-upgrade-prompt__icon">🔒</span>
+              <div>
+                <p className="tool-upgrade-prompt__title">{errorInfo.message}</p>
+                <p className="tool-upgrade-prompt__sub">Upgrade your plan to access LinkedIn Optimiser and all premium tools.</p>
+              </div>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">View Plans →</Link>
+            </div>
+          )}
+          {errorInfo && errorInfo.type === "limit" && (
+            <div className="tool-upgrade-prompt">
+              <span className="tool-upgrade-prompt__icon">⏱</span>
+              <div>
+                <p className="tool-upgrade-prompt__title">{errorInfo.message}</p>
+              </div>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade →</Link>
+            </div>
+          )}
+          {errorInfo && errorInfo.type === "error" && (
+            <div className="tool-form__error">{errorInfo.message}</div>
+          )}
 
           <button
             className="tool-form__submit"
