@@ -1,168 +1,352 @@
 // ============================================================================
 // components/tools/LinkedinOptimisationCard.js
-// HireEdge — LinkedIn Optimiser Result Card (Production v3)
+// HireEdge — LinkedIn Profile Audit Card (Production v4)
 //
-// Upgrades:
-//   - Recommended headline + alternatives (no raw style labels)
-//   - About section with real char count + paragraph rendering
-//   - Per-role experience rewrites with copy-all button
-//   - Skills grouped: Core / Supporting / Missing
-//   - Copy buttons on every copyable block
-//   - Positioning strategy clean UI
+// Section order:
+//   1. Profile Score Dashboard   — score ring + 5-axis breakdown + grade
+//   2. Biggest Issues            — 3 personalised critical problems
+//   3. Before / After            — transformation comparison
+//   4. Headlines                 — cards with why + when_to_use
+//   5. About Section             — structured breakdown tabs + full copy
+//   6. Experience Rewrites       — per-role bullets with copy
+//   7. Keywords                  — high-demand + missing with explanations
+//   8. Skills                    — core / supporting / missing grouped
+//   9. Positioning Strategy      — angle + credibility signal
 // ============================================================================
 
 import { useState } from "react";
-import ToolResultCard, { TagList, InfoRow } from "./ToolResultCard";
+import ToolResultCard, { InfoRow } from "./ToolResultCard";
 
-// ── Reusable copy button ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Atoms
+// ─────────────────────────────────────────────────────────────────────────────
+
 function CopyBtn({ text, label = "Copy", size = "sm" }) {
   const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const el = document.createElement("textarea");
-      el.value = text;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
+  async function go() {
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const el = Object.assign(document.createElement("textarea"), { value: text });
+      document.body.appendChild(el); el.select(); document.execCommand("copy"); el.remove();
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2200);
+    setCopied(true); setTimeout(() => setCopied(false), 2200);
   }
-
   return (
-    <button
-      className={`li-copy-btn li-copy-btn--${size} ${copied ? "li-copy-btn--copied" : ""}`}
-      onClick={handleCopy}
-    >
+    <button className={`la-copy la-copy--${size} ${copied ? "la-copy--done" : ""}`} onClick={go}>
       {copied ? "✓ Copied" : label}
     </button>
   );
 }
 
-// ── Character count pill ──────────────────────────────────────────────────────
 function CharCount({ count, max = 220 }) {
-  const over  = count > max;
-  const close = count > max * 0.9;
+  const cls = count > max ? "la-chars--over" : count > max * 0.9 ? "la-chars--close" : "la-chars--ok";
+  return <span className={`la-chars ${cls}`}>{count}/{max}</span>;
+}
+
+function GradePill({ grade }) {
+  const map = { "Needs Work":"la-grade--low","Developing":"la-grade--low","Good":"la-grade--mid","Strong":"la-grade--high","Excellent":"la-grade--high" };
+  return <span className={`la-grade ${map[grade]||"la-grade--mid"}`}>{grade}</span>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. Profile Score Dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AXES = [
+  ["headline",      "Headline"],
+  ["about_section", "About Section"],
+  ["keywords",      "Keywords"],
+  ["positioning",   "Positioning"],
+  ["completeness",  "Completeness"],
+];
+
+function ScoreAxis({ label, score, note }) {
+  const colour = score >= 70 ? "#059669" : score >= 45 ? "#d97706" : "#dc2626";
   return (
-    <span className={`li-char-count ${over ? "li-char-count--over" : close ? "li-char-count--close" : "li-char-count--ok"}`}>
-      {count} / {max}
-    </span>
+    <div className="la-axis">
+      <div className="la-axis__top">
+        <span className="la-axis__label">{label}</span>
+        <span className="la-axis__val" style={{ color: colour }}>{score}</span>
+      </div>
+      <div className="la-axis__track">
+        <div className="la-axis__fill" style={{ width: `${score}%`, background: colour }} />
+      </div>
+      {note && <p className="la-axis__note">{note}</p>}
+    </div>
   );
 }
 
-// ── Headline section ──────────────────────────────────────────────────────────
+function ProfileScoreDashboard({ audit, currentRole, targetRole }) {
+  if (!audit) return null;
+  const score   = audit.overall_score ?? 0;
+  const colour  = score >= 70 ? "#059669" : score >= 50 ? "#d97706" : "#dc2626";
+  const pct     = `${score}%`;
+
+  return (
+    <div className="la-dashboard">
+      {/* Left: ring + grade */}
+      <div className="la-dashboard__left">
+        <div className="la-dashboard__ring" style={{ "--lad-colour": colour, "--lad-pct": pct }}>
+          <div className="la-dashboard__ring-inner">
+            <span className="la-dashboard__score" style={{ color: colour }}>{score}</span>
+            <span className="la-dashboard__score-sub">/100</span>
+          </div>
+        </div>
+        {audit.grade && <GradePill grade={audit.grade} />}
+        <div className="la-dashboard__roles">
+          <span className="la-dashboard__role">{currentRole?.title}</span>
+          {targetRole && <><span className="la-dashboard__arrow">→</span><span className="la-dashboard__role la-dashboard__role--target">{targetRole.title}</span></>}
+        </div>
+      </div>
+
+      {/* Right: axis breakdown */}
+      <div className="la-dashboard__right">
+        {AXES.map(([key, label]) => {
+          const axis = audit.breakdown?.[key];
+          return (
+            <ScoreAxis
+              key={key}
+              label={label}
+              score={axis?.score ?? 0}
+              note={axis?.note}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. Biggest Issues
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BiggestIssues({ issues }) {
+  if (!issues?.length) return null;
+  return (
+    <ToolResultCard title="Biggest Issues on Your Profile" defaultOpen={true}>
+      <p className="la-hint">Fix these three things before anything else. Each one is costing you visibility or credibility.</p>
+      <div className="la-issues">
+        {issues.map((iss, i) => (
+          <div key={i} className="la-issue">
+            <div className="la-issue__header">
+              <span className="la-issue__num">{i + 1}</span>
+              <span className="la-issue__name">{iss.issue}</span>
+            </div>
+            <div className="la-issue__body">
+              <p className="la-issue__why">{iss.why_it_hurts}</p>
+              {iss.fix && (
+                <div className="la-issue__fix">
+                  <span className="la-issue__fix-label">Fix →</span>
+                  <span className="la-issue__fix-text">{iss.fix}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </ToolResultCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. Before / After
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BeforeAfterRow({ label, before, after }) {
+  if (!before && !after) return null;
+  return (
+    <div className="la-ba-row">
+      <span className="la-ba-row__label">{label}</span>
+      <div className="la-ba-pair">
+        <div className="la-ba-side la-ba-side--before">
+          <span className="la-ba-side__tag">Before</span>
+          <p className="la-ba-side__text">{before}</p>
+        </div>
+        <div className="la-ba-divider">→</div>
+        <div className="la-ba-side la-ba-side--after">
+          <span className="la-ba-side__tag">After</span>
+          <p className="la-ba-side__text">{after}</p>
+          <CopyBtn text={after} label="Copy" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BeforeAfterSection({ ba }) {
+  if (!ba) return null;
+  return (
+    <ToolResultCard title="Before → After" defaultOpen={true}>
+      <p className="la-hint">The transformation your profile makes with this audit applied.</p>
+      <BeforeAfterRow label="Headline"            before={ba.headline?.before}        after={ba.headline?.after} />
+      <BeforeAfterRow label="About opening"       before={ba.about_opening?.before}   after={ba.about_opening?.after} />
+      <BeforeAfterRow label="Experience bullet"   before={ba.experience_bullet?.before} after={ba.experience_bullet?.after} />
+    </ToolResultCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. Headlines
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HeadlineCard({ h, isRec }) {
+  return (
+    <div className={`la-headline ${isRec ? "la-headline--rec" : "la-headline--alt"}`}>
+      <div className="la-headline__top">
+        <div className="la-headline__badges">
+          {isRec && <span className="la-headline__badge la-headline__badge--rec">⭐ Recommended</span>}
+          {!isRec && h.label && <span className="la-headline__badge">{h.label}</span>}
+        </div>
+        <div className="la-headline__actions">
+          <CharCount count={h.char_count || h.text?.length || 0} max={220} />
+          <CopyBtn text={h.text} label="Copy" />
+        </div>
+      </div>
+      <p className="la-headline__text">{h.text}</p>
+      <div className="la-headline__meta">
+        {h.why && (
+          <div className="la-headline__meta-row">
+            <span className="la-headline__meta-label">Why it works</span>
+            <span className="la-headline__meta-text">{h.why}</span>
+          </div>
+        )}
+        {h.when_to_use && (
+          <div className="la-headline__meta-row la-headline__meta-row--when">
+            <span className="la-headline__meta-label">When to use</span>
+            <span className="la-headline__meta-text">{h.when_to_use}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function HeadlinesSection({ headlines }) {
   if (!headlines) return null;
   const { recommended, alternatives = [] } = headlines;
-
   return (
     <ToolResultCard title="Headlines" defaultOpen={true}>
-      <p className="li-section-hint">LinkedIn headline limit is 220 characters. Use the recommended option or pick an alternative.</p>
-
-      {/* Recommended */}
-      {recommended && (
-        <div className="li-headline li-headline--recommended">
-          <div className="li-headline__top">
-            <span className="li-headline__badge li-headline__badge--rec">⭐ Recommended</span>
-            <div className="li-headline__actions">
-              <CharCount count={recommended.char_count || recommended.text?.length || 0} />
-              <CopyBtn text={recommended.text} label="Copy headline" />
-            </div>
-          </div>
-          <p className="li-headline__text">{recommended.text}</p>
-          {recommended.why && <p className="li-headline__why">{recommended.why}</p>}
-        </div>
-      )}
-
-      {/* Alternatives */}
+      <p className="la-hint">Max 220 characters. Use the recommended version or swap to an alternative depending on your goal.</p>
+      {recommended && <HeadlineCard h={recommended} isRec={true} />}
       {alternatives.length > 0 && (
-        <div className="li-alternatives">
-          <span className="li-alternatives__label">Alternative options</span>
-          {alternatives.map((h, i) => (
-            <div key={i} className="li-headline li-headline--alt">
-              <div className="li-headline__top">
-                {h.label && <span className="li-headline__badge">{h.label}</span>}
-                <div className="li-headline__actions">
-                  <CharCount count={h.char_count || h.text?.length || 0} />
-                  <CopyBtn text={h.text} label="Copy" />
-                </div>
-              </div>
-              <p className="li-headline__text">{h.text}</p>
-              {h.why && <p className="li-headline__why">{h.why}</p>}
-            </div>
-          ))}
-        </div>
+        <>
+          <p className="la-alts-label">Alternative options</p>
+          {alternatives.map((h, i) => <HeadlineCard key={i} h={h} isRec={false} />)}
+        </>
       )}
     </ToolResultCard>
   );
 }
 
-// ── About section ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. About Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ABOUT_TABS = [
+  ["full",       "Full Copy"],
+  ["hook",       "Hook"],
+  ["value_prop", "Value Prop"],
+  ["transition", "Transition"],
+  ["cta",        "CTA"],
+];
+
 function AboutSection({ about }) {
+  const [tab, setTab] = useState("full");
   if (!about?.text) return null;
-  const charCount = about.char_count || about.text.length;
-  const paragraphs = about.text.split(/\n\n|\n/).filter((p) => p.trim());
+
+  const charCount  = about.char_count || about.text.length;
+  const paragraphs = about.text.split(/\n\n|\n/).filter(p => p.trim());
+  const bd         = about.structured_breakdown || {};
+
+  const tabContent = {
+    full:       { text: about.text, label: "Copy full About section" },
+    hook:       { text: bd.hook,       label: "Copy hook" },
+    value_prop: { text: bd.value_prop, label: "Copy value proposition" },
+    transition: { text: bd.transition, label: "Copy transition line" },
+    cta:        { text: bd.cta,        label: "Copy CTA" },
+  };
+
+  const active = tabContent[tab];
 
   return (
     <ToolResultCard title="About Section" defaultOpen={true}>
-      <div className="li-about-header">
-        <div className="li-about-meta">
-          <CharCount count={charCount} max={2000} />
-          <span className="li-about-hint">Ideal: 1,500–1,900 chars</span>
-        </div>
-        <CopyBtn text={about.text} label="Copy About section" size="md" />
-      </div>
-
-      <div className="li-about-body">
-        {paragraphs.map((p, i) => (
-          <p key={i} className="li-about-para">{p}</p>
+      {/* Tab row */}
+      <div className="la-about-tabs">
+        {ABOUT_TABS.map(([key, label]) => (
+          <button
+            key={key}
+            className={`la-about-tab ${tab === key ? "la-about-tab--active" : ""}`}
+            onClick={() => setTab(key)}
+          >
+            {label}
+          </button>
         ))}
       </div>
 
-      {about.hashtags?.length > 0 && (
-        <div className="li-about-hashtags">
-          <span className="li-about-hashtags__label">Add these hashtags at the end:</span>
-          <div className="li-about-hashtags__tags">
-            {about.hashtags.map((h, i) => (
-              <span key={i} className="li-hashtag">{h}</span>
-            ))}
+      {/* Char count row (only for full) */}
+      {tab === "full" && (
+        <div className="la-about-meta">
+          <CharCount count={charCount} max={2000} />
+          <span className="la-about-hint">Ideal: 1,500–1,900 chars</span>
+          <CopyBtn text={about.text} label="Copy About section" size="md" />
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="la-about-content">
+        {tab === "full" ? (
+          <>
+            {paragraphs.map((p, i) => <p key={i} className="la-about-para">{p}</p>)}
+          </>
+        ) : (
+          <div className="la-about-fragment">
+            <p className="la-about-fragment__text">{active.text || "—"}</p>
+            {active.text && (
+              <div className="la-about-fragment__actions">
+                <CopyBtn text={active.text} label={active.label} size="md" />
+              </div>
+            )}
           </div>
-          <CopyBtn text={about.hashtags.join(" ")} label="Copy hashtags" />
+        )}
+      </div>
+
+      {/* Hashtags */}
+      {about.hashtags?.length > 0 && tab === "full" && (
+        <div className="la-hashtags">
+          <span className="la-hashtags__label">Hashtags to add at the end:</span>
+          <div className="la-hashtags__tags">
+            {about.hashtags.map((h, i) => <span key={i} className="la-hashtag">{h}</span>)}
+          </div>
+          <CopyBtn text={about.hashtags.join(" ")} label="Copy all" />
         </div>
       )}
     </ToolResultCard>
   );
 }
 
-// ── Experience rewrites ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Experience Rewrites
+// ─────────────────────────────────────────────────────────────────────────────
+
 function ExperienceSection({ rewrites }) {
   if (!rewrites?.length) return null;
-
   return (
     <ToolResultCard title="Experience Section Rewrites" defaultOpen={true}>
-      <p className="li-section-hint">
-        Copy-ready bullets for each role. If exact metrics aren't in your CV, personalise the placeholders with your real numbers.
-      </p>
+      <p className="la-hint">Copy-ready bullets per role. Replace any approximate phrasing with your real numbers and specifics.</p>
       {rewrites.map((role, i) => (
-        <div key={i} className="li-exp-role">
-          <div className="li-exp-role__header">
+        <div key={i} className="la-exp-role">
+          <div className="la-exp-role__header">
             <div>
-              <span className="li-exp-role__title">{role.role_title}</span>
-              {role.company && <span className="li-exp-role__company"> · {role.company}</span>}
+              <span className="la-exp-role__title">{role.role_title}</span>
+              {role.company && <span className="la-exp-role__co"> · {role.company}</span>}
             </div>
-            <CopyBtn
-              text={role.bullets.map((b) => "• " + b).join("\n")}
-              label="Copy all bullets"
-            />
+            <CopyBtn text={role.bullets.map(b => "• " + b).join("\n")} label="Copy all" />
           </div>
-          <ul className="li-exp-bullets">
+          <ul className="la-exp-bullets">
             {role.bullets.map((b, j) => (
-              <li key={j} className="li-exp-bullet">
-                <span className="li-exp-bullet__text">• {b}</span>
+              <li key={j} className="la-exp-bullet">
+                <span className="la-exp-bullet__text">• {b}</span>
                 <CopyBtn text={"• " + b} label="Copy" />
               </li>
             ))}
@@ -173,210 +357,211 @@ function ExperienceSection({ rewrites }) {
   );
 }
 
-// ── Skills section ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. Keywords (upgraded)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ImpactPip({ level }) {
+  return (
+    <span className={`la-impact la-impact--${level === "High" ? "high" : "med"}`}>{level} impact</span>
+  );
+}
+
+function KeywordsSection({ keywords }) {
+  if (!keywords) return null;
+  const { high_demand = [], missing_critical = [], currently_strong = [] } = keywords;
+
+  return (
+    <ToolResultCard title="Keyword Strategy" defaultOpen={true}>
+
+      {/* High demand */}
+      {high_demand.length > 0 && (
+        <div className="la-kw-group">
+          <div className="la-kw-group__header">
+            <span className="la-kw-group__label">🔥 High-demand keywords to use</span>
+            <span className="la-kw-group__hint">These drive recruiter search visibility</span>
+          </div>
+          {high_demand.map((kw, i) => (
+            <div key={i} className="la-kw-card la-kw-card--demand">
+              <div className="la-kw-card__top">
+                <span className="la-kw-card__word">{kw.keyword}</span>
+                {kw.where_to_use && <span className="la-kw-card__placement">{kw.where_to_use}</span>}
+              </div>
+              {kw.why_it_matters && <p className="la-kw-card__why">{kw.why_it_matters}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Missing critical */}
+      {missing_critical.length > 0 && (
+        <div className="la-kw-group la-kw-group--missing">
+          <div className="la-kw-group__header">
+            <span className="la-kw-group__label">⚠ Missing keywords — add these</span>
+          </div>
+          {missing_critical.map((kw, i) => (
+            <div key={i} className="la-kw-card la-kw-card--missing">
+              <div className="la-kw-card__top">
+                <span className="la-kw-card__word">{kw.keyword}</span>
+                {kw.impact && <ImpactPip level={kw.impact} />}
+              </div>
+              {kw.why_it_matters && <p className="la-kw-card__why">{kw.why_it_matters}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Currently strong */}
+      {currently_strong.length > 0 && (
+        <div className="la-kw-group la-kw-group--strong">
+          <span className="la-kw-group__label la-kw-group__label--strong">✓ Already strong in your profile</span>
+          <div className="la-kw-chips">
+            {currently_strong.map((kw, i) => <span key={i} className="la-kw-chip">{kw}</span>)}
+          </div>
+        </div>
+      )}
+    </ToolResultCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Skills
+// ─────────────────────────────────────────────────────────────────────────────
+
 function SkillsSection({ skills, skillsStrategy }) {
   if (!skills && !skillsStrategy) return null;
-
   const pin3 = skillsStrategy?.top_3 || [];
 
   return (
-    <ToolResultCard title="Skills to Add" defaultOpen={true}>
-      <p className="li-section-hint">
-        LinkedIn allows up to 50 skills. Pin your top 3 — they appear prominently on your profile.
-      </p>
+    <ToolResultCard title="Skills to Add to LinkedIn" defaultOpen={false}>
+      <p className="la-hint">LinkedIn shows your top 3 pinned skills prominently. Get endorsements for all three.</p>
 
       {pin3.length > 0 && (
-        <div className="li-skills-group li-skills-group--pin">
-          <div className="li-skills-group__header">
-            <span className="li-skills-group__label">📌 Pin these top 3</span>
-            <span className="li-skills-group__hint">Get endorsements for all three</span>
-          </div>
-          <div className="li-skills-tags">
-            {pin3.map((s, i) => <span key={i} className="li-skill-tag li-skill-tag--pin">{s}</span>)}
+        <div className="la-skills-group la-skills-group--pin">
+          <span className="la-skills-group__label">📌 Pin these 3 skills</span>
+          <div className="la-skill-chips">
+            {pin3.map((s, i) => <span key={i} className="la-skill-chip la-skill-chip--pin">{s}</span>)}
           </div>
         </div>
       )}
-
       {skills?.core?.length > 0 && (
-        <div className="li-skills-group">
-          <div className="li-skills-group__header">
-            <span className="li-skills-group__label">✅ Core skills — add these first</span>
-          </div>
-          <div className="li-skills-tags">
-            {skills.core.map((s, i) => <span key={i} className="li-skill-tag li-skill-tag--core">{s}</span>)}
+        <div className="la-skills-group">
+          <span className="la-skills-group__label">✅ Core — add these first</span>
+          <div className="la-skill-chips">
+            {skills.core.map((s, i) => <span key={i} className="la-skill-chip la-skill-chip--core">{s}</span>)}
           </div>
         </div>
       )}
-
       {skills?.supporting?.length > 0 && (
-        <div className="li-skills-group">
-          <div className="li-skills-group__header">
-            <span className="li-skills-group__label">➕ Supporting skills — strengthens your profile</span>
-          </div>
-          <div className="li-skills-tags">
-            {skills.supporting.map((s, i) => <span key={i} className="li-skill-tag li-skill-tag--supporting">{s}</span>)}
+        <div className="la-skills-group">
+          <span className="la-skills-group__label">➕ Supporting — round out the profile</span>
+          <div className="la-skill-chips">
+            {skills.supporting.map((s, i) => <span key={i} className="la-skill-chip la-skill-chip--sup">{s}</span>)}
           </div>
         </div>
       )}
-
       {skills?.missing?.length > 0 && (
-        <div className="li-skills-group">
-          <div className="li-skills-group__header">
-            <span className="li-skills-group__label">⚠ Missing skills — gaps to close for your target role</span>
-          </div>
-          <div className="li-skills-tags">
-            {skills.missing.map((s, i) => <span key={i} className="li-skill-tag li-skill-tag--missing">{s}</span>)}
+        <div className="la-skills-group">
+          <span className="la-skills-group__label">⚠ Missing — gaps to close</span>
+          <div className="la-skill-chips">
+            {skills.missing.map((s, i) => <span key={i} className="la-skill-chip la-skill-chip--miss">{s}</span>)}
           </div>
         </div>
       )}
-
-      {skillsStrategy && (
-        <p className="li-skills-advice">{skillsStrategy.advice}</p>
-      )}
+      {skillsStrategy?.advice && <p className="la-skills-advice">{skillsStrategy.advice}</p>}
     </ToolResultCard>
   );
 }
 
-// ── Positioning strategy ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. Positioning Strategy
+// ─────────────────────────────────────────────────────────────────────────────
+
 function PositioningSection({ strategy }) {
   if (!strategy) return null;
-
   return (
     <ToolResultCard title="Positioning Strategy" defaultOpen={false}>
       {strategy.angle && (
-        <div className="li-strategy-block">
-          <span className="li-strategy-label">Your angle</span>
-          <p className="li-strategy-text">{strategy.angle}</p>
+        <div className="la-pos-block">
+          <span className="la-pos-label">Your angle</span>
+          <p className="la-pos-text">{strategy.angle}</p>
         </div>
       )}
       {strategy.bridge_message && (
-        <div className="li-strategy-block">
-          <span className="li-strategy-label">How to frame the transition</span>
-          <p className="li-strategy-text">{strategy.bridge_message}</p>
+        <div className="la-pos-block">
+          <span className="la-pos-label">How to frame the transition</span>
+          <p className="la-pos-text">{strategy.bridge_message}</p>
         </div>
       )}
       {strategy.credibility_signal && (
-        <div className="li-strategy-block li-strategy-block--highlight">
-          <span className="li-strategy-label">Your strongest credibility signal</span>
-          <p className="li-strategy-text">{strategy.credibility_signal}</p>
+        <div className="la-pos-block la-pos-block--highlight">
+          <span className="la-pos-label">Strongest credibility signal</span>
+          <p className="la-pos-text">{strategy.credibility_signal}</p>
         </div>
       )}
     </ToolResultCard>
   );
 }
 
-// ── Keyword strategy (from engine) ────────────────────────────────────────────
-function KeywordSection({ keywordStrategy }) {
-  if (!keywordStrategy) return null;
+// ─────────────────────────────────────────────────────────────────────────────
+// Main export
+// ─────────────────────────────────────────────────────────────────────────────
 
-  return (
-    <ToolResultCard title="Keyword Strategy" defaultOpen={false}>
-      {keywordStrategy.primary?.length > 0 && (
-        <div className="tool-subsection">
-          <span className="tool-subsection__label">Primary — use in headline and About</span>
-          <TagList items={keywordStrategy.primary} variant="match" />
-        </div>
-      )}
-      {keywordStrategy.aspirational?.length > 0 && (
-        <div className="tool-subsection">
-          <span className="tool-subsection__label">Target role keywords — weave into About</span>
-          <TagList items={keywordStrategy.aspirational} variant="warn" />
-        </div>
-      )}
-      {keywordStrategy.industry?.length > 0 && (
-        <div className="tool-subsection">
-          <span className="tool-subsection__label">Industry keywords</span>
-          <TagList items={keywordStrategy.industry} />
-        </div>
-      )}
-    </ToolResultCard>
-  );
-}
-
-// ── Profile strength strip ────────────────────────────────────────────────────
-function StrengthStrip({ score, currentRole, targetRole }) {
-  if (!score) return null;
-  const colour = score.score >= 70 ? "#059669" : score.score >= 45 ? "#d97706" : "#dc2626";
-  const label  = score.label?.replace(/_/g, " ") || "";
-
-  return (
-    <div className="li-strength-strip">
-      <div className="li-strength-strip__score" style={{ color: colour }}>
-        {score.score}
-        <span className="li-strength-strip__max">/100</span>
-      </div>
-      <div className="li-strength-strip__info">
-        <span className="li-strength-strip__label" style={{ color: colour }}>{label}</span>
-        <span className="li-strength-strip__roles">
-          {currentRole?.title}
-          {targetRole && <> → <strong>{targetRole.title}</strong></>}
-        </span>
-      </div>
-      <div className="li-strength-strip__bar">
-        <div className="li-strength-strip__fill" style={{ width: `${score.score}%`, background: colour }} />
-      </div>
-    </div>
-  );
-}
-
-// ── Main export ───────────────────────────────────────────────────────────────
 export default function LinkedinOptimisationCard({ data }) {
   if (!data) return null;
 
   const {
     current_role,
     target_role,
-    strength_score,
     keyword_strategy,
     skills_strategy,
     ai = {},
   } = data;
 
   const {
+    profile_audit,
+    before_after,
     headlines,
     about_section,
     experience_rewrites = [],
+    keywords,
     skills,
     positioning_strategy,
   } = ai;
 
-  const hasContent = headlines || about_section || experience_rewrites.length > 0;
-
-  if (!hasContent) {
-    return (
-      <div className="tool-results">
-        <StrengthStrip score={strength_score} currentRole={current_role} targetRole={target_role} />
-        <div className="li-empty">
-          <p>Profile analysis complete. Add your CV text for full content generation.</p>
-        </div>
-        <KeywordSection keywordStrategy={keyword_strategy} />
-      </div>
-    );
-  }
-
   return (
     <div className="tool-results">
 
-      {/* Profile strength */}
-      <StrengthStrip score={strength_score} currentRole={current_role} targetRole={target_role} />
+      {/* 1. Score dashboard */}
+      <ProfileScoreDashboard
+        audit={profile_audit}
+        currentRole={current_role}
+        targetRole={target_role}
+      />
 
-      {/* 1. Headlines */}
+      {/* 2. Biggest issues */}
+      <BiggestIssues issues={profile_audit?.biggest_issues} />
+
+      {/* 3. Before / After */}
+      <BeforeAfterSection ba={before_after} />
+
+      {/* 4. Headlines */}
       <HeadlinesSection headlines={headlines} />
 
-      {/* 2. About section */}
+      {/* 5. About section */}
       <AboutSection about={about_section} />
 
-      {/* 3. Experience rewrites */}
+      {/* 6. Experience rewrites */}
       <ExperienceSection rewrites={experience_rewrites} />
 
-      {/* 4. Skills */}
+      {/* 7. Keywords */}
+      <KeywordsSection keywords={keywords} />
+
+      {/* 8. Skills */}
       <SkillsSection skills={skills} skillsStrategy={skills_strategy} />
 
-      {/* 5. Positioning strategy */}
+      {/* 9. Positioning */}
       <PositioningSection strategy={positioning_strategy} />
-
-      {/* 6. Keyword strategy */}
-      <KeywordSection keywordStrategy={keyword_strategy} />
 
     </div>
   );
