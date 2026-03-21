@@ -2,50 +2,57 @@
 // pages/tools/interview-prep.js
 // HireEdge Frontend — Interview Prep
 //
-// URL prefill: ONLY role slugs (target, current) — these are always clean.
-// Skills, JD, CV text are NEVER read from URL params because the EDGEX
-// actionRouter puts raw chat context strings there (bullet-formatted,
-// "access_denied" fields, education text, etc.) which corrupt the fields.
-// Users fill those manually. Roles pre-fill from EDGEX navigation.
+// FIX: Send X-HireEdge-Plan header. Map billing errors to upgrade prompt.
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import InterviewPrepCard from "../../components/tools/InterviewPrepCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
+function getPlan() {
+  if (typeof window === "undefined") return "free";
+  return localStorage.getItem("hireedge_plan") || "free";
+}
+
+function _friendlyError(json) {
+  const reason = json?.reason || "";
+  const plan   = json?.upgrade_to || "pro";
+  if (reason === "access_denied" || reason === "tool_not_in_plan") {
+    return { type: "upgrade", plan, message: `Interview Prep requires the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan.` };
+  }
+  if (reason === "daily_limit_reached") {
+    return { type: "limit", message: "You've reached your daily limit. Upgrade for more." };
+  }
+  return { type: "error", message: json?.error || json?.message || "Something went wrong. Please try again." };
+}
+
 export default function InterviewPrepPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
 
-  // Role state — prefilled from clean URL slugs
   const [targetRole,  setTargetRole]  = useState(null);
   const [currentRole, setCurrentRole] = useState(null);
-
-  // User-entered fields — always start empty, never prefilled from URL
   const [skills,         setSkills]         = useState("");
   const [yearsExp,       setYearsExp]       = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [resumeText,     setResumeText]     = useState("");
 
-  const [result,  setResult]  = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+  const [result,    setResult]    = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [errorInfo, setErrorInfo] = useState(null);
 
-  // ── Only read role slugs from URL — everything else stays empty ───────────
   useEffect(() => {
     if (!router.isReady) return;
     const q = router.query;
-    // target / current are always clean role slugs from actionRouter
     if (q.target)  setTargetRole({ slug: q.target,  title: _slugToTitle(q.target) });
     if (q.current) setCurrentRole({ slug: q.current, title: _slugToTitle(q.current) });
-    // yearsExp is a plain number — safe to read
     if (q.yearsExp && !isNaN(parseInt(q.yearsExp))) setYearsExp(q.yearsExp);
-    // skills/jd/resume deliberately NOT read — they come as dirty strings from EDGEX context
   }, [router.isReady]);
 
   useEffect(() => {
@@ -55,12 +62,15 @@ export default function InterviewPrepPage() {
   }, [targetRole, router.isReady]);
 
   async function _submit() {
-    if (!targetRole) { setError("Please select a target role."); return; }
-    setLoading(true); setError(null); setResult(null);
+    if (!targetRole) { setErrorInfo({ type: "error", message: "Please select a target role." }); return; }
+    setLoading(true); setErrorInfo(null); setResult(null);
     try {
       const r = await fetch(`${API}/api/tools/interview-prep`, {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type":    "application/json",
+          "X-HireEdge-Plan": getPlan(),
+        },
         body: JSON.stringify({
           targetRole:     targetRole.slug,
           currentRole:    currentRole?.slug || "",
@@ -71,10 +81,10 @@ export default function InterviewPrepPage() {
         }),
       });
       const json = await r.json();
-      if (!json.ok) throw new Error(json.error || "Something went wrong");
+      if (!json.ok) { setErrorInfo(_friendlyError(json)); return; }
       setResult(json.data);
     } catch (e) {
-      setError(e.message);
+      setErrorInfo({ type: "error", message: "Network error — please try again." });
     } finally {
       setLoading(false);
     }
@@ -94,7 +104,6 @@ export default function InterviewPrepPage() {
         </div>
 
         <div className="tool-form">
-          {/* Row 1 — Target + Current + Years */}
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Target Role <span className="tool-form__req">*</span></label>
@@ -128,7 +137,6 @@ export default function InterviewPrepPage() {
             </div>
           </div>
 
-          {/* Skills — always blank on load */}
           <div className="tool-form__field">
             <label className="tool-form__label">Your Skills</label>
             <input
@@ -142,7 +150,6 @@ export default function InterviewPrepPage() {
             <span className="tool-form__hint">Comma-separated</span>
           </div>
 
-          {/* Job Description — always blank on load */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               Job Description <span className="tool-form__optional">(optional — greatly improves output)</span>
@@ -156,7 +163,6 @@ export default function InterviewPrepPage() {
             />
           </div>
 
-          {/* CV — always blank on load */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               CV / Profile Summary <span className="tool-form__optional">(optional)</span>
@@ -170,7 +176,26 @@ export default function InterviewPrepPage() {
             />
           </div>
 
-          {error && <div className="tool-form__error">{error}</div>}
+          {errorInfo?.type === "upgrade" && (
+            <div className="tool-upgrade-prompt">
+              <span className="tool-upgrade-prompt__icon">🔒</span>
+              <div>
+                <p className="tool-upgrade-prompt__title">{errorInfo.message}</p>
+                <p className="tool-upgrade-prompt__sub">Upgrade your plan to access Interview Prep and all premium tools.</p>
+              </div>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">View Plans →</Link>
+            </div>
+          )}
+          {errorInfo?.type === "limit" && (
+            <div className="tool-upgrade-prompt">
+              <span className="tool-upgrade-prompt__icon">⏱</span>
+              <div><p className="tool-upgrade-prompt__title">{errorInfo.message}</p></div>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade →</Link>
+            </div>
+          )}
+          {errorInfo?.type === "error" && (
+            <div className="tool-form__error">{errorInfo.message}</div>
+          )}
 
           <button
             className="tool-form__submit"
