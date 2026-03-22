@@ -1,24 +1,24 @@
-\// ============================================================================
+// ============================================================================
 // pages/tools/gap-explainer.js
-// HireEdge — Career Gap Explainer (v2)
+// HireEdge -- Career Gap Explainer (v2)
 //
 // A high-clarity diagnostic engine explaining exactly why a career transition
 // is easy or difficult, and what must change.
 //
 // 10 sections (scroll-based, no tabs):
-//   1.  Hero — route + 3 metrics (severity, skill match %, difficulty)
+//   1.  Hero -- route + 3 metrics (severity, skill match %, difficulty)
 //   2.  Transition Verdict
-//   3.  Gap Breakdown — skills / experience / market (3 columns)
-//   4.  Skill Gap Deep Dive — 3–6 skills with current vs required vs impact
+//   3.  Gap Breakdown -- skills / experience / market (3 columns)
+//   4.  Skill Gap Deep Dive -- 3-6 skills with current vs required vs impact
 //   5.  Experience Gap Analysis
 //   6.  Market Gap
-//   7.  Gap Severity Map — visual bar dashboard
-//   8.  Reality Check — what this means, where they fit now
-//   9.  Fix Priority Plan — #1 MUST DO / #2 NEXT STEP / #3 SUPPORTING
-//  10.  If Ignored — risk warning block
+//   7.  Gap Severity Map -- visual bar dashboard
+//   8.  Reality Check -- what this means, where they fit now
+//   9.  Fix Priority Plan -- #1 MUST DO / #2 NEXT STEP / #3 SUPPORTING
+//  10.  If Ignored -- risk warning block
 //
 // API: GET /api/tools/career-gap-explainer?action=explain&from=X&to=Y
-// Gating: free tier (from/to only) — all plans
+// Gating: free tier (from/to only) -- all plans
 // ============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -30,7 +30,7 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function getPlan() {
   if (typeof window === "undefined") return "free";
@@ -49,14 +49,14 @@ function _friendlyError(json) {
 }
 
 const LOADING_STEPS = [
-  "Mapping transition pathway…",
-  "Identifying skill gaps…",
-  "Analysing experience delta…",
-  "Measuring market distance…",
-  "Building fix plan…",
+  "Mapping transition pathway...",
+  "Identifying skill gaps...",
+  "Analysing experience delta...",
+  "Measuring market distance...",
+  "Building fix plan...",
 ];
 
-// ── Atom components ──────────────────────────────────────────────────────────
+// -- Atom components ----------------------------------------------------------
 
 function SevBadge({ level }) {
   const map = {
@@ -85,7 +85,7 @@ function Divider() {
   return <div className="ge-divider" />;
 }
 
-// ── Result card — all 10 sections ────────────────────────────────────────────
+// -- Result card -- all 10 sections --------------------------------------------
 
 function GapReport({ data, fromTitle, toTitle }) {
   if (!data) return null;
@@ -106,7 +106,7 @@ function GapReport({ data, fromTitle, toTitle }) {
   return (
     <div className="ge-report">
 
-      {/* ── 1. Hero ─────────────────────────────────────────────────── */}
+      {/* -- 1. Hero --------------------------------------------------- */}
       <div className="ge-hero">
         <div className="ge-hero__eyebrow">
           <span className="ge-hero__eyebrow-text">Gap Explainer</span>
@@ -115,7 +115,7 @@ function GapReport({ data, fromTitle, toTitle }) {
         </div>
 
         <h1 className="ge-hero__title">
-          {hero?.title || `Why moving from ${fromTitle} → ${toTitle}`}
+          {hero?.title || `Why moving from ${fromTitle}  ${toTitle}`}
         </h1>
 
         <div className="ge-hero__metrics">
@@ -127,7 +127,7 @@ function GapReport({ data, fromTitle, toTitle }) {
           <div className="ge-hero__metric">
             <span className="ge-hero__metric-label">Skill Match</span>
             <span className="ge-hero__metric-val ge-hero__metric-val--mono">
-              {hero?.skill_match_pct ?? "—"}%
+              {hero?.skill_match_pct ?? "--"}%
             </span>
           </div>
           <div className="ge-hero__metric-sep" />
@@ -140,7 +140,7 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 2. Transition Verdict ────────────────────────────────────── */}
+      {/* -- 2. Transition Verdict -------------------------------------- */}
       {transition_verdict && (
         <section className="ge-section" id="ge-verdict">
           <SectionTag n={2} />
@@ -153,16 +153,16 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 3. Gap Breakdown ─────────────────────────────────────────── */}
+      {/* -- 3. Gap Breakdown ------------------------------------------- */}
       {gap_breakdown && (
         <section className="ge-section" id="ge-breakdown">
           <SectionTag n={3} />
           <h2 className="ge-section__title">Gap Breakdown</h2>
           <div className="ge-breakdown-grid">
             {[
-              { key: "skill_gaps",      label: "A. Skill Gaps",      icon: "◈", cls: "ge-breakdown-col--skill" },
-              { key: "experience_gaps", label: "B. Experience Gaps", icon: "◉", cls: "ge-breakdown-col--exp" },
-              { key: "market_gaps",     label: "C. Market Gaps",     icon: "◆", cls: "ge-breakdown-col--market" },
+              { key: "skill_gaps",      label: "A. Skill Gaps",      icon: "", cls: "ge-breakdown-col--skill" },
+              { key: "experience_gaps", label: "B. Experience Gaps", icon: "", cls: "ge-breakdown-col--exp" },
+              { key: "market_gaps",     label: "C. Market Gaps",     icon: "", cls: "ge-breakdown-col--market" },
             ].map(({ key, label, icon, cls }) => (
               <div key={key} className={`ge-breakdown-col ${cls}`}>
                 <div className="ge-breakdown-col__header">
@@ -187,13 +187,13 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 4. Skill Gap Deep Dive ───────────────────────────────────── */}
+      {/* -- 4. Skill Gap Deep Dive ------------------------------------- */}
       {skill_gap_deep_dive.length > 0 && (
         <section className="ge-section" id="ge-skills">
           <SectionTag n={4} />
           <h2 className="ge-section__title">Skill Gap Deep Dive</h2>
           <p className="ge-section__hint">
-            Critical skills missing for {toTitle} — with current exposure vs what the role demands.
+            Critical skills missing for {toTitle} -- with current exposure vs what the role demands.
           </p>
           <div className="ge-skill-grid">
             {skill_gap_deep_dive.map((s, i) => (
@@ -226,12 +226,12 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 5. Experience Gap Analysis ───────────────────────────────── */}
+      {/* -- 5. Experience Gap Analysis --------------------------------- */}
       {experience_gap.length > 0 && (
         <section className="ge-section" id="ge-experience">
           <SectionTag n={5} />
           <h2 className="ge-section__title">Experience Gap Analysis</h2>
-          <p className="ge-section__hint">Real-world exposure that {toTitle} hiring managers expect — and that is currently missing.</p>
+          <p className="ge-section__hint">Real-world exposure that {toTitle} hiring managers expect -- and that is currently missing.</p>
           <div className="ge-exp-list">
             {experience_gap.map((e, i) => (
               <div key={i} className="ge-exp-item">
@@ -248,7 +248,7 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 6. Market Gap ────────────────────────────────────────────── */}
+      {/* -- 6. Market Gap ---------------------------------------------- */}
       {market_gap && (
         <section className="ge-section" id="ge-market">
           <SectionTag n={6} />
@@ -279,12 +279,12 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 7. Gap Severity Map ──────────────────────────────────────── */}
+      {/* -- 7. Gap Severity Map ---------------------------------------- */}
       {gap_severity_map && (
         <section className="ge-section" id="ge-severity-map">
           <SectionTag n={7} />
           <h2 className="ge-section__title">Gap Severity Map</h2>
-          <p className="ge-section__hint">Where the transition gap is concentrated — diagnostic dashboard.</p>
+          <p className="ge-section__hint">Where the transition gap is concentrated -- diagnostic dashboard.</p>
           <div className="ge-sev-map">
             {[
               { key: "skills_pct",     label: "Skills Gap",     colour: "#dc2626" },
@@ -311,7 +311,7 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 8. Reality Check ─────────────────────────────────────────── */}
+      {/* -- 8. Reality Check ------------------------------------------- */}
       {reality_check && (
         <section className="ge-section" id="ge-reality">
           <SectionTag n={8} />
@@ -341,7 +341,7 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 9. Fix Priority Plan ─────────────────────────────────────── */}
+      {/* -- 9. Fix Priority Plan --------------------------------------- */}
       {fix_priority_plan.length > 0 && (
         <section className="ge-section" id="ge-fix-plan">
           <SectionTag n={9} />
@@ -362,13 +362,13 @@ function GapReport({ data, fromTitle, toTitle }) {
                   <div className="ge-fix-card__strip">
                     <span className="ge-fix-card__tag">{t.tag}</span>
                     {f.time_estimate && (
-                      <span className="ge-fix-card__time">⏱ {f.time_estimate}</span>
+                      <span className="ge-fix-card__time"> {f.time_estimate}</span>
                     )}
                   </div>
                   <div className="ge-fix-card__body">
                     <div className="ge-fix-card__action">{f.action || f.what_to_do}</div>
                     {f.why_it_matters && (
-                      <p className="ge-fix-card__why">→ {f.why_it_matters}</p>
+                      <p className="ge-fix-card__why"> {f.why_it_matters}</p>
                     )}
                   </div>
                 </div>
@@ -380,14 +380,14 @@ function GapReport({ data, fromTitle, toTitle }) {
 
       <Divider />
 
-      {/* ── 10. If Ignored ───────────────────────────────────────────── */}
+      {/* -- 10. If Ignored --------------------------------------------- */}
       {if_ignored.length > 0 && (
         <section className="ge-section ge-section--warning" id="ge-if-ignored">
           <SectionTag n={10} />
           <h2 className="ge-section__title">What Happens If You Don't Fix These Gaps</h2>
           <div className="ge-ignored">
             <div className="ge-ignored__header">
-              <span className="ge-ignored__icon">⚠</span>
+              <span className="ge-ignored__icon"></span>
               <p className="ge-ignored__intro">
                 Gaps don't close themselves. Here is what inaction costs you in this transition.
               </p>
@@ -413,7 +413,7 @@ function GapReport({ data, fromTitle, toTitle }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// -- Page ----------------------------------------------------------------------
 
 export default function GapExplainerPage() {
   const router  = useRouter();
@@ -479,7 +479,7 @@ export default function GapExplainerPage() {
       }
       setResult(json.data || json);
     } catch {
-      setErrorInfo({ type: "error", message: "Network error — please try again." });
+      setErrorInfo({ type: "error", message: "Network error -- please try again." });
     } finally {
       setLoading(false);
     }
@@ -487,7 +487,7 @@ export default function GapExplainerPage() {
 
   return (
     <>
-      <Head><title>Career Gap Explainer — HireEdge</title></Head>
+      <Head><title>Career Gap Explainer -- HireEdge</title></Head>
 
       <div className="tool-page">
 
@@ -498,7 +498,7 @@ export default function GapExplainerPage() {
           </div>
           <h1 className="ge-page-header__title">Career Gap Diagnostic</h1>
           <p className="ge-page-header__sub">
-            Understand exactly why a career transition is hard or easy — and what you need to fix, in order.
+            Understand exactly why a career transition is hard or easy -- and what you need to fix, in order.
           </p>
         </div>
 
@@ -510,41 +510,41 @@ export default function GapExplainerPage() {
                 Current Role <span className="tool-form__req">*</span>
               </label>
               <RoleSearch
-                placeholder="Where you are now…"
+                placeholder="Where you are now..."
                 onSelect={setFromRole}
                 initialValue={fromRole?.title || ""}
               />
-              {fromRole && <span className="tool-form__selected">✓ {fromRole.title}</span>}
+              {fromRole && <span className="tool-form__selected"> {fromRole.title}</span>}
             </div>
             <div className="tool-form__field">
               <label className="tool-form__label">
                 Target Role <span className="tool-form__req">*</span>
               </label>
               <RoleSearch
-                placeholder="Where you want to go…"
+                placeholder="Where you want to go..."
                 onSelect={setToRole}
                 initialValue={toRole?.title || ""}
               />
-              {toRole && <span className="tool-form__selected">✓ {toRole.title}</span>}
+              {toRole && <span className="tool-form__selected"> {toRole.title}</span>}
             </div>
           </div>
 
           {errorInfo?.type === "upgrade" && (
             <div className="tool-upgrade-prompt">
-              <span className="tool-upgrade-prompt__icon">🔒</span>
+              <span className="tool-upgrade-prompt__icon"></span>
               <div>
                 <p className="tool-upgrade-prompt__title">Upgrade required</p>
                 <p className="tool-upgrade-prompt__sub">Gap Explainer requires a paid plan.</p>
               </div>
-              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade →</Link>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade </Link>
             </div>
           )}
 
           {errorInfo?.type === "limit" && (
             <div className="tool-upgrade-prompt">
-              <span className="tool-upgrade-prompt__icon">⏱</span>
+              <span className="tool-upgrade-prompt__icon"></span>
               <div><p className="tool-upgrade-prompt__title">{errorInfo.message}</p></div>
-              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade →</Link>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade </Link>
             </div>
           )}
 
@@ -560,7 +560,7 @@ export default function GapExplainerPage() {
             {loading ? LOADING_STEPS[loadingStep] : "Explain the Gap"}
           </button>
           {!loading && (
-            <p className="li-form-timing">Takes ~15 seconds · Full 10-section diagnostic</p>
+            <p className="li-form-timing">Takes ~15 seconds  Full 10-section diagnostic</p>
           )}
         </div>
 
@@ -571,7 +571,7 @@ export default function GapExplainerPage() {
             <div className="li-loading-steps">
               {LOADING_STEPS.map((step, i) => (
                 <span key={i} className={`li-loading-step ${i === loadingStep ? "li-loading-step--active" : i < loadingStep ? "li-loading-step--done" : ""}`}>
-                  {i < loadingStep ? "✓" : i === loadingStep ? "→" : "·"} {step}
+                  {i < loadingStep ? "" : i === loadingStep ? "" : ""} {step}
                 </span>
               ))}
             </div>
