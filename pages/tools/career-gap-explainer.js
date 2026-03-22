@@ -1,9 +1,9 @@
 // ============================================================================
 // pages/tools/career-gap-explainer.js
-// HireEdge -- Career Gap Diagnostic Report (v3)
+// HireEdge -- Career Gap Diagnostic (v4, complete rebuild)
 //
-// Premium 10-section diagnostic. Same quality as Talent Profile.
-// Scroll-based, no tabs, card layout.
+// Premium 10-section career gap analysis tool.
+// Equal quality to Talent Profile / Career Roadmap.
 //
 // API: GET /api/tools/career-gap-explainer?action=explain&from=SLUG&to=SLUG
 // ============================================================================
@@ -18,7 +18,7 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
 // ============================================================================
-// Helpers
+// Utilities
 // ============================================================================
 
 function getPlan() {
@@ -26,163 +26,114 @@ function getPlan() {
   return localStorage.getItem("hireedge_plan") || "free";
 }
 
-function _slugToTitle(s) {
+function slugToTitle(s) {
   return (s || "").replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function _friendlyError(json) {
+function friendlyError(json) {
   const r = json?.reason || "";
   if (r === "access_denied" || r === "tool_not_in_plan") return { type: "upgrade" };
   if (r === "daily_limit_reached") return { type: "limit", message: "Daily limit reached. Upgrade for more." };
   return { type: "error", message: json?.error || json?.message || "Something went wrong. Please try again." };
 }
 
-const LOADING_STEPS = [
+const STEPS = [
   "Mapping transition pathway...",
   "Identifying skill gaps...",
   "Analysing experience delta...",
-  "Measuring market distance...",
+  "Reading market signals...",
   "Building fix plan...",
 ];
 
 // ============================================================================
-// Design tokens / atoms
+// Primitive atoms
 // ============================================================================
 
-const SEV_CONFIG = {
-  High:   { cls: "gd-badge--red",    label: "High" },
-  Medium: { cls: "gd-badge--amber",  label: "Medium" },
-  Low:    { cls: "gd-badge--green",  label: "Low" },
-};
-
-const DIFF_CONFIG = {
-  Hard:   { cls: "gd-badge--red",    label: "Hard" },
-  Medium: { cls: "gd-badge--amber",  label: "Medium" },
-  Easy:   { cls: "gd-badge--green",  label: "Easy" },
-};
-
-const LEVEL_CONFIG = {
-  High:   { cls: "gd-level--high",   label: "High" },
-  Medium: { cls: "gd-level--medium", label: "Medium" },
-  Low:    { cls: "gd-level--low",    label: "Low" },
-  "Low exposure":      { cls: "gd-level--low",    label: "Low exposure" },
-  "Indirect exposure": { cls: "gd-level--low",    label: "Indirect" },
-  "Core skill":        { cls: "gd-level--high",   label: "Core skill" },
-  "Advanced":          { cls: "gd-level--high",   label: "Advanced" },
-};
-
-function Badge({ text, type }) {
-  const cfg = SEV_CONFIG[text] || DIFF_CONFIG[text] || { cls: "gd-badge--amber", label: text };
-  return <span className={`gd-badge ${cfg.cls} ${type ? "gd-badge--" + type : ""}`}>{cfg.label}</span>;
+function Badge({ v, size }) {
+  const map = {
+    High: "cgd-b cgd-b--red", Medium: "cgd-b cgd-b--amber", Low: "cgd-b cgd-b--green",
+    Hard: "cgd-b cgd-b--red", Easy: "cgd-b cgd-b--green",
+    Critical: "cgd-b cgd-b--red", Significant: "cgd-b cgd-b--amber", Minor: "cgd-b cgd-b--green",
+  };
+  return <span className={(map[v] || "cgd-b cgd-b--amber") + (size === "lg" ? " cgd-b--lg" : "")}>{v}</span>;
 }
 
-function LevelChip({ text }) {
-  const cfg = LEVEL_CONFIG[text] || { cls: "gd-level--medium", label: text };
-  return <span className={`gd-level ${cfg.cls}`}>{cfg.label}</span>;
-}
-
-function Card({ children, variant, id }) {
+function ScoreBar({ pct, colour }) {
+  const c = colour || (pct >= 65 ? "#10b981" : pct >= 40 ? "#f59e0b" : "#ef4444");
   return (
-    <div className={`gd-card ${variant ? "gd-card--" + variant : ""}`} id={id}>
-      {children}
+    <div className="cgd-bar">
+      <div className="cgd-bar__fill" style={{ width: pct + "%", background: c }} />
     </div>
   );
 }
 
-function CardHeader({ tag, title, subtitle }) {
+function SectionLabel({ n, text }) {
   return (
-    <div className="gd-card__header">
-      {tag && <span className="gd-card__tag">{tag}</span>}
-      <h2 className="gd-card__title">{title}</h2>
-      {subtitle && <p className="gd-card__subtitle">{subtitle}</p>}
+    <div className="cgd-sec-label">
+      <span className="cgd-sec-label__n">{String(n).padStart(2, "0")}</span>
+      <span className="cgd-sec-label__text">{text}</span>
     </div>
   );
 }
 
-function Divider() {
-  return <div className="gd-divider" />;
+function Panel({ children, id, accent, warning }) {
+  let cls = "cgd-panel";
+  if (accent)  cls += " cgd-panel--accent";
+  if (warning) cls += " cgd-panel--warning";
+  return <div className={cls} id={id}>{children}</div>;
 }
 
 // ============================================================================
-// Section 1 -- HERO
+// 1. Results hero -- metrics strip (shown above the sections after submit)
 // ============================================================================
 
-function HeroSection({ data, fromTitle, toTitle }) {
-  if (!data) return null;
-  const { title, gap_severity, skill_match_pct, transition_difficulty } = data;
-
-  const sevColour = gap_severity === "High" ? "#ef4444" : gap_severity === "Low" ? "#10b981" : "#f59e0b";
-  const diffColour = transition_difficulty === "Hard" ? "#ef4444" : transition_difficulty === "Easy" ? "#10b981" : "#f59e0b";
+function ResultsHero({ hero, fromTitle, toTitle }) {
+  if (!hero) return null;
+  const sevColour  = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981" }[hero.gap_severity]  || "#f59e0b";
+  const diffColour = { Hard: "#ef4444", Medium: "#f59e0b", Easy: "#10b981" }[hero.transition_difficulty] || "#f59e0b";
+  const matchPct   = hero.skill_match_pct ?? 0;
+  const matchColour = matchPct >= 65 ? "#10b981" : matchPct >= 40 ? "#f59e0b" : "#ef4444";
 
   return (
-    <div className="gd-hero">
-      <div className="gd-hero__eyebrow">
-        <span className="gd-hero__eyebrow-label">Career Gap Diagnostic</span>
-        <span className="gd-hero__eyebrow-dot" />
-        <span className="gd-hero__eyebrow-label">Decision Report</span>
-      </div>
-
-      <h1 className="gd-hero__title">
-        {title || ("Why moving from " + fromTitle + " to " + toTitle + " is challenging")}
-      </h1>
-
-      <div className="gd-hero__route">
-        <span className="gd-hero__role">{fromTitle}</span>
-        <svg className="gd-hero__arrow" viewBox="0 0 24 24" fill="none">
-          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <div className="cgd-results-hero">
+      <div className="cgd-results-hero__route">
+        <span className="cgd-results-hero__role">{fromTitle}</span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="cgd-results-hero__arrow">
+          <path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-        <span className="gd-hero__role gd-hero__role--target">{toTitle}</span>
+        <span className="cgd-results-hero__role cgd-results-hero__role--to">{toTitle}</span>
       </div>
 
-      <div className="gd-hero__metrics">
-        <div className="gd-hero__metric" style={{ "--m-colour": sevColour }}>
-          <span className="gd-hero__metric-icon">
-            <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-              <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M10 6v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </span>
-          <div>
-            <span className="gd-hero__metric-label">Gap Severity</span>
-            <span className="gd-hero__metric-val" style={{ color: sevColour }}>
-              {gap_severity || "Medium"}
-            </span>
+      {hero.title && <h2 className="cgd-results-hero__title">{hero.title}</h2>}
+
+      <div className="cgd-metrics-strip">
+        <div className="cgd-metric-card">
+          <span className="cgd-metric-card__label">Gap Severity</span>
+          <span className="cgd-metric-card__val" style={{ color: sevColour }}>{hero.gap_severity || "Medium"}</span>
+          <div className="cgd-metric-card__bar">
+            <div className="cgd-metric-card__bar-fill" style={{
+              width: hero.gap_severity === "High" ? "85%" : hero.gap_severity === "Low" ? "25%" : "55%",
+              background: sevColour,
+            }}/>
           </div>
         </div>
 
-        <div className="gd-hero__metric-sep" />
-
-        <div className="gd-hero__metric" style={{ "--m-colour": "#6366f1" }}>
-          <span className="gd-hero__metric-icon">
-            <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-              <path d="M3 10a7 7 0 1 0 14 0A7 7 0 0 0 3 10Z" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M10 10V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M10 10l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </span>
-          <div>
-            <span className="gd-hero__metric-label">Skill Match</span>
-            <span className="gd-hero__metric-val" style={{ color: "#818cf8" }}>
-              {skill_match_pct != null ? skill_match_pct + "%" : "--"}
-            </span>
+        <div className="cgd-metric-card">
+          <span className="cgd-metric-card__label">Skill Match</span>
+          <span className="cgd-metric-card__val" style={{ color: matchColour }}>{matchPct}%</span>
+          <div className="cgd-metric-card__bar">
+            <div className="cgd-metric-card__bar-fill" style={{ width: matchPct + "%", background: matchColour }}/>
           </div>
         </div>
 
-        <div className="gd-hero__metric-sep" />
-
-        <div className="gd-hero__metric" style={{ "--m-colour": diffColour }}>
-          <span className="gd-hero__metric-icon">
-            <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
-              <path d="M10 3L3 17h14L10 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M10 10v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="10" cy="14.5" r="0.5" fill="currentColor"/>
-            </svg>
-          </span>
-          <div>
-            <span className="gd-hero__metric-label">Difficulty</span>
-            <span className="gd-hero__metric-val" style={{ color: diffColour }}>
-              {transition_difficulty || "Medium"}
-            </span>
+        <div className="cgd-metric-card">
+          <span className="cgd-metric-card__label">Difficulty</span>
+          <span className="cgd-metric-card__val" style={{ color: diffColour }}>{hero.transition_difficulty || "Medium"}</span>
+          <div className="cgd-metric-card__bar">
+            <div className="cgd-metric-card__bar-fill" style={{
+              width: hero.transition_difficulty === "Hard" ? "85%" : hero.transition_difficulty === "Easy" ? "20%" : "52%",
+              background: diffColour,
+            }}/>
           </div>
         </div>
       </div>
@@ -191,405 +142,420 @@ function HeroSection({ data, fromTitle, toTitle }) {
 }
 
 // ============================================================================
-// Section 2 -- TRANSITION VERDICT
+// 2. Verdict card
 // ============================================================================
 
-function VerdictSection({ text }) {
-  if (!text) return null;
+function VerdictCard({ data }) {
+  if (!data) return null;
   return (
-    <Card id="gd-verdict">
-      <CardHeader tag="02" title="Transition Verdict" />
-      <div className="gd-verdict">
-        <div className="gd-verdict__bar" />
-        <p className="gd-verdict__text">{text}</p>
+    <Panel id="cgd-verdict" accent>
+      <SectionLabel n={1} text="Transition Verdict" />
+      <div className="cgd-verdict">
+        {data.headline && (
+          <p className="cgd-verdict__headline">{data.headline}</p>
+        )}
+        <div className="cgd-verdict__grid">
+          {data.is_realistic != null && (
+            <div className="cgd-verdict__cell">
+              <span className="cgd-verdict__cell-label">Realistic?</span>
+              <span className={"cgd-verdict__cell-val " + (data.is_realistic ? "cgd-verdict__cell-val--yes" : "cgd-verdict__cell-val--no")}>
+                {data.is_realistic ? "Yes, with work" : "Not yet"}
+              </span>
+            </div>
+          )}
+          {data.biggest_blocker && (
+            <div className="cgd-verdict__cell cgd-verdict__cell--blocker">
+              <span className="cgd-verdict__cell-label">Biggest blocker</span>
+              <p className="cgd-verdict__cell-text">{data.biggest_blocker}</p>
+            </div>
+          )}
+          {data.biggest_advantage && (
+            <div className="cgd-verdict__cell cgd-verdict__cell--advantage">
+              <span className="cgd-verdict__cell-label">Biggest advantage</span>
+              <p className="cgd-verdict__cell-text">{data.biggest_advantage}</p>
+            </div>
+          )}
+        </div>
+        {data.summary && (
+          <p className="cgd-verdict__summary">{data.summary}</p>
+        )}
       </div>
-    </Card>
+    </Panel>
   );
 }
 
 // ============================================================================
-// Section 3 -- GAP BREAKDOWN
+// 3. Why this gap exists -- 3 cards
 // ============================================================================
 
-function GapBreakdown({ data }) {
+function GapOrigins({ data }) {
   if (!data) return null;
+
   const cols = [
-    { key: "skill_gaps",      label: "A. Skill Gaps",      colour: "#ef4444", bg: "rgba(239,68,68,0.06)",   border: "rgba(239,68,68,0.18)"  },
-    { key: "experience_gaps", label: "B. Experience Gaps", colour: "#f59e0b", bg: "rgba(245,158,11,0.06)",  border: "rgba(245,158,11,0.18)" },
-    { key: "market_gaps",     label: "C. Market Gaps",     colour: "#6366f1", bg: "rgba(99,102,241,0.06)",  border: "rgba(99,102,241,0.18)" },
+    {
+      key: "skill",
+      label: "Skill Gap",
+      icon: "S",
+      colour: "#ef4444",
+      bg: "rgba(239,68,68,0.06)",
+      border: "rgba(239,68,68,0.2)",
+      item: data.skill_gap,
+    },
+    {
+      key: "experience",
+      label: "Experience Gap",
+      icon: "E",
+      colour: "#f59e0b",
+      bg: "rgba(245,158,11,0.06)",
+      border: "rgba(245,158,11,0.2)",
+      item: data.experience_gap,
+    },
+    {
+      key: "market",
+      label: "Market Gap",
+      icon: "M",
+      colour: "#6366f1",
+      bg: "rgba(99,102,241,0.06)",
+      border: "rgba(99,102,241,0.2)",
+      item: data.market_gap,
+    },
   ];
 
   return (
-    <Card id="gd-breakdown">
-      <CardHeader tag="03" title="Gap Breakdown" subtitle="The three categories of gap driving this transition's difficulty." />
-      <div className="gd-breakdown-grid">
-        {cols.map(({ key, label, colour, bg, border }) => (
-          <div key={key} className="gd-breakdown-col" style={{ "--col-colour": colour, "--col-bg": bg, "--col-border": border }}>
-            <div className="gd-breakdown-col__head">
-              <span className="gd-breakdown-col__dot" style={{ background: colour }} />
-              <span className="gd-breakdown-col__label">{label}</span>
-            </div>
-            {(data[key] || []).map((g, i) => (
-              <div key={i} className="gd-breakdown-item">
-                <div className="gd-breakdown-item__top">
-                  <span className="gd-breakdown-item__name">{g.title || g.gap}</span>
-                  {g.severity && <Badge text={g.severity} />}
+    <Panel id="cgd-origins">
+      <SectionLabel n={2} text="Why This Gap Exists" />
+      <div className="cgd-origins-grid">
+        {cols.map(({ key, label, icon, colour, bg, border, item }) =>
+          item ? (
+            <div key={key} className="cgd-origin-card" style={{ "--oc": colour, "--ob": bg, "--obr": border }}>
+              <div className="cgd-origin-card__head">
+                <span className="cgd-origin-card__icon">{icon}</span>
+                <span className="cgd-origin-card__label">{label}</span>
+                {item.severity && <Badge v={item.severity} />}
+              </div>
+              {item.explanation && <p className="cgd-origin-card__body">{item.explanation}</p>}
+              {item.why_it_matters && (
+                <div className="cgd-origin-card__why">
+                  <span className="cgd-origin-card__why-label">Why it matters</span>
+                  <p className="cgd-origin-card__why-text">{item.why_it_matters}</p>
                 </div>
-                {(g.explanation || g.why_it_matters) && (
-                  <p className="gd-breakdown-item__body">
-                    {g.explanation}{g.explanation && g.why_it_matters ? " " : ""}{g.why_it_matters}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
+              )}
+            </div>
+          ) : null
+        )}
       </div>
-    </Card>
+    </Panel>
   );
 }
 
 // ============================================================================
-// Section 4 -- SKILL GAP DEEP DIVE
+// 4. Gap scoreboard -- 4 visual bars
 // ============================================================================
 
-function SkillDeepDive({ skills, toTitle }) {
-  if (!skills?.length) return null;
-  return (
-    <Card id="gd-skills">
-      <CardHeader
-        tag="04"
-        title="Skill Gap Deep Dive"
-        subtitle={"Critical skills missing for " + toTitle + " -- current exposure vs what the role requires."}
-      />
-      <div className="gd-skill-grid">
-        {skills.map((s, i) => (
-          <div key={i} className="gd-skill-card">
-            <div className="gd-skill-card__name">{s.skill}</div>
-            <div className="gd-skill-card__levels">
-              <div className="gd-skill-card__level-block">
-                <span className="gd-skill-card__level-label">Now</span>
-                <LevelChip text={s.current || "Low"} />
-              </div>
-              <svg className="gd-skill-card__arrow" viewBox="0 0 24 24" fill="none" width="16" height="16">
-                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <div className="gd-skill-card__level-block">
-                <span className="gd-skill-card__level-label">Needed</span>
-                <LevelChip text={s.required || "High"} />
-              </div>
-            </div>
-            {s.impact && (
-              <div className="gd-skill-card__impact">
-                <span className="gd-skill-card__impact-label">Impact</span>
-                <p className="gd-skill-card__impact-text">{s.impact}</p>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-// ============================================================================
-// Section 5 -- EXPERIENCE GAP ANALYSIS
-// ============================================================================
-
-function ExperienceGaps({ gaps, toTitle }) {
-  if (!gaps?.length) return null;
-  return (
-    <Card id="gd-experience">
-      <CardHeader
-        tag="05"
-        title="Experience Gap Analysis"
-        subtitle={"Real-world exposure that " + toTitle + " hiring managers expect -- currently missing from this profile."}
-      />
-      <div className="gd-exp-list">
-        {gaps.map((e, i) => (
-          <div key={i} className="gd-exp-item">
-            <div className="gd-exp-item__left">
-              <span className="gd-exp-item__num">{i + 1}</span>
-            </div>
-            <div className="gd-exp-item__body">
-              <div className="gd-exp-item__top">
-                <span className="gd-exp-item__name">{e.gap || e.title}</span>
-                {e.severity && <Badge text={e.severity} />}
-              </div>
-              {e.explanation && <p className="gd-exp-item__text">{e.explanation}</p>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-// ============================================================================
-// Section 6 -- MARKET PERCEPTION GAP
-// ============================================================================
-
-function MarketPerceptionGap({ data }) {
+function GapScoreboard({ data }) {
   if (!data) return null;
+
   const rows = [
-    { label: "Recruiter view",       text: data.recruiter_view,      accent: "#6366f1" },
-    { label: "Hiring manager view",  text: data.hiring_manager_view, accent: "#f59e0b" },
-    { label: "Positioning gap",      text: data.positioning_gap,     accent: "#ef4444" },
-  ].filter(r => r.text);
-
-  return (
-    <Card id="gd-market">
-      <CardHeader
-        tag="06"
-        title="Market Perception Gap"
-        subtitle="How recruiters and hiring managers currently read this profile."
-      />
-      <div className="gd-market-rows">
-        {rows.map((r, i) => (
-          <div key={i} className="gd-market-row" style={{ "--row-accent": r.accent }}>
-            <span className="gd-market-row__label">{r.label}</span>
-            <p className="gd-market-row__text">{r.text}</p>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-// ============================================================================
-// Section 7 -- GAP SEVERITY VISUAL
-// ============================================================================
-
-function SeverityVisual({ data }) {
-  if (!data) return null;
-  const bars = [
-    { label: "Skills Gap",     pct: data.skills_pct     || 0, colour: "#ef4444" },
-    { label: "Experience Gap", pct: data.experience_pct || 0, colour: "#f59e0b" },
-    { label: "Market Gap",     pct: data.market_pct     || 0, colour: "#6366f1" },
+    { label: "Skills Readiness",     pct: data.skills_readiness     ?? 0 },
+    { label: "Experience Readiness", pct: data.experience_readiness ?? 0 },
+    { label: "Market Readiness",     pct: data.market_readiness     ?? 0 },
+    { label: "Transition Risk",      pct: data.transition_risk      ?? 0, invert: true },
   ];
 
   return (
-    <Card id="gd-severity-map" variant="dashboard">
-      <CardHeader tag="07" title="Gap Severity Map" subtitle="Where the transition gap is concentrated." />
-      <div className="gd-sev-bars">
-        {bars.map((b, i) => (
-          <div key={i} className="gd-sev-bar-row">
-            <span className="gd-sev-bar-row__label">{b.label}</span>
-            <div className="gd-sev-bar-row__track">
-              <div
-                className="gd-sev-bar-row__fill"
-                style={{ width: b.pct + "%", background: b.colour }}
-              />
-            </div>
-            <span className="gd-sev-bar-row__pct" style={{ color: b.colour }}>{b.pct}%</span>
-          </div>
-        ))}
-      </div>
-      {data.overall_note && (
-        <p className="gd-sev-note">{data.overall_note}</p>
-      )}
-    </Card>
-  );
-}
-
-// ============================================================================
-// Section 8 -- REALITY CHECK
-// ============================================================================
-
-function RealityCheck({ data }) {
-  if (!data) return null;
-  return (
-    <Card id="gd-reality">
-      <CardHeader tag="08" title="Reality Check" subtitle="Where you actually stand -- and what you can realistically target right now." />
-      <div className="gd-reality-blocks">
-        {data.why_delayed && (
-          <div className="gd-reality-block gd-reality-block--neutral">
-            <span className="gd-reality-block__label">Why this transition takes time</span>
-            <p className="gd-reality-block__text">{data.why_delayed}</p>
-          </div>
-        )}
-        {data.where_youll_struggle && (
-          <div className="gd-reality-block gd-reality-block--warning">
-            <span className="gd-reality-block__label">Where you will struggle</span>
-            <p className="gd-reality-block__text">{data.where_youll_struggle}</p>
-          </div>
-        )}
-        {data.fits_now && (
-          <div className="gd-reality-block gd-reality-block--fit">
-            <span className="gd-reality-block__label">Roles you can realistically target today</span>
-            <p className="gd-reality-block__text gd-reality-block__text--role">{data.fits_now}</p>
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-}
-
-// ============================================================================
-// Section 9 -- FIX PLAN
-// ============================================================================
-
-const FIX_URGENCY = [
-  { tag: "#1 MUST DO",    colour: "#ef4444", bg: "rgba(239,68,68,0.07)",   border: "rgba(239,68,68,0.2)"  },
-  { tag: "#2 NEXT STEP",  colour: "#f59e0b", bg: "rgba(245,158,11,0.07)",  border: "rgba(245,158,11,0.2)" },
-  { tag: "#3 SUPPORTING", colour: "#6366f1", bg: "rgba(99,102,241,0.07)",  border: "rgba(99,102,241,0.2)" },
-  { tag: "#4 SUPPORTING", colour: "#64748b", bg: "rgba(100,116,139,0.07)", border: "rgba(100,116,139,0.2)" },
-  { tag: "#5 SUPPORTING", colour: "#64748b", bg: "rgba(100,116,139,0.07)", border: "rgba(100,116,139,0.2)" },
-];
-
-function FixPlan({ actions }) {
-  if (!actions?.length) return null;
-  return (
-    <Card id="gd-fix-plan">
-      <CardHeader
-        tag="09"
-        title="Fix Plan"
-        subtitle="Execute in this exact order. Do not move to #2 until #1 is done."
-      />
-      <div className="gd-fix-list">
-        {actions.map((a, i) => {
-          const u = FIX_URGENCY[i] || FIX_URGENCY[4];
+    <Panel id="cgd-scoreboard">
+      <SectionLabel n={3} text="Gap Scoreboard" />
+      <div className="cgd-scoreboard">
+        {rows.map((r, i) => {
+          const colour = r.invert
+            ? (r.pct >= 65 ? "#ef4444" : r.pct >= 40 ? "#f59e0b" : "#10b981")
+            : (r.pct >= 65 ? "#10b981" : r.pct >= 40 ? "#f59e0b" : "#ef4444");
           return (
-            <div
-              key={i}
-              className="gd-fix-card"
-              style={{ "--u-colour": u.colour, "--u-bg": u.bg, "--u-border": u.border }}
-            >
-              <div className="gd-fix-card__strip">
-                <span className="gd-fix-card__tag">{u.tag}</span>
-                {a.time_estimate && (
-                  <span className="gd-fix-card__time">{a.time_estimate}</span>
-                )}
+            <div key={i} className="cgd-scoreboard-row">
+              <div className="cgd-scoreboard-row__meta">
+                <span className="cgd-scoreboard-row__label">{r.label}</span>
+                <span className="cgd-scoreboard-row__pct" style={{ color: colour }}>{r.pct}%</span>
               </div>
-              <div className="gd-fix-card__body">
-                <p className="gd-fix-card__action">{a.action || a.what_to_do}</p>
-                {a.why_it_matters && (
-                  <p className="gd-fix-card__why">{"-> " + a.why_it_matters}</p>
+              <ScoreBar pct={r.pct} colour={colour} />
+              {data[r.label.toLowerCase().replace(/ /g,"_") + "_note"] && (
+                <p className="cgd-scoreboard-row__note">
+                  {data[r.label.toLowerCase().replace(/ /g,"_") + "_note"]}
+                </p>
+              )}
+            </div>
+          );
+        })}
+        {data.overall_note && <p className="cgd-scoreboard__note">{data.overall_note}</p>}
+      </div>
+    </Panel>
+  );
+}
+
+// ============================================================================
+// 5. Missing skills -- prioritised
+// ============================================================================
+
+function MissingSkills({ skills, toTitle }) {
+  if (!skills?.length) return null;
+  const SEV_COLOUR = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981", Critical: "#ef4444", Significant: "#f59e0b", Minor: "#10b981" };
+
+  return (
+    <Panel id="cgd-skills">
+      <SectionLabel n={4} text={"Missing Skills -- " + toTitle} />
+      <div className="cgd-skills-list">
+        {skills.map((s, i) => {
+          const c = SEV_COLOUR[s.severity || s.impact] || "#f59e0b";
+          return (
+            <div key={i} className="cgd-skill-row">
+              <div className="cgd-skill-row__rank" style={{ color: c, borderColor: c + "30", background: c + "10" }}>
+                {i + 1}
+              </div>
+              <div className="cgd-skill-row__body">
+                <div className="cgd-skill-row__top">
+                  <span className="cgd-skill-row__name">{s.skill}</span>
+                  <div className="cgd-skill-row__pills">
+                    {(s.severity || s.impact) && <Badge v={s.severity || s.impact} />}
+                    {s.time_estimate && (
+                      <span className="cgd-skill-row__time">{s.time_estimate}</span>
+                    )}
+                  </div>
+                </div>
+                {s.why_it_matters && <p className="cgd-skill-row__why">{s.why_it_matters}</p>}
+                {s.how_to_close && (
+                  <p className="cgd-skill-row__how">
+                    <span className="cgd-skill-row__how-label">How to close: </span>
+                    {s.how_to_close}
+                  </p>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-    </Card>
+    </Panel>
   );
 }
 
 // ============================================================================
-// Section 10 -- RISK IF IGNORED
+// 6. Experience gaps
 // ============================================================================
 
-function RiskIfIgnored({ items, toTitle }) {
-  const list = (items && items.length > 0)
-    ? items
-    : [
-        "Transition to " + (toTitle || "target role") + " becomes increasingly unlikely as competitors with direct experience enter the market.",
-        "Skill gap widens relative to market benchmarks as the role evolves.",
-        "Recruiters re-categorise your profile into a narrower, lower-demand niche.",
-        "Transition difficulty increases significantly after 18 months of inaction.",
-      ];
+function ExperienceGaps({ gaps, toTitle }) {
+  if (!gaps?.length) return null;
+  return (
+    <Panel id="cgd-experience">
+      <SectionLabel n={5} text="Experience Gaps" />
+      <p className="cgd-sec-intro">
+        {"Real-world exposure that " + toTitle + " hiring managers expect -- currently absent from this profile."}
+      </p>
+      <div className="cgd-exp-list">
+        {gaps.map((g, i) => (
+          <div key={i} className="cgd-exp-item">
+            <div className="cgd-exp-item__header">
+              <div className="cgd-exp-item__title-row">
+                <span className="cgd-exp-item__bullet">--</span>
+                <span className="cgd-exp-item__name">{g.gap || g.title}</span>
+              </div>
+              {g.severity && <Badge v={g.severity} />}
+            </div>
+            {g.explanation && <p className="cgd-exp-item__text">{g.explanation}</p>}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+// ============================================================================
+// 7. Market perception
+// ============================================================================
+
+function MarketPerception({ data }) {
+  if (!data) return null;
+  const rows = [
+    { label: "How recruiters see you",       text: data.recruiter_view,      accent: "#6366f1" },
+    { label: "What hiring managers think",   text: data.hiring_manager_view, accent: "#f59e0b" },
+    { label: "The positioning gap",          text: data.positioning_gap,     accent: "#ef4444" },
+  ].filter(r => r.text);
+  if (!rows.length) return null;
 
   return (
-    <Card id="gd-risk" variant="warning">
-      <CardHeader
-        tag="10"
-        title="Risk If Ignored"
-        subtitle="What happens if you do not address these gaps."
-      />
-      <div className="gd-risk-body">
-        <div className="gd-risk-icon-row">
-          <span className="gd-risk-icon">!</span>
-          <p className="gd-risk-intro">
-            Gaps compound over time. Each month without action increases the cost of transition.
+    <Panel id="cgd-market">
+      <SectionLabel n={6} text="Market Perception" />
+      <p className="cgd-sec-intro">How the market reads this profile today -- before any changes.</p>
+      <div className="cgd-market-rows">
+        {rows.map((r, i) => (
+          <div key={i} className="cgd-market-row" style={{ "--ra": r.accent }}>
+            <span className="cgd-market-row__label">{r.label}</span>
+            <p className="cgd-market-row__text">{r.text}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+// ============================================================================
+// 8. Where you fit right now
+// ============================================================================
+
+function FitsNow({ data, fromTitle, toTitle }) {
+  if (!data) return null;
+  return (
+    <Panel id="cgd-fits-now">
+      <SectionLabel n={7} text="Where You Fit Right Now" />
+      <div className="cgd-fits">
+        {data.current_fit && (
+          <div className="cgd-fits__block cgd-fits__block--current">
+            <span className="cgd-fits__block-label">Competitive today</span>
+            <p className="cgd-fits__block-text">{data.current_fit}</p>
+          </div>
+        )}
+        {data.stretch_fit && (
+          <div className="cgd-fits__block cgd-fits__block--stretch">
+            <span className="cgd-fits__block-label">Stretch -- possible with preparation</span>
+            <p className="cgd-fits__block-text">{data.stretch_fit}</p>
+          </div>
+        )}
+        {data.not_yet && (
+          <div className="cgd-fits__block cgd-fits__block--not-yet">
+            <span className="cgd-fits__block-label">Not yet -- requires significant gap closure</span>
+            <p className="cgd-fits__block-text">{data.not_yet}</p>
+          </div>
+        )}
+        {data.bridge_roles?.length > 0 && (
+          <div className="cgd-fits__bridges">
+            <span className="cgd-fits__bridges-label">Bridge roles to build towards {toTitle}</span>
+            <div className="cgd-fits__bridges-chips">
+              {data.bridge_roles.map((r, i) => (
+                <span key={i} className="cgd-fits__bridge-chip">{r}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+// ============================================================================
+// 9. Fix order -- top 3 actions
+// ============================================================================
+
+const FIX_CONFIG = [
+  { tag: "1  MUST DO FIRST",  colour: "#ef4444", bg: "rgba(239,68,68,0.07)",  border: "rgba(239,68,68,0.2)"  },
+  { tag: "2  DO NEXT",        colour: "#f59e0b", bg: "rgba(245,158,11,0.07)", border: "rgba(245,158,11,0.2)" },
+  { tag: "3  SUPPORTING",     colour: "#6366f1", bg: "rgba(99,102,241,0.07)", border: "rgba(99,102,241,0.2)" },
+];
+
+function FixPlan({ actions }) {
+  if (!actions?.length) return null;
+  return (
+    <Panel id="cgd-fix-plan" accent>
+      <SectionLabel n={8} text="Fix Order -- Action Plan" />
+      <p className="cgd-sec-intro">Execute in this exact order. Completing #1 unlocks the value of #2 and #3.</p>
+      <div className="cgd-fix-list">
+        {actions.slice(0, 3).map((a, i) => {
+          const cfg = FIX_CONFIG[i] || FIX_CONFIG[2];
+          return (
+            <div
+              key={i}
+              className="cgd-fix-card"
+              style={{ "--fc": cfg.colour, "--fb": cfg.bg, "--fbr": cfg.border }}
+            >
+              <div className="cgd-fix-card__strip">
+                <span className="cgd-fix-card__tag">{cfg.tag}</span>
+                {a.time_estimate && (
+                  <span className="cgd-fix-card__time">{a.time_estimate}</span>
+                )}
+              </div>
+              <div className="cgd-fix-card__body">
+                <p className="cgd-fix-card__action">{a.action || a.what_to_do}</p>
+                {a.why_first && (
+                  <p className="cgd-fix-card__why">
+                    <span className="cgd-fix-card__why-label">Why first: </span>
+                    {a.why_first}
+                  </p>
+                )}
+                {a.expected_outcome && (
+                  <p className="cgd-fix-card__outcome">
+                    <span className="cgd-fix-card__outcome-label">Outcome: </span>
+                    {a.expected_outcome}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+// ============================================================================
+// 10. Risk if ignored
+// ============================================================================
+
+function RiskIgnored({ items, toTitle }) {
+  const fallback = [
+    "Transition to " + (toTitle || "the target role") + " becomes increasingly difficult as direct-experience candidates accumulate in the market.",
+    "The skill gap widens over time as the target role evolves -- making the jump harder, not easier.",
+    "Recruiters begin to permanently categorise this profile as a non-product candidate.",
+    "The salary gap between current and target role compounds with each year of inaction.",
+  ];
+  const list = items?.length ? items : fallback;
+
+  return (
+    <Panel id="cgd-risk" warning>
+      <SectionLabel n={9} text="Risk If Ignored" />
+      <div className="cgd-risk">
+        <div className="cgd-risk__header">
+          <div className="cgd-risk__icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
+              <path d="M12 2L2 20h20L12 2Z" stroke="#ef4444" strokeWidth="1.5" strokeLinejoin="round"/>
+              <path d="M12 9v5" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="12" cy="16.5" r="0.75" fill="#ef4444"/>
+            </svg>
+          </div>
+          <p className="cgd-risk__intro">
+            Career gaps compound. Every month without action increases the cost of this transition.
           </p>
         </div>
-        <div className="gd-risk-items">
+        <div className="cgd-risk__items">
           {list.map((item, i) => (
-            <div key={i} className="gd-risk-item">
-              <span className="gd-risk-item__dot" />
-              <p className="gd-risk-item__text">{item}</p>
+            <div key={i} className="cgd-risk__item">
+              <span className="cgd-risk__item-dot" />
+              <p className="cgd-risk__item-text">{item}</p>
             </div>
           ))}
         </div>
-        <div className="gd-risk-footer">
-          Start with <strong>Fix #1</strong> above. Even one focused week changes the trajectory.
+        <div className="cgd-risk__footer">
+          The best time to start was 6 months ago. The second best time is now. Start with <strong>Fix #1</strong> above.
         </div>
       </div>
-    </Card>
+    </Panel>
   );
 }
 
 // ============================================================================
-// Full report composition
+// Report composer
 // ============================================================================
 
 function GapReport({ data, fromTitle, toTitle }) {
   if (!data) return null;
 
-  const {
-    hero,
-    transition_verdict,
-    gap_breakdown,
-    skill_gap_deep_dive  = [],
-    experience_gap       = [],
-    market_gap,
-    gap_severity_map,
-    reality_check,
-    fix_priority_plan    = [],
-    if_ignored           = [],
-  } = data;
-
   return (
-    <div className="gd-report">
-
-      {/* 1. Hero */}
-      <HeroSection data={hero} fromTitle={fromTitle} toTitle={toTitle} />
-
-      <Divider />
-
-      {/* 2. Verdict */}
-      <VerdictSection text={transition_verdict} />
-
-      <Divider />
-
-      {/* 3. Gap Breakdown */}
-      <GapBreakdown data={gap_breakdown} />
-
-      <Divider />
-
-      {/* 4. Skill Deep Dive */}
-      <SkillDeepDive skills={skill_gap_deep_dive} toTitle={toTitle} />
-
-      <Divider />
-
-      {/* 5. Experience Gaps */}
-      <ExperienceGaps gaps={experience_gap} toTitle={toTitle} />
-
-      <Divider />
-
-      {/* 6. Market Perception */}
-      <MarketPerceptionGap data={market_gap} />
-
-      <Divider />
-
-      {/* 7. Severity Visual */}
-      <SeverityVisual data={gap_severity_map} />
-
-      <Divider />
-
-      {/* 8. Reality Check */}
-      <RealityCheck data={reality_check} />
-
-      <Divider />
-
-      {/* 9. Fix Plan */}
-      <FixPlan actions={fix_priority_plan} />
-
-      <Divider />
-
-      {/* 10. Risk If Ignored */}
-      <RiskIfIgnored items={if_ignored} toTitle={toTitle} />
-
+    <div className="cgd-report">
+      <ResultsHero    hero={data.hero}                fromTitle={fromTitle} toTitle={toTitle} />
+      <VerdictCard    data={data.verdict} />
+      <GapOrigins     data={data.gap_origins} />
+      <GapScoreboard  data={data.gap_scoreboard} />
+      <MissingSkills  skills={data.missing_skills}    toTitle={toTitle} />
+      <ExperienceGaps gaps={data.experience_gaps}     toTitle={toTitle} />
+      <MarketPerception data={data.market_perception} />
+      <FitsNow        data={data.fits_now}            fromTitle={fromTitle} toTitle={toTitle} />
+      <FixPlan        actions={data.fix_plan} />
+      <RiskIgnored    items={data.risk_if_ignored}    toTitle={toTitle} />
     </div>
   );
 }
@@ -598,60 +564,55 @@ function GapReport({ data, fromTitle, toTitle }) {
 // Page
 // ============================================================================
 
-export default function GapExplainerPage() {
+export default function CareerGapExplainerPage() {
   const router  = useRouter();
   const autoRan = useRef(false);
   useEDGEXContext();
 
   const [fromRole, setFromRole] = useState(null);
   const [toRole,   setToRole]   = useState(null);
-  const [result,      setResult]      = useState(null);
-  const [loading,     setLoading]     = useState(false);
-  const [loadingStep, setLoadingStep] = useState(0);
-  const [errorInfo,   setErrorInfo]   = useState(null);
-  const stepTimer = useRef(null);
+  const [result,   setResult]   = useState(null);
+  const [loading,  setLoading]  = useState(false);
+  const [step,     setStep]     = useState(0);
+  const [err,      setErr]      = useState(null);
+  const timer = useRef(null);
 
   useEffect(() => {
     if (!router.isReady) return;
     const { from, to, current, target } = router.query;
-    const f = from || current;
-    const t = to   || target;
-    if (f) setFromRole({ slug: f, title: _slugToTitle(f) });
-    if (t) setToRole({   slug: t, title: _slugToTitle(t) });
+    if (from || current) setFromRole({ slug: from || current, title: slugToTitle(from || current) });
+    if (to   || target)  setToRole({   slug: to   || target,  title: slugToTitle(to   || target) });
   }, [router.isReady]);
 
   useEffect(() => {
     if (autoRan.current || !router.isReady || router.query.autorun !== "1" || !fromRole || !toRole) return;
     autoRan.current = true;
-    _submit();
+    run();
   }, [fromRole, toRole, router.isReady]);
 
   useEffect(() => {
     if (loading) {
-      setLoadingStep(0);
-      stepTimer.current = setInterval(() => setLoadingStep(s => (s + 1) % LOADING_STEPS.length), 3200);
+      setStep(0);
+      timer.current = setInterval(() => setStep(s => (s + 1) % STEPS.length), 3000);
     } else {
-      clearInterval(stepTimer.current);
+      clearInterval(timer.current);
     }
-    return () => clearInterval(stepTimer.current);
+    return () => clearInterval(timer.current);
   }, [loading]);
 
-  async function _submit() {
-    if (!fromRole || !toRole) {
-      setErrorInfo({ type: "error", message: "Please select both a current role and a target role." });
-      return;
-    }
-    setLoading(true); setErrorInfo(null); setResult(null);
+  async function run() {
+    if (!fromRole || !toRole) { setErr({ type: "error", message: "Select both roles to continue." }); return; }
+    setLoading(true); setErr(null); setResult(null);
     try {
-      const params = new URLSearchParams({ action: "explain", from: fromRole.slug, to: toRole.slug });
-      const r = await fetch(`${API}/api/tools/career-gap-explainer?${params}`, {
+      const qs = new URLSearchParams({ action: "explain", from: fromRole.slug, to: toRole.slug });
+      const res = await fetch(`${API}/api/tools/career-gap-explainer?${qs}`, {
         headers: { "X-HireEdge-Plan": getPlan() },
       });
-      const json = await r.json();
-      if (!json.ok && !json.data) { setErrorInfo(_friendlyError(json)); return; }
+      const json = await res.json();
+      if (!json.ok && !json.data) { setErr(friendlyError(json)); return; }
       setResult(json.data || json);
     } catch {
-      setErrorInfo({ type: "error", message: "Network error -- please try again." });
+      setErr({ type: "error", message: "Network error -- please try again." });
     } finally {
       setLoading(false);
     }
@@ -662,20 +623,23 @@ export default function GapExplainerPage() {
       <Head><title>Career Gap Diagnostic -- HireEdge</title></Head>
       <div className="tool-page">
 
-        {/* Header */}
-        <div className="gd-page-header">
-          <div className="gd-page-header__badge">Gap Explainer</div>
-          <h1 className="gd-page-header__title">Career Gap Diagnostic</h1>
-          <p className="gd-page-header__sub">
-            A precise breakdown of why your target transition is easy or difficult -- and exactly what to fix first.
+        {/* -- Page header -------------------------------------------- */}
+        <div className="cgd-header">
+          <span className="cgd-header__badge">Gap Diagnostic</span>
+          <h1 className="cgd-header__title">Career Gap Explainer</h1>
+          <p className="cgd-header__sub">
+            Understand exactly why a transition is easy, medium, or difficult --
+            what is missing, what matters most, and what to fix first.
           </p>
         </div>
 
-        {/* Form */}
-        <div className="tool-form gd-form">
+        {/* -- Input form --------------------------------------------- */}
+        <div className="tool-form cgd-form">
           <div className="tool-form__row tool-form__row--2">
             <div className="tool-form__field">
-              <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
+              <label className="tool-form__label">
+                Current Role <span className="tool-form__req">*</span>
+              </label>
               <RoleSearch
                 placeholder="Where you are now..."
                 onSelect={setFromRole}
@@ -684,7 +648,9 @@ export default function GapExplainerPage() {
               {fromRole && <span className="tool-form__selected">+ {fromRole.title}</span>}
             </div>
             <div className="tool-form__field">
-              <label className="tool-form__label">Target Role <span className="tool-form__req">*</span></label>
+              <label className="tool-form__label">
+                Target Role <span className="tool-form__req">*</span>
+              </label>
               <RoleSearch
                 placeholder="Where you want to go..."
                 onSelect={setToRole}
@@ -694,7 +660,7 @@ export default function GapExplainerPage() {
             </div>
           </div>
 
-          {errorInfo?.type === "upgrade" && (
+          {err?.type === "upgrade" && (
             <div className="tool-upgrade-prompt">
               <span className="tool-upgrade-prompt__icon">+</span>
               <div>
@@ -704,53 +670,57 @@ export default function GapExplainerPage() {
               <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade</Link>
             </div>
           )}
-          {errorInfo?.type === "limit" && (
+          {err?.type === "limit" && (
             <div className="tool-upgrade-prompt">
               <span className="tool-upgrade-prompt__icon">-</span>
-              <div><p className="tool-upgrade-prompt__title">{errorInfo.message}</p></div>
+              <div><p className="tool-upgrade-prompt__title">{err.message}</p></div>
               <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade</Link>
             </div>
           )}
-          {errorInfo?.type === "error" && (
-            <div className="tool-form__error">{errorInfo.message}</div>
+          {err?.type === "error" && (
+            <div className="tool-form__error">{err.message}</div>
           )}
 
           <button
-            className="tool-form__submit gd-submit"
-            onClick={_submit}
+            className="tool-form__submit cgd-submit"
+            onClick={run}
             disabled={loading || !fromRole || !toRole}
           >
-            {loading ? LOADING_STEPS[loadingStep] : "Diagnose the Gap"}
+            {loading ? STEPS[step] : "Diagnose the Gap"}
           </button>
           {!loading && (
-            <p className="li-form-timing">Takes ~15 seconds -- Full 10-section diagnostic report</p>
+            <p className="li-form-timing">Takes ~15 seconds -- Full 10-section diagnostic</p>
           )}
         </div>
 
-        {/* Loading */}
+        {/* -- Loading ------------------------------------------------ */}
         {loading && (
           <div className="tool-loading">
             <div className="tool-loading__spinner" />
             <div className="li-loading-steps">
-              {LOADING_STEPS.map((step, i) => (
+              {STEPS.map((s, i) => (
                 <span
                   key={i}
                   className={
                     "li-loading-step" +
-                    (i === loadingStep ? " li-loading-step--active" : "") +
-                    (i < loadingStep  ? " li-loading-step--done"   : "")
+                    (i === step ? " li-loading-step--active" : "") +
+                    (i < step   ? " li-loading-step--done"   : "")
                   }
                 >
-                  {i < loadingStep ? "v" : i === loadingStep ? ">" : "."} {step}
+                  {i < step ? "v" : i === step ? ">" : "."} {s}
                 </span>
               ))}
             </div>
           </div>
         )}
 
-        {/* Result */}
+        {/* -- Result ------------------------------------------------- */}
         {result && (
-          <GapReport data={result} fromTitle={fromRole?.title || ""} toTitle={toRole?.title || ""} />
+          <GapReport
+            data={result}
+            fromTitle={fromRole?.title || ""}
+            toTitle={toRole?.title || ""}
+          />
         )}
 
       </div>
