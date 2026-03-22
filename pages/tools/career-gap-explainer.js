@@ -112,8 +112,9 @@ function RoleBasedNote({ fromTitle, toTitle }) {
         <path d="M10 9v5M10 6.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
       <p className="cgd-trust-note__text">
-        This is a <strong>role-based benchmark analysis</strong> for the {fromTitle} to {toTitle} transition.
-        Add your CV or profile summary to unlock deeper, profile-specific diagnostics.
+        This is a <strong>role-based benchmark analysis</strong> built from career transition patterns across 1,000+ roles.
+        It shows what the {fromTitle} to {toTitle} transition typically looks like across the market.
+        Add your CV to unlock profile-specific insights tailored to your background.
       </p>
     </div>
   );
@@ -341,7 +342,7 @@ function ExperienceGaps({ gaps, toTitle }) {
     <Panel id="cgd-experience">
       <SectionLabel n={5} text="Experience Gaps" />
       <p className="cgd-sec-intro">
-        {"Real-world exposure that " + toTitle + " hiring managers expect -- currently absent from this profile."}
+        {"Real-world experience that " + toTitle + " hiring managers typically expect from candidates -- and that " + fromTitle + " roles do not usually provide."}
       </p>
       <div className="cgd-exp-list">
         {gaps.map((g, i) => (
@@ -368,15 +369,15 @@ function ExperienceGaps({ gaps, toTitle }) {
 function MarketPerception({ data }) {
   if (!data) return null;
   const rows = [
-    { label: "How recruiters see you",     text: data.recruiter_view,      accent: "#6366f1" },
-    { label: "What hiring managers think", text: data.hiring_manager_view, accent: "#f59e0b" },
-    { label: "The positioning gap",        text: data.positioning_gap,     accent: "#ef4444" },
+    { label: "How recruiters typically read this transition", text: data.recruiter_view,      accent: "#6366f1" },
+    { label: "What hiring managers often look for",          text: data.hiring_manager_view, accent: "#f59e0b" },
+    { label: "The typical positioning gap",                  text: data.positioning_gap,     accent: "#ef4444" },
   ].filter(r => r.text);
   if (!rows.length) return null;
   return (
     <Panel id="cgd-market">
       <SectionLabel n={6} text="Market Perception" />
-      <p className="cgd-sec-intro">How the market reads this profile today -- before any changes.</p>
+      <p className="cgd-sec-intro">Based on hiring patterns for this transition -- how the market typically reads this profile category.</p>
       <div className="cgd-market-rows">
         {rows.map((r, i) => (
           <div key={i} className="cgd-market-row" style={{ "--ra": r.accent }}>
@@ -447,7 +448,7 @@ function FixPlan({ actions }) {
   return (
     <Panel id="cgd-fix-plan" accent>
       <SectionLabel n={8} text="Fix Order -- Action Plan" />
-      <p className="cgd-sec-intro">Execute in this exact order. Completing #1 unlocks the value of #2 and #3.</p>
+      <p className="cgd-sec-intro">Actions ordered by market impact. Each step closes a specific gap that hiring managers screen for in this transition.</p>
       <div className="cgd-fix-list">
         {actions.slice(0, 3).map((a, i) => {
           const cfg = FIX_CFG[i] || FIX_CFG[2];
@@ -461,12 +462,12 @@ function FixPlan({ actions }) {
                 <p className="cgd-fix-card__action">{a.action || a.what_to_do}</p>
                 {a.why_first && (
                   <p className="cgd-fix-card__why">
-                    <span className="cgd-fix-card__why-label">Why first: </span>{a.why_first}
+                    <span className="cgd-fix-card__why-label">Market impact: </span>{a.why_first}
                   </p>
                 )}
                 {a.expected_outcome && (
                   <p className="cgd-fix-card__outcome">
-                    <span className="cgd-fix-card__outcome-label">Outcome: </span>{a.expected_outcome}
+                    <span className="cgd-fix-card__outcome-label">What changes: </span>{a.expected_outcome}
                   </p>
                 )}
               </div>
@@ -513,7 +514,7 @@ function RiskIgnored({ items, toTitle }) {
           ))}
         </div>
         <div className="cgd-risk__footer">
-          The best time to start was 6 months ago. The second best time is now.
+          Based on hiring patterns, the window for this transition is most efficient now -- before the gap widens further. Start with Fix #1 above.
         </div>
       </div>
     </Panel>
@@ -528,24 +529,25 @@ function UpgradeCTA({ fromTitle, toTitle }) {
   return (
     <div className="cgd-upgrade-block" id="cgd-upgrade">
       <div className="cgd-upgrade-block__inner">
-        <span className="cgd-upgrade-block__badge">Personal Career Strategy</span>
+        <span className="cgd-upgrade-block__badge">Profile Intelligence</span>
 
         <h3 className="cgd-upgrade-block__title">
-          See how recruiters will actually evaluate your profile
+          See how recruiters will evaluate your specific profile
         </h3>
         <p className="cgd-upgrade-block__body">
-          You are currently seeing a role-based benchmark -- how the {fromTitle} to {toTitle} transition
-          looks across the market. Upgrade to unlock profile-specific intelligence: what in your background
-          will create recruiter hesitation, where you will struggle in interviews, and exactly what to do next.
+          The analysis above shows how the {fromTitle} to {toTitle} transition looks across the market.
+          Upgrade to unlock profile-specific intelligence -- including what in your background will
+          raise recruiter hesitation, where you are likely to struggle in interviews, and a
+          personalised transition plan built around your specific gaps.
         </p>
 
         <div className="cgd-upgrade-block__benefits">
           {[
-            { icon: "R", label: "CV rejection risks",             desc: "Specific profile flags that cause recruiter hesitation at screening" },
-            { icon: "I", label: "Interview weak points",          desc: "The exact questions and scenarios you are likely to struggle with" },
-            { icon: "T", label: "Personalised transition timeline",desc: "Realistic milestones based on this specific role change" },
-            { icon: "S", label: "Salary upside after gap closure", desc: "Expected salary movement once your gaps are addressed" },
-            { icon: "N", label: "Most strategic next tool",        desc: "Which HireEdge tool will move the needle most for this transition" },
+            { icon: "R", label: "CV rejection risks",              desc: "The specific signals in your CV that typically cause screening hesitation for this transition" },
+            { icon: "I", label: "Interview weak points",           desc: "The questions and scenarios candidates with this background most often struggle with" },
+            { icon: "T", label: "Personalised transition timeline", desc: "Realistic milestones for this specific role change, based on where candidates typically start" },
+            { icon: "S", label: "Salary upside after gap closure",  desc: "Expected salary movement in the UK market once the key gaps for this transition are addressed" },
+            { icon: "N", label: "Most strategic next tool",         desc: "Which HireEdge tool will have the highest impact on this specific transition right now" },
           ].map((b, i) => (
             <div key={i} className="cgd-upgrade-block__benefit">
               <span className="cgd-upgrade-block__benefit-icon">{b.icon}</span>
@@ -904,11 +906,10 @@ export default function CareerGapExplainerPage() {
           >
             {loading ? STEPS[step] : "Diagnose the Gap"}
           </button>
-          {!loading && (
-            <p className="li-form-timing">
-              Takes ~15 seconds -- Full diagnostic + personalised intelligence preview
-            </p>
-          )}
+          <p className="cgd-benchmark-note">
+            Role-based benchmark analysis built from career transition patterns across 1,000+ roles.
+            Add your CV to unlock profile-specific insights.
+          </p>
         </div>
 
         {/* Loading */}
