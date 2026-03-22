@@ -11640,3 +11640,13 @@
   font-size: var(--text-xs);
   color: var(--text-muted);
 }
+
+
+.cgd-benchmark-note {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.55;
+  text-align: center;
+  margin-top: var(--space-2);
+  padding: 0 var(--space-2);
+}
