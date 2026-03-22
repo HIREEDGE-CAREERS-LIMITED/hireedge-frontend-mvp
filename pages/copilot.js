@@ -1,16 +1,8 @@
 // ============================================================================
 // pages/copilot.js
-// HireEdge Frontend — Copilot (primary experience)
-// Renders the full Copilot chat UI using CopilotProvider + ChatWindow.
+// HireEdge -- /copilot alias (backwards compatibility)
+// The canonical experience is now at /edgex.
+// Keep this file so existing sidebar links + bookmarks still work.
 // ============================================================================
 
-import { CopilotProvider } from "../context/CopilotContext";
-import ChatWindow from "../components/copilot/ChatWindow";
-
-export default function CopilotPage() {
-  return (
-    <CopilotProvider>
-      <ChatWindow />
-    </CopilotProvider>
-  );
-}
+export { default } from "./edgex";
