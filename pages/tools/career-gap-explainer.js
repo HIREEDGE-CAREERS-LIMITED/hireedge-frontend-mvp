@@ -1,9 +1,17 @@
 // ============================================================================
 // pages/tools/career-gap-explainer.js
-// HireEdge -- Career Gap Diagnostic (v4, complete rebuild)
+// HireEdge -- Career Gap Diagnostic (v5)
 //
-// Premium 10-section career gap analysis tool.
-// Equal quality to Talent Profile / Career Roadmap.
+// Conversion funnel: free role-based diagnostic -> Career Pack upsell
+//
+// FREE (all users):
+//   Role-based hero metrics, verdict, why gap exists, scoreboard,
+//   missing skills, experience gaps, market perception, where you fit,
+//   fix plan, risk if ignored
+//
+// LOCKED (Career Pack / Pro / Elite):
+//   CV rejection risks, interview weak points, personalised timeline,
+//   salary upside, most strategic next tool
 //
 // API: GET /api/tools/career-gap-explainer?action=explain&from=SLUG&to=SLUG
 // ============================================================================
@@ -16,6 +24,7 @@ import RoleSearch from "../../components/intelligence/RoleSearch";
 import { useEDGEXContext } from "../../context/CopilotContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
+const PAID_PLANS = ["career_pack", "pro", "elite"];
 
 // ============================================================================
 // Utilities
@@ -24,6 +33,10 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.ver
 function getPlan() {
   if (typeof window === "undefined") return "free";
   return localStorage.getItem("hireedge_plan") || "free";
+}
+
+function isPaidPlan() {
+  return PAID_PLANS.includes(getPlan());
 }
 
 function slugToTitle(s) {
@@ -42,20 +55,20 @@ const STEPS = [
   "Identifying skill gaps...",
   "Analysing experience delta...",
   "Reading market signals...",
-  "Building fix plan...",
+  "Building personalised intelligence...",
 ];
 
 // ============================================================================
-// Primitive atoms
+// Atoms
 // ============================================================================
 
-function Badge({ v, size }) {
+function Badge({ v }) {
   const map = {
     High: "cgd-b cgd-b--red", Medium: "cgd-b cgd-b--amber", Low: "cgd-b cgd-b--green",
     Hard: "cgd-b cgd-b--red", Easy: "cgd-b cgd-b--green",
     Critical: "cgd-b cgd-b--red", Significant: "cgd-b cgd-b--amber", Minor: "cgd-b cgd-b--green",
   };
-  return <span className={(map[v] || "cgd-b cgd-b--amber") + (size === "lg" ? " cgd-b--lg" : "")}>{v}</span>;
+  return <span className={map[v] || "cgd-b cgd-b--amber"}>{v}</span>;
 }
 
 function ScoreBar({ pct, colour }) {
@@ -77,21 +90,44 @@ function SectionLabel({ n, text }) {
 }
 
 function Panel({ children, id, accent, warning }) {
-  let cls = "cgd-panel";
-  if (accent)  cls += " cgd-panel--accent";
-  if (warning) cls += " cgd-panel--warning";
-  return <div className={cls} id={id}>{children}</div>;
+  return (
+    <div
+      className={"cgd-panel" + (accent ? " cgd-panel--accent" : "") + (warning ? " cgd-panel--warning" : "")}
+      id={id}
+    >
+      {children}
+    </div>
+  );
 }
 
 // ============================================================================
-// 1. Results hero -- metrics strip (shown above the sections after submit)
+// Trust note -- shown when only role inputs provided (no CV)
+// ============================================================================
+
+function RoleBasedNote({ fromTitle, toTitle }) {
+  return (
+    <div className="cgd-trust-note">
+      <svg className="cgd-trust-note__icon" viewBox="0 0 20 20" fill="none" width="16" height="16">
+        <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M10 9v5M10 6.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+      <p className="cgd-trust-note__text">
+        This is a <strong>role-based benchmark analysis</strong> for the {fromTitle} to {toTitle} transition.
+        Add your CV or profile summary to unlock deeper, profile-specific diagnostics.
+      </p>
+    </div>
+  );
+}
+
+// ============================================================================
+// FREE: Results hero with 3 metric cards
 // ============================================================================
 
 function ResultsHero({ hero, fromTitle, toTitle }) {
   if (!hero) return null;
-  const sevColour  = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981" }[hero.gap_severity]  || "#f59e0b";
-  const diffColour = { Hard: "#ef4444", Medium: "#f59e0b", Easy: "#10b981" }[hero.transition_difficulty] || "#f59e0b";
-  const matchPct   = hero.skill_match_pct ?? 0;
+  const sevColour   = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981" }[hero.gap_severity]          || "#f59e0b";
+  const diffColour  = { Hard: "#ef4444", Medium: "#f59e0b", Easy: "#10b981" }[hero.transition_difficulty] || "#f59e0b";
+  const matchPct    = hero.skill_match_pct ?? 0;
   const matchColour = matchPct >= 65 ? "#10b981" : matchPct >= 40 ? "#f59e0b" : "#ef4444";
 
   return (
@@ -109,7 +145,9 @@ function ResultsHero({ hero, fromTitle, toTitle }) {
       <div className="cgd-metrics-strip">
         <div className="cgd-metric-card">
           <span className="cgd-metric-card__label">Gap Severity</span>
-          <span className="cgd-metric-card__val" style={{ color: sevColour }}>{hero.gap_severity || "Medium"}</span>
+          <span className="cgd-metric-card__val" style={{ color: sevColour }}>
+            {hero.gap_severity || "Medium"}
+          </span>
           <div className="cgd-metric-card__bar">
             <div className="cgd-metric-card__bar-fill" style={{
               width: hero.gap_severity === "High" ? "85%" : hero.gap_severity === "Low" ? "25%" : "55%",
@@ -117,7 +155,6 @@ function ResultsHero({ hero, fromTitle, toTitle }) {
             }}/>
           </div>
         </div>
-
         <div className="cgd-metric-card">
           <span className="cgd-metric-card__label">Skill Match</span>
           <span className="cgd-metric-card__val" style={{ color: matchColour }}>{matchPct}%</span>
@@ -125,10 +162,11 @@ function ResultsHero({ hero, fromTitle, toTitle }) {
             <div className="cgd-metric-card__bar-fill" style={{ width: matchPct + "%", background: matchColour }}/>
           </div>
         </div>
-
         <div className="cgd-metric-card">
           <span className="cgd-metric-card__label">Difficulty</span>
-          <span className="cgd-metric-card__val" style={{ color: diffColour }}>{hero.transition_difficulty || "Medium"}</span>
+          <span className="cgd-metric-card__val" style={{ color: diffColour }}>
+            {hero.transition_difficulty || "Medium"}
+          </span>
           <div className="cgd-metric-card__bar">
             <div className="cgd-metric-card__bar-fill" style={{
               width: hero.transition_difficulty === "Hard" ? "85%" : hero.transition_difficulty === "Easy" ? "20%" : "52%",
@@ -142,7 +180,7 @@ function ResultsHero({ hero, fromTitle, toTitle }) {
 }
 
 // ============================================================================
-// 2. Verdict card
+// FREE 01: Transition Verdict
 // ============================================================================
 
 function VerdictCard({ data }) {
@@ -151,9 +189,7 @@ function VerdictCard({ data }) {
     <Panel id="cgd-verdict" accent>
       <SectionLabel n={1} text="Transition Verdict" />
       <div className="cgd-verdict">
-        {data.headline && (
-          <p className="cgd-verdict__headline">{data.headline}</p>
-        )}
+        {data.headline && <p className="cgd-verdict__headline">{data.headline}</p>}
         <div className="cgd-verdict__grid">
           {data.is_realistic != null && (
             <div className="cgd-verdict__cell">
@@ -176,51 +212,23 @@ function VerdictCard({ data }) {
             </div>
           )}
         </div>
-        {data.summary && (
-          <p className="cgd-verdict__summary">{data.summary}</p>
-        )}
+        {data.summary && <p className="cgd-verdict__summary">{data.summary}</p>}
       </div>
     </Panel>
   );
 }
 
 // ============================================================================
-// 3. Why this gap exists -- 3 cards
+// FREE 02: Why This Gap Exists
 // ============================================================================
 
 function GapOrigins({ data }) {
   if (!data) return null;
-
   const cols = [
-    {
-      key: "skill",
-      label: "Skill Gap",
-      icon: "S",
-      colour: "#ef4444",
-      bg: "rgba(239,68,68,0.06)",
-      border: "rgba(239,68,68,0.2)",
-      item: data.skill_gap,
-    },
-    {
-      key: "experience",
-      label: "Experience Gap",
-      icon: "E",
-      colour: "#f59e0b",
-      bg: "rgba(245,158,11,0.06)",
-      border: "rgba(245,158,11,0.2)",
-      item: data.experience_gap,
-    },
-    {
-      key: "market",
-      label: "Market Gap",
-      icon: "M",
-      colour: "#6366f1",
-      bg: "rgba(99,102,241,0.06)",
-      border: "rgba(99,102,241,0.2)",
-      item: data.market_gap,
-    },
+    { key: "skill",      label: "Skill Gap",     icon: "S", colour: "#ef4444", bg: "rgba(239,68,68,0.06)",  border: "rgba(239,68,68,0.2)",  item: data.skill_gap      },
+    { key: "experience", label: "Experience Gap", icon: "E", colour: "#f59e0b", bg: "rgba(245,158,11,0.06)", border: "rgba(245,158,11,0.2)", item: data.experience_gap },
+    { key: "market",     label: "Market Gap",     icon: "M", colour: "#6366f1", bg: "rgba(99,102,241,0.06)", border: "rgba(99,102,241,0.2)", item: data.market_gap     },
   ];
-
   return (
     <Panel id="cgd-origins">
       <SectionLabel n={2} text="Why This Gap Exists" />
@@ -249,19 +257,17 @@ function GapOrigins({ data }) {
 }
 
 // ============================================================================
-// 4. Gap scoreboard -- 4 visual bars
+// FREE 03: Gap Scoreboard
 // ============================================================================
 
 function GapScoreboard({ data }) {
   if (!data) return null;
-
   const rows = [
     { label: "Skills Readiness",     pct: data.skills_readiness     ?? 0 },
     { label: "Experience Readiness", pct: data.experience_readiness ?? 0 },
     { label: "Market Readiness",     pct: data.market_readiness     ?? 0 },
     { label: "Transition Risk",      pct: data.transition_risk      ?? 0, invert: true },
   ];
-
   return (
     <Panel id="cgd-scoreboard">
       <SectionLabel n={3} text="Gap Scoreboard" />
@@ -277,11 +283,6 @@ function GapScoreboard({ data }) {
                 <span className="cgd-scoreboard-row__pct" style={{ color: colour }}>{r.pct}%</span>
               </div>
               <ScoreBar pct={r.pct} colour={colour} />
-              {data[r.label.toLowerCase().replace(/ /g,"_") + "_note"] && (
-                <p className="cgd-scoreboard-row__note">
-                  {data[r.label.toLowerCase().replace(/ /g,"_") + "_note"]}
-                </p>
-              )}
             </div>
           );
         })}
@@ -292,39 +293,33 @@ function GapScoreboard({ data }) {
 }
 
 // ============================================================================
-// 5. Missing skills -- prioritised
+// FREE 04: Missing Skills
 // ============================================================================
 
 function MissingSkills({ skills, toTitle }) {
   if (!skills?.length) return null;
-  const SEV_COLOUR = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981", Critical: "#ef4444", Significant: "#f59e0b", Minor: "#10b981" };
-
+  const SEV = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981", Critical: "#ef4444", Significant: "#f59e0b", Minor: "#10b981" };
   return (
     <Panel id="cgd-skills">
       <SectionLabel n={4} text={"Missing Skills -- " + toTitle} />
       <div className="cgd-skills-list">
         {skills.map((s, i) => {
-          const c = SEV_COLOUR[s.severity || s.impact] || "#f59e0b";
+          const c = SEV[s.severity || s.impact] || "#f59e0b";
           return (
             <div key={i} className="cgd-skill-row">
-              <div className="cgd-skill-row__rank" style={{ color: c, borderColor: c + "30", background: c + "10" }}>
-                {i + 1}
-              </div>
+              <div className="cgd-skill-row__rank" style={{ color: c, borderColor: c + "30", background: c + "10" }}>{i + 1}</div>
               <div className="cgd-skill-row__body">
                 <div className="cgd-skill-row__top">
                   <span className="cgd-skill-row__name">{s.skill}</span>
                   <div className="cgd-skill-row__pills">
                     {(s.severity || s.impact) && <Badge v={s.severity || s.impact} />}
-                    {s.time_estimate && (
-                      <span className="cgd-skill-row__time">{s.time_estimate}</span>
-                    )}
+                    {s.time_estimate && <span className="cgd-skill-row__time">{s.time_estimate}</span>}
                   </div>
                 </div>
                 {s.why_it_matters && <p className="cgd-skill-row__why">{s.why_it_matters}</p>}
                 {s.how_to_close && (
                   <p className="cgd-skill-row__how">
-                    <span className="cgd-skill-row__how-label">How to close: </span>
-                    {s.how_to_close}
+                    <span className="cgd-skill-row__how-label">How to close: </span>{s.how_to_close}
                   </p>
                 )}
               </div>
@@ -337,7 +332,7 @@ function MissingSkills({ skills, toTitle }) {
 }
 
 // ============================================================================
-// 6. Experience gaps
+// FREE 05: Experience Gaps
 // ============================================================================
 
 function ExperienceGaps({ gaps, toTitle }) {
@@ -367,18 +362,17 @@ function ExperienceGaps({ gaps, toTitle }) {
 }
 
 // ============================================================================
-// 7. Market perception
+// FREE 06: Market Perception
 // ============================================================================
 
 function MarketPerception({ data }) {
   if (!data) return null;
   const rows = [
-    { label: "How recruiters see you",       text: data.recruiter_view,      accent: "#6366f1" },
-    { label: "What hiring managers think",   text: data.hiring_manager_view, accent: "#f59e0b" },
-    { label: "The positioning gap",          text: data.positioning_gap,     accent: "#ef4444" },
+    { label: "How recruiters see you",     text: data.recruiter_view,      accent: "#6366f1" },
+    { label: "What hiring managers think", text: data.hiring_manager_view, accent: "#f59e0b" },
+    { label: "The positioning gap",        text: data.positioning_gap,     accent: "#ef4444" },
   ].filter(r => r.text);
   if (!rows.length) return null;
-
   return (
     <Panel id="cgd-market">
       <SectionLabel n={6} text="Market Perception" />
@@ -396,10 +390,10 @@ function MarketPerception({ data }) {
 }
 
 // ============================================================================
-// 8. Where you fit right now
+// FREE 07: Where You Fit Right Now
 // ============================================================================
 
-function FitsNow({ data, fromTitle, toTitle }) {
+function FitsNow({ data, toTitle }) {
   if (!data) return null;
   return (
     <Panel id="cgd-fits-now">
@@ -419,7 +413,7 @@ function FitsNow({ data, fromTitle, toTitle }) {
         )}
         {data.not_yet && (
           <div className="cgd-fits__block cgd-fits__block--not-yet">
-            <span className="cgd-fits__block-label">Not yet -- requires significant gap closure</span>
+            <span className="cgd-fits__block-label">Not yet -- requires gap closure first</span>
             <p className="cgd-fits__block-text">{data.not_yet}</p>
           </div>
         )}
@@ -439,13 +433,13 @@ function FitsNow({ data, fromTitle, toTitle }) {
 }
 
 // ============================================================================
-// 9. Fix order -- top 3 actions
+// FREE 08: Fix Plan
 // ============================================================================
 
-const FIX_CONFIG = [
-  { tag: "1  MUST DO FIRST",  colour: "#ef4444", bg: "rgba(239,68,68,0.07)",  border: "rgba(239,68,68,0.2)"  },
-  { tag: "2  DO NEXT",        colour: "#f59e0b", bg: "rgba(245,158,11,0.07)", border: "rgba(245,158,11,0.2)" },
-  { tag: "3  SUPPORTING",     colour: "#6366f1", bg: "rgba(99,102,241,0.07)", border: "rgba(99,102,241,0.2)" },
+const FIX_CFG = [
+  { tag: "1  MUST DO FIRST", colour: "#ef4444", bg: "rgba(239,68,68,0.07)",  border: "rgba(239,68,68,0.2)"  },
+  { tag: "2  DO NEXT",       colour: "#f59e0b", bg: "rgba(245,158,11,0.07)", border: "rgba(245,158,11,0.2)" },
+  { tag: "3  SUPPORTING",    colour: "#6366f1", bg: "rgba(99,102,241,0.07)", border: "rgba(99,102,241,0.2)" },
 ];
 
 function FixPlan({ actions }) {
@@ -456,31 +450,23 @@ function FixPlan({ actions }) {
       <p className="cgd-sec-intro">Execute in this exact order. Completing #1 unlocks the value of #2 and #3.</p>
       <div className="cgd-fix-list">
         {actions.slice(0, 3).map((a, i) => {
-          const cfg = FIX_CONFIG[i] || FIX_CONFIG[2];
+          const cfg = FIX_CFG[i] || FIX_CFG[2];
           return (
-            <div
-              key={i}
-              className="cgd-fix-card"
-              style={{ "--fc": cfg.colour, "--fb": cfg.bg, "--fbr": cfg.border }}
-            >
+            <div key={i} className="cgd-fix-card" style={{ "--fc": cfg.colour, "--fb": cfg.bg, "--fbr": cfg.border }}>
               <div className="cgd-fix-card__strip">
                 <span className="cgd-fix-card__tag">{cfg.tag}</span>
-                {a.time_estimate && (
-                  <span className="cgd-fix-card__time">{a.time_estimate}</span>
-                )}
+                {a.time_estimate && <span className="cgd-fix-card__time">{a.time_estimate}</span>}
               </div>
               <div className="cgd-fix-card__body">
                 <p className="cgd-fix-card__action">{a.action || a.what_to_do}</p>
                 {a.why_first && (
                   <p className="cgd-fix-card__why">
-                    <span className="cgd-fix-card__why-label">Why first: </span>
-                    {a.why_first}
+                    <span className="cgd-fix-card__why-label">Why first: </span>{a.why_first}
                   </p>
                 )}
                 {a.expected_outcome && (
                   <p className="cgd-fix-card__outcome">
-                    <span className="cgd-fix-card__outcome-label">Outcome: </span>
-                    {a.expected_outcome}
+                    <span className="cgd-fix-card__outcome-label">Outcome: </span>{a.expected_outcome}
                   </p>
                 )}
               </div>
@@ -493,18 +479,17 @@ function FixPlan({ actions }) {
 }
 
 // ============================================================================
-// 10. Risk if ignored
+// FREE 09: Risk If Ignored
 // ============================================================================
 
 function RiskIgnored({ items, toTitle }) {
   const fallback = [
     "Transition to " + (toTitle || "the target role") + " becomes increasingly difficult as direct-experience candidates accumulate in the market.",
-    "The skill gap widens over time as the target role evolves -- making the jump harder, not easier.",
-    "Recruiters begin to permanently categorise this profile as a non-product candidate.",
-    "The salary gap between current and target role compounds with each year of inaction.",
+    "The skill gap widens as the target role evolves -- the jump becomes harder, not easier, with time.",
+    "Recruiters categorise this profile permanently into the current category, making reframing costly.",
+    "The salary gap between current and target compounds with every year of inaction.",
   ];
   const list = items?.length ? items : fallback;
-
   return (
     <Panel id="cgd-risk" warning>
       <SectionLabel n={9} text="Risk If Ignored" />
@@ -517,9 +502,7 @@ function RiskIgnored({ items, toTitle }) {
               <circle cx="12" cy="16.5" r="0.75" fill="#ef4444"/>
             </svg>
           </div>
-          <p className="cgd-risk__intro">
-            Career gaps compound. Every month without action increases the cost of this transition.
-          </p>
+          <p className="cgd-risk__intro">Career gaps compound. Every month without action increases the cost of this transition.</p>
         </div>
         <div className="cgd-risk__items">
           {list.map((item, i) => (
@@ -530,7 +513,7 @@ function RiskIgnored({ items, toTitle }) {
           ))}
         </div>
         <div className="cgd-risk__footer">
-          The best time to start was 6 months ago. The second best time is now. Start with <strong>Fix #1</strong> above.
+          The best time to start was 6 months ago. The second best time is now.
         </div>
       </div>
     </Panel>
@@ -538,24 +521,232 @@ function RiskIgnored({ items, toTitle }) {
 }
 
 // ============================================================================
+// CONVERSION BLOCK -- upgrade CTA shown after all free content
+// ============================================================================
+
+function UpgradeCTA({ fromTitle, toTitle }) {
+  return (
+    <div className="cgd-upgrade-block" id="cgd-upgrade">
+      <div className="cgd-upgrade-block__inner">
+        <span className="cgd-upgrade-block__badge">Personal Career Strategy</span>
+
+        <h3 className="cgd-upgrade-block__title">
+          See how recruiters will actually evaluate your profile
+        </h3>
+        <p className="cgd-upgrade-block__body">
+          You are currently seeing a role-based benchmark -- how the {fromTitle} to {toTitle} transition
+          looks across the market. Upgrade to unlock profile-specific intelligence: what in your background
+          will create recruiter hesitation, where you will struggle in interviews, and exactly what to do next.
+        </p>
+
+        <div className="cgd-upgrade-block__benefits">
+          {[
+            { icon: "R", label: "CV rejection risks",             desc: "Specific profile flags that cause recruiter hesitation at screening" },
+            { icon: "I", label: "Interview weak points",          desc: "The exact questions and scenarios you are likely to struggle with" },
+            { icon: "T", label: "Personalised transition timeline",desc: "Realistic milestones based on this specific role change" },
+            { icon: "S", label: "Salary upside after gap closure", desc: "Expected salary movement once your gaps are addressed" },
+            { icon: "N", label: "Most strategic next tool",        desc: "Which HireEdge tool will move the needle most for this transition" },
+          ].map((b, i) => (
+            <div key={i} className="cgd-upgrade-block__benefit">
+              <span className="cgd-upgrade-block__benefit-icon">{b.icon}</span>
+              <div>
+                <span className="cgd-upgrade-block__benefit-label">{b.label}</span>
+                <p className="cgd-upgrade-block__benefit-desc">{b.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="cgd-upgrade-block__ctas">
+          <Link href="/billing?plan=career_pack" className="cgd-upgrade-block__cta-primary">
+            Unlock Career Pack -- PS6.99 one-time
+          </Link>
+          <p className="cgd-upgrade-block__cta-note">
+            Includes Resume Optimiser, LinkedIn Optimiser, Interview Prep, and Career Roadmap.
+          </p>
+          <Link href="/billing?plan=pro" className="cgd-upgrade-block__cta-secondary">
+            Or go Pro for full platform access
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// LOCKED MODULE -- blurred preview card for free users
+// ============================================================================
+
+const LockIcon = () => (
+  <svg className="cgd-lock-icon" viewBox="0 0 20 20" fill="none" width="14" height="14">
+    <rect x="4" y="9" width="12" height="9" rx="2" stroke="currentColor" strokeWidth="1.4"/>
+    <path d="M7 9V6a3 3 0 0 1 6 0v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+  </svg>
+);
+
+function LockedModule({ icon, title, headline, teaserPoints, accent }) {
+  return (
+    <div className="cgd-locked-module" style={{ "--lm-accent": accent || "#6366f1" }}>
+      <div className="cgd-locked-module__header">
+        <div className="cgd-locked-module__icon-wrap">
+          <span className="cgd-locked-module__icon">{icon}</span>
+        </div>
+        <div className="cgd-locked-module__header-right">
+          <span className="cgd-locked-module__title">{title}</span>
+          <div className="cgd-locked-module__lock-badge">
+            <LockIcon />
+            <span>Career Pack</span>
+          </div>
+        </div>
+      </div>
+
+      {headline && (
+        <div className="cgd-locked-module__headline-wrap">
+          <p className="cgd-locked-module__headline">{headline}</p>
+        </div>
+      )}
+
+      {teaserPoints?.filter(Boolean).length > 0 && (
+        <div className="cgd-locked-module__teaser">
+          {teaserPoints.filter(Boolean).map((p, i) => (
+            <div key={i} className="cgd-locked-module__teaser-item">
+              <span className="cgd-locked-module__teaser-dot" />
+              <p className="cgd-locked-module__teaser-text">{p}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="cgd-locked-module__blur-overlay" />
+    </div>
+  );
+}
+
+// ============================================================================
+// PREMIUM MODULES -- locked preview for free, full view for paid
+// (Currently both show teasers as profile-specific content requires CV input)
+// ============================================================================
+
+function PremiumModules({ preview, fromTitle, toTitle, isPaid }) {
+  if (!preview) return null;
+
+  return (
+    <div className="cgd-locked-section">
+      <div className="cgd-locked-section__header">
+        <span className="cgd-locked-section__eyebrow">Profile Intelligence</span>
+        <h3 className="cgd-locked-section__title">Personal Career Analysis</h3>
+        <p className="cgd-locked-section__sub">
+          The following modules go beyond role benchmarks to analyse how your specific background,
+          CV, and positioning will affect this transition. Available with Career Pack or Pro.
+        </p>
+      </div>
+
+      <div className="cgd-locked-modules-grid">
+        {preview.cv_rejection_risks && (
+          <LockedModule
+            icon="R"
+            title="CV Rejection Risks"
+            headline={preview.cv_rejection_risks.headline}
+            teaserPoints={preview.cv_rejection_risks.teaser_points}
+            accent="#ef4444"
+          />
+        )}
+        {preview.interview_weak_points && (
+          <LockedModule
+            icon="I"
+            title="Interview Weak Points"
+            headline={preview.interview_weak_points.headline}
+            teaserPoints={preview.interview_weak_points.teaser_points}
+            accent="#f59e0b"
+          />
+        )}
+        {preview.transition_timeline && (
+          <LockedModule
+            icon="T"
+            title="Personalised Timeline"
+            headline={preview.transition_timeline.headline}
+            teaserPoints={[
+              preview.transition_timeline.realistic_range ? "Realistic range: " + preview.transition_timeline.realistic_range : null,
+              ...(preview.transition_timeline.key_milestones || []),
+            ]}
+            accent="#6366f1"
+          />
+        )}
+        {preview.salary_upside && (
+          <LockedModule
+            icon="S"
+            title="Salary Upside"
+            headline={preview.salary_upside.headline}
+            teaserPoints={[
+              preview.salary_upside.from_band ? "Current band: " + preview.salary_upside.from_band : null,
+              preview.salary_upside.to_band   ? "Target band: "  + preview.salary_upside.to_band   : null,
+              preview.salary_upside.uplift_note || null,
+            ]}
+            accent="#10b981"
+          />
+        )}
+        {preview.next_tool && (
+          <LockedModule
+            icon="N"
+            title="Most Strategic Next Tool"
+            headline={"Based on your gaps, " + preview.next_tool.tool + " is your highest-leverage next step."}
+            teaserPoints={[preview.next_tool.why]}
+            accent="#059669"
+          />
+        )}
+      </div>
+
+      {!isPaid && (
+        <div className="cgd-locked-section__cta-strip">
+          <Link href="/billing?plan=career_pack" className="cgd-locked-section__cta">
+            Unlock All 5 Modules -- PS6.99 one-time
+          </Link>
+          <span className="cgd-locked-section__cta-sub">
+            No subscription. Includes full Career Pack tool suite.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Report composer
 // ============================================================================
 
-function GapReport({ data, fromTitle, toTitle }) {
+function GapReport({ data, fromTitle, toTitle, isPaid }) {
   if (!data) return null;
 
   return (
     <div className="cgd-report">
-      <ResultsHero    hero={data.hero}                fromTitle={fromTitle} toTitle={toTitle} />
+
+      {/* Role-based trust note -- always shown when no CV provided */}
+      <RoleBasedNote fromTitle={fromTitle} toTitle={toTitle} />
+
+      {/* Free sections */}
+      <ResultsHero    hero={data.hero}              fromTitle={fromTitle} toTitle={toTitle} />
       <VerdictCard    data={data.verdict} />
       <GapOrigins     data={data.gap_origins} />
       <GapScoreboard  data={data.gap_scoreboard} />
-      <MissingSkills  skills={data.missing_skills}    toTitle={toTitle} />
-      <ExperienceGaps gaps={data.experience_gaps}     toTitle={toTitle} />
+      <MissingSkills  skills={data.missing_skills}  toTitle={toTitle} />
+      <ExperienceGaps gaps={data.experience_gaps}   toTitle={toTitle} />
       <MarketPerception data={data.market_perception} />
-      <FitsNow        data={data.fits_now}            fromTitle={fromTitle} toTitle={toTitle} />
+      <FitsNow        data={data.fits_now}          toTitle={toTitle} />
       <FixPlan        actions={data.fix_plan} />
-      <RiskIgnored    items={data.risk_if_ignored}    toTitle={toTitle} />
+      <RiskIgnored    items={data.risk_if_ignored}  toTitle={toTitle} />
+
+      {/* Conversion CTA -- only for free users */}
+      {!isPaid && <UpgradeCTA fromTitle={fromTitle} toTitle={toTitle} />}
+
+      {/* Premium module teasers -- always shown, locked for free users */}
+      {data.premium_preview && (
+        <PremiumModules
+          preview={data.premium_preview}
+          fromTitle={fromTitle}
+          toTitle={toTitle}
+          isPaid={isPaid}
+        />
+      )}
     </div>
   );
 }
@@ -569,19 +760,22 @@ export default function CareerGapExplainerPage() {
   const autoRan = useRef(false);
   useEDGEXContext();
 
-  const [fromRole, setFromRole] = useState(null);
-  const [toRole,   setToRole]   = useState(null);
-  const [result,   setResult]   = useState(null);
-  const [loading,  setLoading]  = useState(false);
-  const [step,     setStep]     = useState(0);
-  const [err,      setErr]      = useState(null);
+  const [fromRole,   setFromRole]   = useState(null);
+  const [toRole,     setToRole]     = useState(null);
+  const [result,     setResult]     = useState(null);
+  const [loading,    setLoading]    = useState(false);
+  const [step,       setStep]       = useState(0);
+  const [err,        setErr]        = useState(null);
+  const [userIsPaid, setUserIsPaid] = useState(false);
   const timer = useRef(null);
+
+  useEffect(() => { setUserIsPaid(isPaidPlan()); }, []);
 
   useEffect(() => {
     if (!router.isReady) return;
     const { from, to, current, target } = router.query;
     if (from || current) setFromRole({ slug: from || current, title: slugToTitle(from || current) });
-    if (to   || target)  setToRole({   slug: to   || target,  title: slugToTitle(to   || target) });
+    if (to   || target)  setToRole({   slug: to   || target,  title: slugToTitle(to   || target)  });
   }, [router.isReady]);
 
   useEffect(() => {
@@ -601,7 +795,10 @@ export default function CareerGapExplainerPage() {
   }, [loading]);
 
   async function run() {
-    if (!fromRole || !toRole) { setErr({ type: "error", message: "Select both roles to continue." }); return; }
+    if (!fromRole || !toRole) {
+      setErr({ type: "error", message: "Select both roles to continue." });
+      return;
+    }
     setLoading(true); setErr(null); setResult(null);
     try {
       const qs = new URLSearchParams({ action: "explain", from: fromRole.slug, to: toRole.slug });
@@ -613,19 +810,18 @@ export default function CareerGapExplainerPage() {
 
       const raw = json.data || json;
 
-      // Shape guard: detect old API response (returns {verdict:"easy", composite_score, factors})
-      // New API response must have at minimum: hero object OR verdict object OR gap_origins object
+      // Shape guard: old API returns {verdict:"easy", composite_score, factors[]}
+      // New API returns {hero:{}, verdict:{}, gap_origins:{}, ...}
       const isNewShape = raw && (
-        (raw.hero && typeof raw.hero === "object") ||
+        (raw.hero    && typeof raw.hero    === "object") ||
         (raw.verdict && typeof raw.verdict === "object") ||
         (raw.gap_origins && typeof raw.gap_origins === "object")
       );
 
       if (!isNewShape) {
-        // Old API is still deployed -- surface a clear error instead of blank page
         setErr({
           type: "error",
-          message: "The backend API has not been updated yet. Please deploy gap-explainer-api.js to api/tools/career-gap-explainer.js on the backend and redeploy.",
+          message: "Backend API needs updating. Deploy gap-explainer-api.js to api/tools/career-gap-explainer.js on hireedge-backend-mvp.",
         });
         return;
       }
@@ -643,7 +839,7 @@ export default function CareerGapExplainerPage() {
       <Head><title>Career Gap Diagnostic -- HireEdge</title></Head>
       <div className="tool-page">
 
-        {/* -- Page header -------------------------------------------- */}
+        {/* Page header */}
         <div className="cgd-header">
           <span className="cgd-header__badge">Gap Diagnostic</span>
           <h1 className="cgd-header__title">Career Gap Explainer</h1>
@@ -653,7 +849,7 @@ export default function CareerGapExplainerPage() {
           </p>
         </div>
 
-        {/* -- Input form --------------------------------------------- */}
+        {/* Form */}
         <div className="tool-form cgd-form">
           <div className="tool-form__row tool-form__row--2">
             <div className="tool-form__field">
@@ -709,11 +905,13 @@ export default function CareerGapExplainerPage() {
             {loading ? STEPS[step] : "Diagnose the Gap"}
           </button>
           {!loading && (
-            <p className="li-form-timing">Takes ~15 seconds -- Full 10-section diagnostic</p>
+            <p className="li-form-timing">
+              Takes ~15 seconds -- Full diagnostic + personalised intelligence preview
+            </p>
           )}
         </div>
 
-        {/* -- Loading ------------------------------------------------ */}
+        {/* Loading */}
         {loading && (
           <div className="tool-loading">
             <div className="tool-loading__spinner" />
@@ -734,12 +932,13 @@ export default function CareerGapExplainerPage() {
           </div>
         )}
 
-        {/* -- Result ------------------------------------------------- */}
+        {/* Result */}
         {result && (
           <GapReport
             data={result}
             fromTitle={fromRole?.title || ""}
             toTitle={toRole?.title || ""}
+            isPaid={userIsPaid}
           />
         )}
 
