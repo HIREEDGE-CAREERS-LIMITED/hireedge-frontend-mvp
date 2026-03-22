@@ -610,7 +610,27 @@ export default function CareerGapExplainerPage() {
       });
       const json = await res.json();
       if (!json.ok && !json.data) { setErr(friendlyError(json)); return; }
-      setResult(json.data || json);
+
+      const raw = json.data || json;
+
+      // Shape guard: detect old API response (returns {verdict:"easy", composite_score, factors})
+      // New API response must have at minimum: hero object OR verdict object OR gap_origins object
+      const isNewShape = raw && (
+        (raw.hero && typeof raw.hero === "object") ||
+        (raw.verdict && typeof raw.verdict === "object") ||
+        (raw.gap_origins && typeof raw.gap_origins === "object")
+      );
+
+      if (!isNewShape) {
+        // Old API is still deployed -- surface a clear error instead of blank page
+        setErr({
+          type: "error",
+          message: "The backend API has not been updated yet. Please deploy gap-explainer-api.js to api/tools/career-gap-explainer.js on the backend and redeploy.",
+        });
+        return;
+      }
+
+      setResult(raw);
     } catch {
       setErr({ type: "error", message: "Network error -- please try again." });
     } finally {
