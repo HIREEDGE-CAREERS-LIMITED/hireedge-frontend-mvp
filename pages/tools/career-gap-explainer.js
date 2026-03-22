@@ -336,7 +336,7 @@ function MissingSkills({ skills, toTitle }) {
 // FREE 05: Experience Gaps
 // ============================================================================
 
-function ExperienceGaps({ gaps, toTitle }) {
+function ExperienceGaps({ gaps, fromTitle, toTitle }) {
   if (!gaps?.length) return null;
   return (
     <Panel id="cgd-experience">
@@ -731,7 +731,7 @@ function GapReport({ data, fromTitle, toTitle, isPaid }) {
       <GapOrigins     data={data.gap_origins} />
       <GapScoreboard  data={data.gap_scoreboard} />
       <MissingSkills  skills={data.missing_skills}  toTitle={toTitle} />
-      <ExperienceGaps gaps={data.experience_gaps}   toTitle={toTitle} />
+      <ExperienceGaps gaps={data.experience_gaps}   fromTitle={fromTitle} toTitle={toTitle} />
       <MarketPerception data={data.market_perception} />
       <FitsNow        data={data.fits_now}          toTitle={toTitle} />
       <FixPlan        actions={data.fix_plan} />
