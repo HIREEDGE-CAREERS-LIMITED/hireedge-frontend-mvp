@@ -1,12 +1,10 @@
 // ============================================================================
 // pages/tools/index.js
 // HireEdge -- Career Tools Index
-// Lists all available tools with name, description, CTA, and plan gate
 // ============================================================================
 
 import Head from "next/head";
 import Link from "next/link";
-import AppShell from "../../components/layout/AppShell";
 
 const TOOLS = [
   {
@@ -71,11 +69,6 @@ const TOOLS = [
   },
 ];
 
-function PlanBadge({ plan }) {
-  if (plan === "free") return null;
-  return <span className="ti-badge">PRO</span>;
-}
-
 function ToolCard({ tool }) {
   return (
     <Link href={tool.href} className="ti-card" style={{ "--tc": tool.color }}>
@@ -85,7 +78,7 @@ function ToolCard({ tool }) {
       <div className="ti-card__body">
         <div className="ti-card__header">
           <span className="ti-card__sub">{tool.sub}</span>
-          <PlanBadge plan={tool.plan} />
+          {tool.plan === "pro" && <span className="ti-badge">PRO</span>}
         </div>
         <h3 className="ti-card__name">{tool.name}</h3>
         <p className="ti-card__desc">{tool.desc}</p>
@@ -101,7 +94,7 @@ function ToolCard({ tool }) {
 
 export default function ToolsIndexPage() {
   return (
-    <AppShell title="Tools">
+    <>
       <Head>
         <title>Career Tools -- HireEdge</title>
       </Head>
@@ -126,6 +119,6 @@ export default function ToolsIndexPage() {
           </div>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }
