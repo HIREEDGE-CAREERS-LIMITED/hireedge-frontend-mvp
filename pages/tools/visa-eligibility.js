@@ -25,6 +25,7 @@ import Head from "next/head";
 import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import { useEDGEXContext } from "../../context/CopilotContext";
+import EDGEXBadge from "../../components/brand/EDGEXBadge";
 
 const API       = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 const PAID_PLANS = ["career_pack", "pro", "elite"];
@@ -461,7 +462,7 @@ function VisaUpgradeCTA({ country, currentRole }) {
 
         <div className="vi-upgrade-block__ctas">
           <Link href="/billing?plan=career_pack" className="vi-upgrade-block__cta-primary">
-            Unlock Career Pack -- PS6.99 one-time
+            Unlock Career Pack -- £6.99 one-time
           </Link>
           <p className="vi-upgrade-block__cta-note">
             Includes Resume Optimiser, LinkedIn Optimiser, Interview Prep, and Career Roadmap.
@@ -569,7 +570,7 @@ function VisaPremiumModules({ preview, country, isPaid }) {
       {!isPaid && (
         <div className="vi-locked-section__cta-strip">
           <Link href="/billing?plan=career_pack" className="vi-locked-section__cta">
-            Unlock All 3 Modules -- PS6.99 one-time
+            Unlock All 3 Modules -- £6.99 one-time
           </Link>
           <span className="vi-locked-section__cta-sub">
             No subscription. Includes full Career Pack tool suite.
