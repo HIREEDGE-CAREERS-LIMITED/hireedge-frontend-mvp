@@ -462,64 +462,61 @@ const CAT_COLORS = { Setup:"#6366f1", Skills:"#f59e0b", Salary:"#10b981", Visa:"
 function EmptyState({ onSend, context }) {
   const suggestions = getSmartSuggestions(context);
   const hasContext  = !!(context?.role || context?.target);
-  const primary     = suggestions.filter(s => s.primary).slice(0, 1);
   const secondary   = suggestions.filter(s => s.category !== "Setup").slice(0, 4);
+
+  const handleCTA = () => onSend("Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities.");
 
   return (
     <div className="ex-empty">
-      <div className="ex-particles">
-        {[...Array(6)].map((_,i) => <span key={i} className={"ex-particle ex-particle--"+i} />)}
-      </div>
+      {/* Subtle ambient background — single soft glow, no rings */}
       <div className="ex-empty__bg-glow" />
-      <div className="ex-empty__bg-glow ex-empty__bg-glow--2" />
 
-      <div className="ex-empty__hero">
-        <div className="ex-empty__orbit">
-          <div className="ex-empty__orbit-ring" />
-          <div className="ex-empty__orbit-ring ex-empty__orbit-ring--2" />
-          <div className="ex-empty__icon-wrap">
-            <EDGEXIcon size={64} state="hero" color="#0F6E56" />
-          </div>
+      {/* Unified flow container — everything in one vertical stack */}
+      <div className="ex-empty__flow">
+
+        {/* 1. Logo — tight to headline */}
+        <div className="ex-empty__logo">
+          <EDGEXIcon size={56} state="hero" color="#0F6E56" />
         </div>
-        <div className="ex-empty__status-row">
-          <span className="ex-empty__status-dot" />
-          <StatusCycle context={context} />
-        </div>
-      </div>
 
-      <h1 className="ex-empty__title">
-        {hasContext ? "What do you want to know?" : "Your AI Career Intelligence Engine"}
-      </h1>
-      <p className="ex-empty__sub">
-        Powered by real career data and market intelligence -- not generic advice.
-      </p>
+        {/* 2. Headline — directly below logo */}
+        <h1 className="ex-empty__title">
+          {hasContext ? "What do you want to know?" : "Your AI Career Intelligence Engine"}
+        </h1>
 
-      {!hasContext && <ProactiveMessage />}
-      {!hasContext && <IntelligencePreview onSend={onSend} />}
+        {/* 3. Subtext — tight, short */}
+        <p className="ex-empty__sub">
+          Real career data. Market intelligence. Not generic advice.
+        </p>
 
-      {primary.length > 0 && (
-        <div className="ex-empty__primary">
-          {primary.map((s, i) => (
-            <button key={i} className="ex-suggestion ex-suggestion--primary" onClick={() => onSend(s.prompt)} style={{"--sug-color": CAT_COLORS[s.category] || "#0F6E56"}}>
-              <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"22",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category] || "·"}</span>
-              <span className="ex-suggestion__body">
-                <span className="ex-suggestion__label">{s.label}</span>
+        {/* 4. Primary CTA — main action */}
+        <button className="ex-empty__cta" onClick={handleCTA}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+            <line x1="4.5" y1="4.5" x2="10.2" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"/>
+            <line x1="19.5" y1="4.5" x2="13.8" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"/>
+            <line x1="4.5" y1="19.5" x2="10.2" y2="13.8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"/>
+            <line x1="19.5" y1="19.5" x2="13.8" y2="13.8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"/>
+          </svg>
+          Start my career analysis
+        </button>
+
+        {/* 5. Tool cards — 2×2 grid, directly under CTA */}
+        <div className="ex-empty__cards">
+          {secondary.map((s, i) => (
+            <button
+              key={i}
+              className="ex-card"
+              onClick={() => onSend(s.prompt)}
+              style={{"--card-color": CAT_COLORS[s.category] || "#0F6E56"}}
+            >
+              <span className="ex-card__icon" style={{color: CAT_COLORS[s.category] || "#0F6E56"}}>
+                {CAT_ICONS[s.category] || "·"}
               </span>
+              <span className="ex-card__label">{s.label}</span>
             </button>
           ))}
         </div>
-      )}
 
-      <div className="ex-empty__suggestions">
-        {secondary.map((s, i) => (
-          <button key={i} className="ex-suggestion" onClick={() => onSend(s.prompt)} style={{"--sug-color": CAT_COLORS[s.category] || "#0F6E56"}}>
-            <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"18",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category] || "·"}</span>
-            <span className="ex-suggestion__body">
-              <span className="ex-suggestion__cat" style={{color:CAT_COLORS[s.category]||"#0F6E56"}}>{s.category}</span>
-              <span className="ex-suggestion__label">{s.label}</span>
-            </span>
-          </button>
-        ))}
       </div>
     </div>
   );
