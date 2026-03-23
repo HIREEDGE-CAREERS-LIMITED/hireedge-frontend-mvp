@@ -5,14 +5,13 @@
 // Maps every product area to its route, icon, label, and required plan.
 // The Sidebar and Topbar read from this single source of truth.
 // ============================================================================
-
 export const NAV_SECTIONS = [
   {
-    id: "edgex",                        // was: "copilot"
-    label: "EDGEX",                     // was: "Copilot"
+    id: "edgex",
+    label: "EDGEX",
     icon: "spark",
-    href: "/copilot",                   // route unchanged
-    description: "AI career intelligence", // was: "AI career assistant"
+    href: "/copilot",
+    description: "AI career intelligence",
     plan: "free",
     primary: true,
   },
@@ -51,7 +50,7 @@ export const NAV_SECTIONS = [
     description: "Career preparation tools",
     plan: "free",
     children: [
-      { id: "roadmap",   label: "Roadmap",   href: "/tools/roadmap",   icon: "map"       },
+      { id: "roadmap",   label: "Roadmap",   href: "/tools/roadmap",   icon: "map",       plan: "pro" },
       { id: "resume",    label: "Resume",    href: "/tools/resume",    icon: "file-text", plan: "pro" },
       { id: "linkedin",  label: "LinkedIn",  href: "/tools/linkedin",  icon: "linkedin",  plan: "pro" },
       { id: "interview", label: "Interview", href: "/tools/interview", icon: "mic",       plan: "pro" },
@@ -68,17 +67,14 @@ export const NAV_SECTIONS = [
     badge: "PRO",
   },
 ];
-
 export const ACCOUNT_NAV = [
   { id: "account", label: "Account", href: "/account", icon: "user"        },
   { id: "billing", label: "Billing", href: "/billing", icon: "credit-card" },
 ];
-
 export const AUTH_NAV = [
   { id: "login",  label: "Log in",  href: "/login"  },
   { id: "signup", label: "Sign up", href: "/signup" },
 ];
-
 /**
  * Flatten all navigable routes for search / command palette.
  */
@@ -88,7 +84,7 @@ export function getAllRoutes() {
     routes.push({ id: section.id, label: section.label, href: section.href, plan: section.plan });
     if (section.children) {
       for (const child of section.children) {
-        routes.push({ id: child.id, label: `${section.label} → ${child.label}`, href: child.href, plan: child.plan || section.plan });
+        routes.push({ id: child.id, label: `${section.label} -> ${child.label}`, href: child.href, plan: child.plan || section.plan });
       }
     }
   }
