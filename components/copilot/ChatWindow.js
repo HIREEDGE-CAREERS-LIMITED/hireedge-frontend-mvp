@@ -362,6 +362,21 @@ function ErrorMessage({ content }) {
 }
 
 //  Premium empty state 
+//  Status text cycling
+const IDLE_MSGS    = ["Ready to analyse your career", "Powered by 1,200+ UK roles", "Real data. Not generic advice.", "Ask anything about your career"];
+const CONTEXT_MSGS = ["Understanding your profile...", "Career data loaded", "Transition intelligence ready", "Building your career path..."];
+
+function StatusCycle({ context }) {
+  const msgs = (context?.role || context?.target) ? CONTEXT_MSGS : IDLE_MSGS;
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % msgs.length), 3000);
+    return () => clearInterval(t);
+  }, [msgs.length]);
+  return <span className="ex-empty__status-text">{msgs[idx]}</span>;
+}
+
+
 //  Proactive AI message 
 function ProactiveMessage() {
   return (
@@ -376,7 +391,7 @@ function ProactiveMessage() {
 
 //  Intelligence preview card 
 function IntelligencePreview({ onSend }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   return (
     <div
       className={"ex-preview ex-preview--shimmer" + (open ? " ex-preview--open" : "")}
