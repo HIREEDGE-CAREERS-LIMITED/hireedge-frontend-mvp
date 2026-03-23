@@ -221,9 +221,9 @@ function PremiumCTA({ router, hasPro }) {
       <p className="exs-premium__title">
         Turn this conversation into a complete transition plan
       </p>
+      <p className="exs-premium__conversion">Most users unlock after seeing their gaps</p>
       <p className="exs-premium__body">
-        One unified report: positioning, gap analysis, pathway, visa strategy,
-        30/60/90 execution, CV + LinkedIn + interview activation.
+        Full 30/60/90 plan: positioning, skill gaps, pathway, visa, CV + LinkedIn + interview.
       </p>
       <button
         className="exs-premium__btn"
