@@ -17,6 +17,7 @@ import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import LinkedinOptimisationCard from "../../components/tools/LinkedinOptimisationCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
+import EDGEXBadge from "../../components/brand/EDGEXBadge";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
@@ -294,7 +295,12 @@ export default function LinkedinOptimiserPage() {
           </div>
         )}
 
-        {result && <LinkedinOptimisationCard data={result} />}
+        {result && (
+        <>
+          <LinkedinOptimisationCard data={result} />
+          <div className="edgex-tool-footer"><EDGEXBadge /></div>
+        </>
+      )}
       </div>
     </>
   );
