@@ -22,6 +22,7 @@ import Head from "next/head";
 import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import { useEDGEXContext } from "../../context/CopilotContext";
+import EDGEXBadge from "../../components/brand/EDGEXBadge";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 const PAID_PLANS = ["career_pack", "pro", "elite"];
@@ -141,6 +142,7 @@ function ResultsHero({ hero, fromTitle, toTitle }) {
         <span className="cgd-results-hero__role cgd-results-hero__role--to">{toTitle}</span>
       </div>
 
+      <div className="edgex-tool-footer" style={{justifyContent:"flex-start", borderTop:"none", marginTop:0, paddingTop:0, marginBottom:16}}><EDGEXBadge /></div>
       {hero.title && <h2 className="cgd-results-hero__title">{hero.title}</h2>}
 
       <div className="cgd-metrics-strip">
@@ -741,6 +743,7 @@ function GapReport({ data, fromTitle, toTitle, isPaid }) {
       {!isPaid && <UpgradeCTA fromTitle={fromTitle} toTitle={toTitle} />}
 
       {/* Premium module teasers -- always shown, locked for free users */}
+      <div className="edgex-tool-footer"><EDGEXBadge /></div>
       {data.premium_preview && (
         <PremiumModules
           preview={data.premium_preview}
