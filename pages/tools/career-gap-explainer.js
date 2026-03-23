@@ -563,7 +563,7 @@ function UpgradeCTA({ fromTitle, toTitle }) {
 
         <div className="cgd-upgrade-block__ctas">
           <Link href="/billing?plan=career_pack" className="cgd-upgrade-block__cta-primary">
-            Unlock Career Pack -- PS6.99 one-time
+            Unlock Career Pack -- £6.99 one-time
           </Link>
           <p className="cgd-upgrade-block__cta-note">
             Includes Resume Optimiser, LinkedIn Optimiser, Interview Prep, and Career Roadmap.
@@ -703,7 +703,7 @@ function PremiumModules({ preview, fromTitle, toTitle, isPaid }) {
       {!isPaid && (
         <div className="cgd-locked-section__cta-strip">
           <Link href="/billing?plan=career_pack" className="cgd-locked-section__cta">
-            Unlock All 5 Modules -- PS6.99 one-time
+            Unlock All 5 Modules -- £6.99 one-time
           </Link>
           <span className="cgd-locked-section__cta-sub">
             No subscription. Includes full Career Pack tool suite.
