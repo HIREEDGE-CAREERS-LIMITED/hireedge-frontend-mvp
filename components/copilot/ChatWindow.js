@@ -478,7 +478,7 @@ function EmptyState({ onSend, context }) {
           <div className="ex-empty__orbit-ring" />
           <div className="ex-empty__orbit-ring ex-empty__orbit-ring--2" />
           <div className="ex-empty__icon-wrap">
-            <EDGEXIcon size={64} state="new" color="#0F6E56" />
+            <EDGEXIcon size={64} state="hero" color="#0F6E56" />
           </div>
         </div>
         <div className="ex-empty__status-row">
