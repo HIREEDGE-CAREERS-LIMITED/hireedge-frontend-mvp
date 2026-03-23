@@ -13,7 +13,6 @@
 // ============================================================================
 
 import { useRouter } from "next/router";
-import styles from "../../styles/copilot.module.css";
 
 const ENDPOINT_MAP = {
   "/api/tools/career-gap-explainer":  "/tools/career-gap-explainer",
