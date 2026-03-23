@@ -352,7 +352,16 @@ function ErrorMessage({ content }) {
   return (
     <div className="ex-msg ex-msg--assistant">
       <div className="ex-msg__avatar" style={{ background: "transparent" }}>
-        <EDGEXIcon size={22} state="idle" color="#ef4444" />
+        <div style={{
+          width: 22, height: 22, borderRadius: "50%",
+          border: "1.5px solid rgba(248,113,113,0.4)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0
+        }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M2 2l6 6M8 2l-6 6" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
       </div>
       <div className="ex-msg__body">
         <p style={{ color: "#f87171", fontSize: "14px", margin: 0 }}>{content}</p>
@@ -492,7 +501,7 @@ function EmptyState({ onSend, context }) {
         <div className="ex-empty__primary">
           {primary.map((s, i) => (
             <button key={i} className="ex-suggestion ex-suggestion--primary" onClick={() => onSend(s.prompt)} style={{"--sug-color": CAT_COLORS[s.category] || "#0F6E56"}}>
-              <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"22",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category]||"X"}</span>
+              <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"22",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category] || "·"}</span>
               <span className="ex-suggestion__body">
                 <span className="ex-suggestion__label">{s.label}</span>
               </span>
@@ -504,7 +513,7 @@ function EmptyState({ onSend, context }) {
       <div className="ex-empty__suggestions">
         {secondary.map((s, i) => (
           <button key={i} className="ex-suggestion" onClick={() => onSend(s.prompt)} style={{"--sug-color": CAT_COLORS[s.category] || "#0F6E56"}}>
-            <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"18",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category]||"X"}</span>
+            <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"18",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category] || "·"}</span>
             <span className="ex-suggestion__body">
               <span className="ex-suggestion__cat" style={{color:CAT_COLORS[s.category]||"#0F6E56"}}>{s.category}</span>
               <span className="ex-suggestion__label">{s.label}</span>
