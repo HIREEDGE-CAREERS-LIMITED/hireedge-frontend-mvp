@@ -106,9 +106,17 @@ function renderText(text) {
   if (!text) return null;
   return text.split("\n").map((line, i) => {
     if (!line.trim()) return <br key={i} />;
+
+    // Section headers: lines that are ALL CAPS words (e.g. TRANSITION SNAPSHOT)
+    const isHeader = /^[A-Z][A-Z0-9 ()/-]{4,}$/.test(line.trim());
+    if (isHeader) {
+      return <p key={i} className="ex-msg__para ex-msg__header">{line.trim()}</p>;
+    }
+
+    // Inline **bold** spans
     const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
       if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={j}>{part.slice(2, -2)}</strong>;
+        return <strong key={j} className="ex-msg__bold">{part.slice(2, -2)}</strong>;
       }
       return <span key={j}>{part}</span>;
     });
