@@ -463,7 +463,7 @@ function EmptyState({ onSend, context }) {
   const suggestions = getSmartSuggestions(context);
   const hasContext  = !!(context?.role || context?.target);
   const primary     = suggestions.filter(s => s.primary).slice(0, 1);
-  const secondary   = suggestions.filter(s => s.category !== "Setup");
+  const secondary   = suggestions.filter(s => s.category !== "Setup").slice(0, 4);
 
   return (
     <div className="ex-empty">
@@ -614,13 +614,6 @@ export default function ChatWindow() {
   return (
     <div className="ex-chat">
       <div className="ex-header">
-        <div className="ex-header__brand">
-          <span style={{display:"flex",alignItems:"center",background:"transparent"}}>
-            <EDGEXIcon size={18} state="idle" color="#0F6E56" />
-          </span>
-          <span className="ex-header__name">EDGEX</span>
-          <span className="ex-header__sub">Career Intelligence</span>
-        </div>
         <button className="ex-header__new" onClick={handleNewChat}>New chat</button>
       </div>
 
