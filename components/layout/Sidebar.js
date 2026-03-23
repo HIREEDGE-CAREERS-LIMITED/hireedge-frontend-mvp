@@ -7,6 +7,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { useState } from "react";
 import { NAV_SECTIONS, ACCOUNT_NAV } from "../../config/navigation";
+import EDGEXIcon from "../brand/EDGEXIcon";
 
 const ICONS = {
   spark: (
@@ -62,6 +63,15 @@ function getIcon(name) {
   return ICONS[name] || ICONS.grid;
 }
 
+// Canonical EDGEX icon — wraps EDGEXIcon to match sidebar icon dimensions
+function EDGEXNavIcon() {
+  return (
+    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 18, height: 18 }}>
+      <EDGEXIcon size={16} state="header" color="currentColor" />
+    </span>
+  );
+}
+
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const router = useRouter();
   const [expandedSections, setExpandedSections] = useState({});
@@ -74,6 +84,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
   const toggleSection = (id) => {
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Render the correct icon: EDGEXIcon for EDGEX nav item, generic icons for everything else
+  const renderNavIcon = (section) => {
+    if (section.id === "edgex") {
+      return <EDGEXNavIcon />;
+    }
+    return <span className="sidebar__icon">{getIcon(section.icon)}</span>;
   };
 
   const sidebarClass = [
@@ -122,7 +140,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 ].filter(Boolean).join(" ")}
                 title={collapsed ? section.label : undefined}
               >
-                <span className="sidebar__icon">{getIcon(section.icon)}</span>
+                {renderNavIcon(section)}
                 {!collapsed && <span>{section.label}</span>}
                 {!collapsed && section.badge && (
                   <span className="sidebar__badge">{section.badge}</span>
