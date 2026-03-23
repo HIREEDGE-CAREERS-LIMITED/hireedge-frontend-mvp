@@ -9327,3 +9327,74 @@
   background: rgba(16,185,129,0.1);
   color: var(--accent-400);
 }
+
+
+/* ============================================================================
+   TOOL PAGE LAYOUT FIXES
+   Proper max-width constraints for all tool form pages
+   ============================================================================ */
+
+/* Main page wrapper - constrain content width */
+.tool-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--space-2) 0;
+}
+
+/* Tool form cards - consistent width */
+.tool-form,
+.cgd-form,
+.vi-form,
+.cp-form {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Page headers - center aligned, constrained */
+.cgd-header {
+  max-width: 580px;
+  margin: 0 auto var(--space-6);
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.vi-header {
+  max-width: 580px;
+  margin: 0 auto var(--space-6);
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+/* Career roadmap page header */
+.tool-page__header {
+  max-width: 720px;
+  margin: 0 auto var(--space-6);
+}
+
+/* Report/results sections - full width within page */
+.cgd-report,
+.vi-report,
+.rd-phases,
+.cp-report {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Tool-form grid: ensure 2-col doesn't collapse weirdly */
+.tool-form__row--2 {
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 600px) {
+  .tool-form__row--2 { grid-template-columns: 1fr; }
+  .tool-page { padding: var(--space-2) 0; }
+}
+
+/* Prevent any overflow issues */
+.tool-form__field { min-width: 0; }
+.tool-form__input,
+.tool-form__select,
+.tool-form__textarea { min-width: 0; width: 100%; box-sizing: border-box; }
