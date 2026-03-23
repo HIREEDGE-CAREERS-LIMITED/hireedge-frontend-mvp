@@ -15,6 +15,7 @@ import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import InterviewPrepCard from "../../components/tools/InterviewPrepCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
+import EDGEXBadge from "../../components/brand/EDGEXBadge";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
@@ -266,7 +267,12 @@ export default function InterviewPrepPage() {
           </div>
         )}
 
-        {result && <InterviewPrepCard data={result} />}
+        {result && (
+        <>
+          <InterviewPrepCard data={result} />
+          <div className="edgex-tool-footer"><EDGEXBadge /></div>
+        </>
+      )}
       </div>
     </>
   );
