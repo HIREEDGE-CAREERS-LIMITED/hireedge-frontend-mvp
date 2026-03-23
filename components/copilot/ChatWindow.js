@@ -1,13 +1,15 @@
 // ============================================================================
-// components/copilot/ChatWindow.js  (v4)
+// components/copilot/ChatWindow.js  (v5)
+// EDGEX Premium AI Career Intelligence Experience
 //
-// Fixes from v3:
-//   1. try/catch now logs the actual error so we can see what threw
-//   2. updateContext called safely -- never called with undefined
-//   3. context passed to API as plain serialisable object (no undefined keys)
-//   4. Clarification action handler calls send() correctly
-//   5. detectToolsFromText is null-safe
-//   6. getPlan() moved outside component so it doesnt re-create on every render
+// Features:
+//   - Smart context-aware suggestions (dynamic, not static)
+//   - Personalization bar (role/target/intent, editable)
+//   - Structured response cards (Snapshot, Skills, Market, Action)
+//   - Premium thinking state with animated icon + glow
+//   - Confidence + intent badge
+//   - Micro-interactions on all interactive elements
+//   - No generic chat paragraphs -- structured hierarchy
 // ============================================================================
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -17,133 +19,296 @@ import EDGEXIcon from "../brand/EDGEXIcon";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
-//  Tool catalogue 
-const TOOLS = {
-  gap:       { label: "Career Gap Explainer", desc: "See exactly which skills and experiences are missing for your target role.", route: "/tools/career-gap-explainer",  color: "#f59e0b" },
-  roadmap:   { label: "Career Roadmap",       desc: "Get a phased action plan from where you are to where you want to be.",      route: "/tools/career-roadmap",        color: "#10b981" },
-  visa:      { label: "Visa Intelligence",    desc: "Check your eligibility for UK and international work visa routes.",          route: "/tools/visa-intelligence",     color: "#3b82f6" },
-  interview: { label: "Interview Prep",       desc: "Role-specific interview questions and answer frameworks.",                   route: "/tools/interview-prep",        color: "#8b5cf6" },
-  cv:        { label: "CV Optimiser",         desc: "Tailor your CV for ATS and hiring managers in your target field.",           route: "/tools/resume-optimiser",      color: "#ec4899" },
-  pack:      { label: "Career Pack",          desc: "Full transition report: positioning, gap analysis, 30/60/90 plan.",          route: "/career-pack",                 color: "#4f46e5", premium: true },
+//  Tool routing map 
+const ENDPOINT_TO_ROUTE = {
+  "/api/tools/career-gap-explainer": "/tools/career-gap-explainer",
+  "/api/tools/career-roadmap":       "/tools/career-roadmap",
+  "/api/tools/visa-intelligence":    "/tools/visa-intelligence",
+  "/api/tools/interview-prep":       "/tools/interview-prep",
+  "/api/tools/resume-optimiser":     "/tools/resume-optimiser",
+  "/api/tools/linkedin-optimiser":   "/tools/linkedin-optimiser",
+  "/api/tools/salary-benchmark":     "/tools/salary-benchmark",
+  "/api/tools/career-pack":          "/career-pack",
 };
 
-const ENDPOINT_TO_KEY = {
-  "/api/tools/career-gap-explainer": "gap",
-  "/api/tools/career-roadmap":       "roadmap",
-  "/api/tools/visa-intelligence":    "visa",
-  "/api/tools/interview-prep":       "interview",
-  "/api/tools/resume-optimiser":     "cv",
-  "/api/tools/career-pack":          "pack",
+//  Intent config 
+const INTENT_CONFIG = {
+  career_transition:  { label: "Career Transition",  color: "#6366f1", bg: "rgba(99,102,241,0.12)"  },
+  skill_gap:          { label: "Skill Gap",           color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
+  salary_benchmark:   { label: "Salary Benchmark",   color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
+  visa_eligibility:   { label: "Visa Eligibility",   color: "#3b82f6", bg: "rgba(59,130,246,0.12)"  },
+  resume_optimise:    { label: "CV Optimisation",    color: "#ec4899", bg: "rgba(236,72,153,0.12)"  },
+  linkedin_optimise:  { label: "LinkedIn",           color: "#0ea5e9", bg: "rgba(14,165,233,0.12)"  },
+  interview_prep:     { label: "Interview Prep",     color: "#8b5cf6", bg: "rgba(139,92,246,0.12)"  },
+  general_career:     { label: "Career Intelligence",color: "#0F6E56", bg: "rgba(15,110,86,0.12)"   },
+  unclear:            { label: "Exploring",          color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
 };
-
-const TOOL_TRIGGERS = {
-  gap:       /skill.?gap|missing skill|gap analysis|what.?skill|qualify/i,
-  roadmap:   /roadmap|action plan|step.?by.?step|phases|phased/i,
-  visa:      /visa|immigrat|skilled worker|work permit|sponsorship|right to work/i,
-  interview: /interview|interview prep|practice question/i,
-  cv:        /\bcv\b|resume|linkedin|profile optim/i,
-  pack:      /transition plan|90.day|30.day|full plan|complete plan/i,
-};
-
-function detectToolsFromText(text) {
-  if (!text || typeof text !== "string") return [];
-  const found = [];
-  for (const [key, pattern] of Object.entries(TOOL_TRIGGERS)) {
-    if (pattern.test(text)) found.push(key);
-  }
-  return found.slice(0, 3);
-}
 
 function getPlan() {
   if (typeof window === "undefined") return "free";
   try { return localStorage.getItem("hireedge_plan") || "free"; } catch { return "free"; }
 }
 
-//  Safe context serialiser -- strips undefined so JSON.stringify is clean 
 function safeContext(ctx) {
   if (!ctx || typeof ctx !== "object") return {};
   const out = {};
-  const keys = ["role", "target", "yearsExp", "country", "lastIntent"];
-  for (const k of keys) {
-    if (ctx[k] !== undefined && ctx[k] !== null) out[k] = ctx[k];
+  for (const k of ["role","target","yearsExp","country","lastIntent"]) {
+    if (ctx[k] != null) out[k] = ctx[k];
   }
   return out;
 }
 
-//  Inline tool card 
-function ToolCard({ toolKey, router }) {
-  const tool = TOOLS[toolKey];
-  if (!tool) return null;
-  return (
-    <button
-      className="ex-tool-card"
-      style={{ "--tool-color": tool.color }}
-      onClick={() => router.push(tool.route)}
-    >
-      <span className="ex-tool-card__dot" />
-      <span className="ex-tool-card__body">
-        <span className="ex-tool-card__label">
-          {tool.label}
-          {tool.premium && <span className="ex-tool-card__pro">PRO</span>}
-        </span>
-        <span className="ex-tool-card__desc">{tool.desc}</span>
-      </span>
-      <span className="ex-tool-card__arrow">-&gt;</span>
-    </button>
-  );
+//  Smart suggestions based on context 
+function getSmartSuggestions(context) {
+  const hasRole   = !!context?.role;
+  const hasTarget = !!context?.target;
+  const target    = context?.target || "";
+  const role      = context?.role   || "";
+
+  if (!hasRole && !hasTarget) {
+    return [
+      { label: "Set my current role",         prompt: "What is your current role?",                       category: "Setup" },
+      { label: "Set my target role",          prompt: "What role do you want to move into?",              category: "Setup" },
+      { label: "UK salary benchmarks",        prompt: "What salary does a senior software engineer earn in London?", category: "Salary" },
+      { label: "UK visa options",             prompt: "What UK work visa routes are available for skilled workers?", category: "Visa" },
+    ];
+  }
+  if (hasRole && !hasTarget) {
+    return [
+      { label: "Where can I move from " + role + "?", prompt: "What roles can I transition into from " + role + "?", category: "Transition" },
+      { label: "My salary benchmark",        prompt: "What salary should a " + role + " earn in the UK?",          category: "Salary" },
+      { label: "My skill gaps",              prompt: "What skills am I missing to advance my " + role + " career?", category: "Skills" },
+      { label: "Career roadmap",             prompt: "Build me a career roadmap from my current " + role + " role", category: "Plan" },
+    ];
+  }
+  return [
+    { label: "Skill gaps for " + target,     prompt: "What skills am I missing to become a " + target + "?",       category: "Skills"      },
+    { label: target + " salary in UK",       prompt: "What salary does a " + target + " earn in the UK?",          category: "Salary"      },
+    { label: "Transition roadmap",           prompt: "Build me a step-by-step transition plan from " + role + " to " + target, category: "Plan" },
+    { label: "Visa for " + target + " role", prompt: "What UK visa do I need to work as a " + target + "?",        category: "Visa"        },
+    { label: "Interview prep",              prompt: "Help me prepare for a " + target + " interview",              category: "Interview"   },
+    { label: "CV for " + target,            prompt: "How should I tailor my CV for a " + target + " role?",        category: "CV"          },
+  ];
 }
 
-//  Message components 
+//  Text parser: breaks EDGEX reply into structured sections 
+function parseReplyIntoSections(text) {
+  if (!text) return [];
 
-function UserMessage({ content }) {
+  const SECTION_MAP = [
+    { key: "snapshot",  patterns: [/TRANSITION SNAPSHOT/i, /SNAPSHOT/i],           icon: "S", color: "#6366f1" },
+    { key: "skills",    patterns: [/SKILL GAP/i, /SKILLS/i],                       icon: "G", color: "#f59e0b" },
+    { key: "market",    patterns: [/MARKET EXPECTATION/i, /MARKET/i],              icon: "M", color: "#10b981" },
+    { key: "position",  patterns: [/STRATEGIC POSITIONING/i, /POSITIONING/i],      icon: "P", color: "#8b5cf6" },
+    { key: "action",    patterns: [/NEXT BEST ACTION/i, /ACTION/i],                icon: "A", color: "#0F6E56" },
+  ];
+
+  const lines = text.split("\n");
+  const sections = [];
+  let current = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (current) current.lines.push("");
+      continue;
+    }
+
+    // Check if this line is a section header
+    const isHeader = SECTION_MAP.find(s =>
+      s.patterns.some(p => p.test(trimmed.replace(/\*\*/g, "")))
+    );
+
+    if (isHeader) {
+      if (current) sections.push(current);
+      current = {
+        key:    isHeader.key,
+        title:  trimmed.replace(/\*\*/g, ""),
+        icon:   isHeader.icon,
+        color:  isHeader.color,
+        lines:  [],
+      };
+    } else if (current) {
+      current.lines.push(trimmed.replace(/\*\*/g, ""));
+    } else {
+      // Pre-section content -- add as intro
+      if (!sections.find(s => s.key === "intro")) {
+        sections.push({ key: "intro", title: "", icon: "", color: "#0F6E56", lines: [trimmed.replace(/\*\*/g, "")] });
+      } else {
+        const intro = sections.find(s => s.key === "intro");
+        intro.lines.push(trimmed.replace(/\*\*/g, ""));
+      }
+    }
+  }
+  if (current) sections.push(current);
+
+  // If no sections were detected, return as plain
+  if (sections.length === 0 || (sections.length === 1 && sections[0].key === "intro")) {
+    return [{ key: "plain", title: "", icon: "", color: "#0F6E56", lines: text.split("\n").map(l => l.replace(/\*\*/g, "").trim()).filter(Boolean) }];
+  }
+
+  return sections;
+}
+
+//  Response card 
+function ResponseCard({ section }) {
+  if (section.key === "plain" || section.key === "intro") {
+    const content = section.lines.join(" ").trim();
+    if (!content) return null;
+    return (
+      <p className="ex-plain-text">{content}</p>
+    );
+  }
+
+  const content = section.lines.filter(l => l.trim()).join(" ");
+  if (!content) return null;
+
   return (
-    <div className="ex-msg ex-msg--user">
-      <div className="ex-msg__bubble--user">{content}</div>
+    <div className="ex-card" style={{ "--card-color": section.color }}>
+      <div className="ex-card__header">
+        <span className="ex-card__icon" style={{ background: section.color + "20", color: section.color }}>
+          {section.icon}
+        </span>
+        <span className="ex-card__title">{section.title}</span>
+      </div>
+      <div className="ex-card__body">
+        {section.lines.filter(l => l.trim()).map((line, i) => (
+          <p key={i} className="ex-card__line">{line}</p>
+        ))}
+      </div>
     </div>
   );
 }
 
-function renderText(text) {
-  if (!text) return null;
-  return text.split("\n").map((line, i) => {
-    if (!line.trim()) return <br key={i} />;
+//  Thinking state 
+function ThinkingState() {
+  const MESSAGES = [
+    "Analysing your career path...",
+    "Checking 1,200+ UK roles...",
+    "Calculating transition metrics...",
+    "Building your intelligence report...",
+  ];
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % MESSAGES.length), 2200);
+    return () => clearInterval(t);
+  }, []);
 
-    // Section headers: lines that are ALL CAPS words (e.g. TRANSITION SNAPSHOT)
-    const isHeader = /^[A-Z][A-Z0-9 ()/-]{4,}$/.test(line.trim());
-    if (isHeader) {
-      return <p key={i} className="ex-msg__para ex-msg__header">{line.trim()}</p>;
-    }
-
-    // Inline **bold** spans
-    const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={j} className="ex-msg__bold">{part.slice(2, -2)}</strong>;
-      }
-      return <span key={j}>{part}</span>;
-    });
-    return <p key={i} className="ex-msg__para">{parts}</p>;
-  });
+  return (
+    <div className="ex-thinking">
+      <div className="ex-thinking__icon">
+        <EDGEXIcon size={22} state="thinking" color="#0F6E56" />
+        <div className="ex-thinking__glow" />
+      </div>
+      <span className="ex-thinking__text">{MESSAGES[idx]}</span>
+    </div>
+  );
 }
 
-function AssistantMessage({ content, nextActions, toolCards, onSend, router }) {
+//  Intent badge 
+function IntentBadge({ intent, confidence }) {
+  if (!intent) return null;
+  const cfg = INTENT_CONFIG[intent] || INTENT_CONFIG.general_career;
+  const pct = confidence ? Math.round(confidence * 100) : null;
+  return (
+    <span className="ex-intent-badge" style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.color + "30" }}>
+      {cfg.label}{pct ? " \u2022 " + pct + "%" : ""}
+    </span>
+  );
+}
+
+//  Personalization bar 
+function PersonalizationBar({ context, onEdit }) {
+  if (!context?.role && !context?.target) return null;
+  const intent = context?.lastIntent;
+  const cfg    = intent ? (INTENT_CONFIG[intent] || INTENT_CONFIG.general_career) : null;
+  return (
+    <div className="ex-pbar">
+      {context.role && (
+        <div className="ex-pbar__item">
+          <span className="ex-pbar__label">Current</span>
+          <span className="ex-pbar__value">{context.role}</span>
+        </div>
+      )}
+      {context.target && (
+        <>
+          <span className="ex-pbar__arrow">-&gt;</span>
+          <div className="ex-pbar__item">
+            <span className="ex-pbar__label">Target</span>
+            <span className="ex-pbar__value ex-pbar__value--accent">{context.target}</span>
+          </div>
+        </>
+      )}
+      {cfg && (
+        <div className="ex-pbar__intent" style={{ color: cfg.color, background: cfg.bg }}>
+          {cfg.label}
+        </div>
+      )}
+      <button className="ex-pbar__edit" onClick={onEdit}>Edit</button>
+    </div>
+  );
+}
+
+//  Clarification message 
+function ClarificationMessage({ content, missingFields, actions, onSend }) {
   return (
     <div className="ex-msg ex-msg--assistant">
-      <div className="ex-msg__avatar" style={{background:"transparent", borderRadius:0}}>
-        <EDGEXIcon size={26} state="idle" color="#0F6E56" />
+      <div className="ex-msg__avatar" style={{ background: "transparent" }}>
+        <EDGEXIcon size={22} state="idle" color="#0F6E56" />
       </div>
       <div className="ex-msg__body">
-        <div className="ex-msg__text">{renderText(content)}</div>
-        {toolCards && toolCards.length > 0 && (
-          <div className="ex-tool-cards">
-            {toolCards.map(k => <ToolCard key={k} toolKey={k} router={router} />)}
+        <div className="ex-clarify">
+          <span className="ex-clarify__icon">!</span>
+          <span className="ex-clarify__text">{content}</span>
+        </div>
+        {missingFields && missingFields.length > 0 && (
+          <div className="ex-missing">
+            {missingFields.map(f => (
+              <span key={f} className="ex-missing__tag">
+                {f === "current_role" ? "Current role" : "Target role"}
+              </span>
+            ))}
           </div>
         )}
+        {actions && actions.length > 0 && (
+          <div className="ex-actions">
+            {actions.map((a, i) => (
+              <button key={i} className="ex-action ex-action--q" onClick={() => a?.prompt && onSend(a.prompt)}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+//  Assistant message 
+function AssistantMessage({ content, nextActions, intent, confidence, onSend, router }) {
+  const sections = parseReplyIntoSections(content || "");
+  const hasCards = sections.some(s => !["plain","intro"].includes(s.key));
+
+  return (
+    <div className="ex-msg ex-msg--assistant">
+      <div className="ex-msg__avatar" style={{ background: "transparent" }}>
+        <EDGEXIcon size={22} state="idle" color="#0F6E56" />
+      </div>
+      <div className="ex-msg__body">
+        {/* Intent badge */}
+        {intent && <IntentBadge intent={intent} confidence={confidence} />}
+
+        {/* Structured cards or plain text */}
+        <div className={hasCards ? "ex-cards" : "ex-prose"}>
+          {sections.map((s, i) => <ResponseCard key={i} section={s} />)}
+        </div>
+
+        {/* Action buttons */}
         {nextActions && nextActions.length > 0 && (
           <div className="ex-actions">
             {nextActions.map((action, i) => {
               if (action.type === "tool") {
-                const key = ENDPOINT_TO_KEY[action.endpoint];
-                const route = TOOLS[key]?.route;
+                const route = ENDPOINT_TO_ROUTE[action.endpoint];
                 if (!route) return null;
                 return (
                   <button key={i} className="ex-action ex-action--tool" onClick={() => router.push(route)}>
@@ -164,88 +329,65 @@ function AssistantMessage({ content, nextActions, toolCards, onSend, router }) {
   );
 }
 
-function ClarificationMessage({ content, missingFields, actions, onSend }) {
+//  User message 
+function UserMessage({ content }) {
   return (
-    <div className="ex-msg ex-msg--assistant">
-      <div className="ex-msg__avatar" style={{background:"transparent", borderRadius:0}}>
-        <EDGEXIcon size={26} state="idle" color="#0F6E56" />
-      </div>
-      <div className="ex-msg__body">
-        <div className="ex-msg__clarify-banner">
-          <span className="ex-msg__clarify-icon">!</span>
-          <span>{content}</span>
-        </div>
-        {missingFields && missingFields.length > 0 && (
-          <div className="ex-msg__missing">
-            {missingFields.map(f => (
-              <span key={f} className="ex-msg__missing-tag">
-                {f === "current_role" ? "Current role missing" : "Target role missing"}
-              </span>
-            ))}
-          </div>
-        )}
-        {actions && actions.length > 0 && (
-          <div className="ex-actions">
-            {actions.map((a, i) => (
-              <button key={i} className="ex-action ex-action--q" onClick={() => {
-                if (a && a.prompt) onSend(a.prompt);
-              }}>
-                {a.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="ex-msg ex-msg--user">
+      <div className="ex-msg__bubble--user">{content}</div>
     </div>
   );
 }
 
+//  Error message 
 function ErrorMessage({ content }) {
   return (
     <div className="ex-msg ex-msg--assistant">
-      <div className="ex-msg__avatar ex-msg__avatar--err">!</div>
+      <div className="ex-msg__avatar" style={{ background: "transparent" }}>
+        <EDGEXIcon size={22} state="idle" color="#ef4444" />
+      </div>
       <div className="ex-msg__body">
-        <p className="ex-msg__para ex-msg__para--err">{content}</p>
+        <p style={{ color: "#f87171", fontSize: "14px", margin: 0 }}>{content}</p>
       </div>
     </div>
   );
 }
 
-function TypingIndicator() {
-  return (
-    <div className="ex-msg ex-msg--assistant">
-      <div className="ex-msg__avatar" style={{background:"transparent", borderRadius:0}}>
-        <EDGEXIcon size={26} state="thinking" color="#0F6E56" />
-      </div>
-      <div className="ex-msg__body">
-        <div className="ex-typing"><span/><span/><span/></div>
-      </div>
-    </div>
-  );
-}
+//  Premium empty state 
+function EmptyState({ onSend, context }) {
+  const suggestions = getSmartSuggestions(context);
+  const hasContext  = context?.role || context?.target;
+  const CATEGORY_COLORS = {
+    Setup: "#6366f1", Skills: "#f59e0b", Salary: "#10b981",
+    Visa: "#3b82f6", Plan: "#0F6E56", Interview: "#8b5cf6",
+    CV: "#ec4899", Transition: "#6366f1",
+  };
 
-//  Empty state 
-const STARTERS = [
-  { label: "Plan my career transition",         prompt: "I want to plan a career transition. What do I need to know?" },
-  { label: "What skills am I missing?",         prompt: "I want to understand what skills I am missing for my target role." },
-  { label: "UK salary benchmarks",              prompt: "What are typical UK salary ranges for senior tech roles?" },
-  { label: "UK visa options for my move",       prompt: "What UK work visa routes are available for skilled workers?" },
-  { label: "How long will my transition take?", prompt: "How long does a typical career transition take?" },
-  { label: "What do hiring managers look for?", prompt: "What do UK hiring managers look for when screening career changers?" },
-];
-
-function EmptyState({ onSend }) {
   return (
     <div className="ex-empty">
-      <div className="ex-empty__icon" style={{background:"transparent", boxShadow:"none", borderRadius:0}}>
-        <EDGEXIcon size={48} state="new" color="#0F6E56" />
+      <div className="ex-empty__glow" />
+      <div className="ex-empty__icon-wrap">
+        <EDGEXIcon size={44} state="new" color="#0F6E56" />
       </div>
-      <h1 className="ex-empty__title">EDGEX</h1>
-      <p className="ex-empty__sub">Career intelligence. Ask anything about transitions, salaries, skills, or visas.</p>
-      <div className="ex-empty__starters">
-        {STARTERS.map((s, i) => (
-          <button key={i} className="ex-empty__starter" onClick={() => onSend(s.prompt)}>
-            {s.label}
+      <h1 className="ex-empty__title">
+        {hasContext ? "What do you want to know?" : "Your Career Intelligence Engine"}
+      </h1>
+      <p className="ex-empty__sub">
+        {hasContext
+          ? "Powered by 1,200+ UK roles, real transition data, and market intelligence."
+          : "Ask anything about career transitions, skill gaps, salaries, or UK visas. EDGEX uses real data -- not generic advice."}
+      </p>
+      <div className="ex-empty__suggestions">
+        {suggestions.map((s, i) => (
+          <button
+            key={i}
+            className="ex-suggestion"
+            onClick={() => onSend(s.prompt)}
+            style={{ "--sug-color": CATEGORY_COLORS[s.category] || "#0F6E56" }}
+          >
+            <span className="ex-suggestion__cat" style={{ color: CATEGORY_COLORS[s.category] || "#0F6E56" }}>
+              {s.category}
+            </span>
+            <span className="ex-suggestion__label">{s.label}</span>
           </button>
         ))}
       </div>
@@ -257,9 +399,9 @@ function EmptyState({ onSend }) {
 export default function ChatWindow() {
   const router = useRouter();
   const { context, updateContext, clear } = useEDGEXContext();
-  const [messages, setMessages] = useState([]);
-  const [input, setInput]       = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [messages, setMessages]   = useState([]);
+  const [input, setInput]         = useState("");
+  const [loading, setLoading]     = useState(false);
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
@@ -276,73 +418,46 @@ export default function ChatWindow() {
     setLoading(true);
 
     try {
-      const payload = {
-        message: trimmed,
-        context: safeContext(context),
-      };
-
       const res = await fetch(`${API_BASE}/api/copilot/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-HireEdge-Plan": getPlan(),
-        },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json", "X-HireEdge-Plan": getPlan() },
+        body: JSON.stringify({ message: trimmed, context: safeContext(context) }),
       });
 
-      // Parse response -- handle non-JSON gracefully
       let json;
-      const ct = res.headers.get("content-type") || "";
-      if (ct.includes("application/json")) {
-        json = await res.json();
-      } else {
-        const txt = await res.text();
-        throw new Error("Non-JSON response (" + res.status + "): " + txt.slice(0, 120));
-      }
+      try { json = await res.json(); } catch { throw new Error("Non-JSON response from server"); }
 
       if (!res.ok || !json.ok) {
-        setMessages(prev => [...prev, {
-          role: "assistant", type: "error",
-          content: (json && json.error) ? json.error : "Something went wrong. Please try again.",
-        }]);
+        setMessages(prev => [...prev, { role: "assistant", type: "error", content: json?.error || "Something went wrong." }]);
         return;
       }
 
       const data = json.data;
-      if (!data) throw new Error("Response missing data field");
+      if (!data) throw new Error("Empty response");
 
       if (data.type === "clarification") {
         setMessages(prev => [...prev, {
           role: "assistant", type: "clarification",
-          content: data.reply || "I need a bit more information.",
+          content: data.reply,
           missingFields: data.missing_fields || [],
           actions: data.next_actions || [],
         }]);
-        if (data.context && typeof data.context === "object") {
-          updateContext(safeContext(data.context));
-        }
+        if (data.context) updateContext(safeContext(data.context));
         return;
       }
 
-      const toolCards = detectToolsFromText(data.reply);
-
       setMessages(prev => [...prev, {
         role: "assistant", type: "assistant",
-        content: data.reply || "",
-        nextActions: Array.isArray(data.next_actions) ? data.next_actions : [],
-        toolCards,
+        content: data.reply,
+        nextActions: data.next_actions || [],
+        intent: data.intent?.name,
+        confidence: data.intent?.confidence,
       }]);
-
-      if (data.context && typeof data.context === "object") {
-        updateContext(safeContext(data.context));
-      }
+      if (data.context) updateContext(safeContext(data.context));
 
     } catch (err) {
-      console.error("[ChatWindow] send error:", err);
-      setMessages(prev => [...prev, {
-        role: "assistant", type: "error",
-        content: "Connection error. Please try again.",
-      }]);
+      console.error("[ChatWindow]", err);
+      setMessages(prev => [...prev, { role: "assistant", type: "error", content: "Connection error. Please try again." }]);
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -350,9 +465,19 @@ export default function ChatWindow() {
   }, [context, loading, updateContext]);
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send(input);
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
+  };
+
+  const handleNewChat = () => {
+    setMessages([]); setInput(""); clear();
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleEditContext = () => {
+    const role   = window.prompt("Current role:", context?.role || "");
+    const target = window.prompt("Target role:",  context?.target || "");
+    if (role !== null || target !== null) {
+      updateContext({ role: role || context?.role, target: target || context?.target });
     }
   };
 
@@ -362,57 +487,32 @@ export default function ChatWindow() {
       {/* Header */}
       <div className="ex-header">
         <div className="ex-header__brand">
-          <span className="ex-header__star" style={{background:"transparent", display:"flex", alignItems:"center"}}>
-            <EDGEXIcon size={16} state="idle" color="#0F6E56" />
+          <span style={{ display:"flex", alignItems:"center", background:"transparent" }}>
+            <EDGEXIcon size={18} state="idle" color="#0F6E56" />
           </span>
-          EDGEX
+          <span className="ex-header__name">EDGEX</span>
           <span className="ex-header__sub">Career Intelligence</span>
         </div>
-        <button className="ex-header__new" onClick={() => {
-          setMessages([]);
-          setInput("");
-          clear();
-          setTimeout(() => inputRef.current?.focus(), 50);
-        }}>
-          New chat
-        </button>
+        <button className="ex-header__new" onClick={handleNewChat}>New chat</button>
       </div>
+
+      {/* Personalization bar */}
+      <PersonalizationBar context={context} onEdit={handleEditContext} />
 
       {/* Messages */}
       <div className="ex-messages">
-        {messages.length === 0 && !loading && <EmptyState onSend={send} />}
+        {messages.length === 0 && !loading && (
+          <EmptyState onSend={send} context={context} />
+        )}
 
         {messages.map((msg, i) => {
-          if (msg.role === "user") {
-            return <UserMessage key={i} content={msg.content} />;
-          }
-          if (msg.type === "clarification") {
-            return (
-              <ClarificationMessage
-                key={i}
-                content={msg.content}
-                missingFields={msg.missingFields}
-                actions={msg.actions}
-                onSend={send}
-              />
-            );
-          }
-          if (msg.type === "error") {
-            return <ErrorMessage key={i} content={msg.content} />;
-          }
-          return (
-            <AssistantMessage
-              key={i}
-              content={msg.content}
-              nextActions={msg.nextActions}
-              toolCards={msg.toolCards}
-              onSend={send}
-              router={router}
-            />
-          );
+          if (msg.role === "user")               return <UserMessage key={i} content={msg.content} />;
+          if (msg.type === "clarification")      return <ClarificationMessage key={i} content={msg.content} missingFields={msg.missingFields} actions={msg.actions} onSend={send} />;
+          if (msg.type === "error")              return <ErrorMessage key={i} content={msg.content} />;
+          return <AssistantMessage key={i} content={msg.content} nextActions={msg.nextActions} intent={msg.intent} confidence={msg.confidence} onSend={send} router={router} />;
         })}
 
-        {loading && <TypingIndicator />}
+        {loading && <ThinkingState />}
         <div ref={bottomRef} />
       </div>
 
@@ -422,29 +522,21 @@ export default function ChatWindow() {
           <textarea
             ref={inputRef}
             className="ex-input"
-            placeholder="Ask about your career, skills, salary, visa..."
+            placeholder="Ask about transitions, skills, salary, or visas..."
             value={input}
             rows={1}
             disabled={loading}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <button
-            className="ex-send"
-            disabled={loading || !input.trim()}
-            onClick={() => send(input)}
-            aria-label="Send"
-          >
+          <button className="ex-send" disabled={loading || !input.trim()} onClick={() => send(input)} aria-label="Send">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 12.5L12.5 7L2 1.5V5.8L9 7L2 8.2V12.5Z" fill="currentColor"/>
             </svg>
           </button>
         </div>
-        <p className="ex-input-hint">
-          <kbd>Enter</kbd> to send &nbsp;&nbsp; <kbd>Shift+Enter</kbd> for new line
-        </p>
+        <p className="ex-input-hint"><kbd>Enter</kbd> to send &nbsp; <kbd>Shift+Enter</kbd> for new line</p>
       </div>
-
     </div>
   );
 }
