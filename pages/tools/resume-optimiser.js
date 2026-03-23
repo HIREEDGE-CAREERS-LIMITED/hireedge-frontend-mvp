@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import ResumeOptimiserResult from "../../components/tools/ResumeOptimiserResult";
+import EDGEXBadge from "../../components/brand/EDGEXBadge";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -292,11 +293,14 @@ export default function ResumeOptimiserPage() {
 
       {/* ── Results ──────────────────────────────────────────────────────── */}
       {result && !loading && (
-        <ResumeOptimiserResult
-          result={result}
-          targetRole={targetRole}
-          onReset={() => { setResult(null); setError(null); }}
-        />
+        <>
+          <ResumeOptimiserResult
+            result={result}
+            targetRole={targetRole}
+            onReset={() => { setResult(null); setError(null); }}
+          />
+          <div className="edgex-tool-footer"><EDGEXBadge /></div>
+        </>
       )}
     </div>
   );
