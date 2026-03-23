@@ -84,8 +84,20 @@ const TOOLS = [
 
 //  Derive recommended tools from conversation 
 
+// Derive tools from context.lastIntent when no message history available
+function deriveFromContext(context) {
+  if (!context) return TOOLS.slice(0, 3);
+  const intent = (context.lastIntent || "").replace(/_/g, " ");
+  const hasTransition = /transition|career|move|switch/.test(intent);
+  const hasVisa = /visa/.test(intent);
+  const base = [TOOLS[0], TOOLS[1]]; // gap + roadmap always
+  if (hasVisa) return [TOOLS[0], TOOLS[2], TOOLS.find(t => t.key === "pack")];
+  if (hasTransition) return [TOOLS[0], TOOLS[1], TOOLS.find(t => t.key === "pack")];
+  return TOOLS.slice(0, 3);
+}
+
 function deriveRecommendedTools(messages, context) {
-  if (!messages || !messages.length) return TOOLS.slice(0, 3);
+  if (!messages || !messages.length) return deriveFromContext(context);
 
   const text = messages
     .map(m => m.content || "")
@@ -108,9 +120,9 @@ function deriveRecommendedTools(messages, context) {
 
 //  Memory block 
 
-function MemoryBlock({ context, messages }) {
+function MemoryBlock({ context }) {
   const hasData = context?.role || context?.target || context?.country;
-  const msgCount = messages ? messages.length : 0;
+  const msgCount = 0;
 
   return (
     <div className="exs-block">
@@ -226,7 +238,7 @@ function PremiumCTA({ router, hasPro }) {
 
 //  Sidebar 
 
-function EDGEXSidebar({ context, messages, router }) {
+function EDGEXSidebar({ context, router }) {
   const isPaid =
     typeof window !== "undefined"
       ? ["career_pack", "pro", "elite"].includes(
@@ -234,11 +246,11 @@ function EDGEXSidebar({ context, messages, router }) {
         )
       : false;
 
-  const recommendedTools = deriveRecommendedTools(messages, context);
+  const recommendedTools = deriveRecommendedTools([], context);
 
   return (
     <aside className="exs-sidebar">
-      <MemoryBlock context={context} messages={messages} />
+      <MemoryBlock context={context} />
       <ToolRecommendations tools={recommendedTools} router={router} />
       <PremiumCTA router={router} hasPro={isPaid} />
     </aside>
@@ -266,7 +278,7 @@ function SidebarToggle({ open, onToggle }) {
 //  Main shell 
 
 export default function EDGEXShell() {
-  const { messages, context } = useEDGEXContext();
+  const { context } = useEDGEXContext();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -291,7 +303,6 @@ export default function EDGEXShell() {
         {sidebarOpen && (
           <EDGEXSidebar
             context={context}
-            messages={messages}
             router={router}
           />
         )}
