@@ -1,6 +1,6 @@
 // ============================================================================
 // pages/tools/talent-profile.js
-// HireEdge — Talent Profile (v1)
+// HireEdge -- Talent Profile (v1)
 //
 // The central brain of HireEdge. Combines all career intelligence into a
 // McKinsey-grade 10-section career health dashboard.
@@ -15,6 +15,7 @@ import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import TalentProfileCard from "../../components/tools/TalentProfileCard";
 import { useEDGEXContext } from "../../context/CopilotContext";
+import EDGEXBadge from "../../components/brand/EDGEXBadge";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 
@@ -31,31 +32,31 @@ function _friendlyError(json) {
 }
 
 const LOADING_STEPS = [
-  "Analysing your career profile…",
-  "Scoring market readiness…",
-  "Identifying strengths & gaps…",
-  "Building strategic recommendations…",
-  "Calculating transition confidence…",
-  "Compiling your Talent Report…",
+  "Analysing your career profile...",
+  "Scoring market readiness...",
+  "Identifying strengths & gaps...",
+  "Building strategic recommendations...",
+  "Calculating transition confidence...",
+  "Compiling your Talent Report...",
 ];
 
-// ── Pro paywall ───────────────────────────────────────────────────────────────
+// -- Pro paywall ---------------------------------------------------------------
 
 function ProPaywall() {
   return (
     <div className="tp-paywall">
-      <div className="tp-paywall__icon">✦</div>
+      <div className="tp-paywall__icon"></div>
       <h3 className="tp-paywall__title">Unlock Your Talent Profile</h3>
       <p className="tp-paywall__sub">Available on Pro and Elite plans</p>
 
       <div className="tp-paywall__features">
         {[
-          { icon: "◈", text: "10-section McKinsey-style career report" },
-          { icon: "◈", text: "Personalised Talent Score (0–100)" },
-          { icon: "◈", text: "Executive career summary & market positioning" },
-          { icon: "◈", text: "Transition confidence with % probability" },
-          { icon: "◈", text: "Strategic recommendation with timeline" },
-          { icon: "◈", text: "Prioritised action plan" },
+          { icon: "", text: "10-section McKinsey-style career report" },
+          { icon: "", text: "Personalised Talent Score (0-100)" },
+          { icon: "", text: "Executive career summary & market positioning" },
+          { icon: "", text: "Transition confidence with % probability" },
+          { icon: "", text: "Strategic recommendation with timeline" },
+          { icon: "", text: "Prioritised action plan" },
         ].map((f, i) => (
           <div key={i} className="tp-paywall__feature">
             <span className="tp-paywall__feature-icon">{f.icon}</span>
@@ -66,10 +67,10 @@ function ProPaywall() {
 
       <div className="tp-paywall__plans">
         <Link href="/billing?plan=pro" className="tp-paywall__cta tp-paywall__cta--primary">
-          Upgrade to Pro — £14.99/mo →
+          Upgrade to Pro -- 14.99/mo 
         </Link>
         <Link href="/billing?plan=elite" className="tp-paywall__cta tp-paywall__cta--secondary">
-          Go Elite — £29.99/mo
+          Go Elite -- 29.99/mo
         </Link>
       </div>
       <p className="tp-paywall__note">Includes Resume Optimiser, LinkedIn Audit, Interview Prep & more.</p>
@@ -77,7 +78,7 @@ function ProPaywall() {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// -- Page ----------------------------------------------------------------------
 
 export default function TalentProfilePage() {
   const router  = useRouter();
@@ -147,7 +148,7 @@ export default function TalentProfilePage() {
       if (!json.ok) { setErrorInfo(_friendlyError(json)); return; }
       setResult(json.data);
     } catch {
-      setErrorInfo({ type: "error", message: "Network error — please try again." });
+      setErrorInfo({ type: "error", message: "Network error -- please try again." });
     } finally {
       setLoading(false);
     }
@@ -155,43 +156,43 @@ export default function TalentProfilePage() {
 
   return (
     <>
-      <Head><title>Talent Profile — HireEdge</title></Head>
+      <Head><title>Talent Profile -- HireEdge</title></Head>
 
       <div className="tool-page">
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
+        {/* -- Header ------------------------------------------------------- */}
         <div className="tp-page-header">
           <div className="tp-page-header__badge">
-            <span className="tp-page-header__badge-icon">✦</span>
+            <span className="tp-page-header__badge-icon"></span>
             <span>TALENT PROFILE</span>
           </div>
           <h1 className="tp-page-header__title">Your Career Intelligence Report</h1>
           <p className="tp-page-header__sub">
-            A McKinsey-grade analysis of your career position, market readiness, transition probability, and the exact steps to reach your target role — built from everything EDGEX knows about you.
+            A McKinsey-grade analysis of your career position, market readiness, transition probability, and the exact steps to reach your target role -- built from everything EDGEX knows about you.
           </p>
         </div>
 
-        {/* ── Form ───────────────────────────────────────────────────────── */}
+        {/* -- Form --------------------------------------------------------- */}
         <div className="tool-form tp-form">
 
           <div className="tool-form__row tool-form__row--2">
             <div className="tool-form__field">
               <label className="tool-form__label">Current Role <span className="tool-form__req">*</span></label>
               <RoleSearch
-                placeholder="Where you are now…"
+                placeholder="Where you are now..."
                 onSelect={setCurrentRole}
                 initialValue={currentRole?.title || ""}
               />
-              {currentRole && <span className="tool-form__selected">✓ {currentRole.title}</span>}
+              {currentRole && <span className="tool-form__selected"> {currentRole.title}</span>}
             </div>
             <div className="tool-form__field">
-              <label className="tool-form__label">Target Role <span className="tool-form__optional">(optional — enables transition analysis)</span></label>
+              <label className="tool-form__label">Target Role <span className="tool-form__optional">(optional -- enables transition analysis)</span></label>
               <RoleSearch
-                placeholder="Where you want to go…"
+                placeholder="Where you want to go..."
                 onSelect={setTargetRole}
                 initialValue={targetRole?.title || ""}
               />
-              {targetRole && <span className="tool-form__selected">✓ {targetRole.title}</span>}
+              {targetRole && <span className="tool-form__selected"> {targetRole.title}</span>}
             </div>
           </div>
 
@@ -206,7 +207,7 @@ export default function TalentProfilePage() {
                 value={skills}
                 onChange={(e) => setSkills(e.target.value)}
               />
-              <span className="tool-form__hint">Comma-separated — the more you add, the sharper the profile</span>
+              <span className="tool-form__hint">Comma-separated -- the more you add, the sharper the profile</span>
             </div>
             <div className="tool-form__field">
               <label className="tool-form__label">Years of Experience</label>
@@ -226,23 +227,23 @@ export default function TalentProfilePage() {
             onClick={() => setShowAdvanced(v => !v)}
             type="button"
           >
-            <span className="li-advanced-toggle__icon">{showAdvanced ? "▲" : "▼"}</span>
+            <span className="li-advanced-toggle__icon">{showAdvanced ? "" : ""}</span>
             {showAdvanced ? "Hide advanced" : "Add CV for deeper personalisation"}
             {!showAdvanced && !resumeText && (
               <span className="li-advanced-toggle__tip">strongly recommended</span>
             )}
-            {resumeText && <span className="li-advanced-toggle__added">✓ CV added</span>}
+            {resumeText && <span className="li-advanced-toggle__added"> CV added</span>}
           </button>
 
           {showAdvanced && (
             <div className="li-advanced-fields">
               <div className="tool-form__field">
                 <label className="tool-form__label">
-                  CV / Profile Summary <span className="tool-form__optional">— enables a fully personalised report</span>
+                  CV / Profile Summary <span className="tool-form__optional">-- enables a fully personalised report</span>
                 </label>
                 <textarea
                   className="tool-form__textarea" rows={6}
-                  placeholder="Paste your CV, LinkedIn summary, or career background. The more detail, the sharper the intelligence…"
+                  placeholder="Paste your CV, LinkedIn summary, or career background. The more detail, the sharper the intelligence..."
                   autoComplete="off"
                   value={resumeText}
                   onChange={(e) => setResumeText(e.target.value)}
@@ -254,7 +255,7 @@ export default function TalentProfilePage() {
                 </label>
                 <textarea
                   className="tool-form__textarea" rows={4}
-                  placeholder="Paste a JD to align the profile to a specific role…"
+                  placeholder="Paste a JD to align the profile to a specific role..."
                   autoComplete="off"
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
@@ -269,9 +270,9 @@ export default function TalentProfilePage() {
           {/* Limit */}
           {errorInfo?.type === "limit" && (
             <div className="tool-upgrade-prompt">
-              <span className="tool-upgrade-prompt__icon">⏱</span>
+              <span className="tool-upgrade-prompt__icon"></span>
               <div><p className="tool-upgrade-prompt__title">{errorInfo.message}</p></div>
-              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade →</Link>
+              <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade </Link>
             </div>
           )}
 
@@ -288,7 +289,7 @@ export default function TalentProfilePage() {
             {loading ? LOADING_STEPS[loadingStep] : "Generate My Talent Profile"}
           </button>
           {!loading && (
-            <p className="li-form-timing">Takes ~30 seconds · Full 10-section career intelligence report</p>
+            <p className="li-form-timing">Takes ~30 seconds  Full 10-section career intelligence report</p>
           )}
         </div>
 
@@ -299,14 +300,19 @@ export default function TalentProfilePage() {
             <div className="li-loading-steps">
               {LOADING_STEPS.map((step, i) => (
                 <span key={i} className={`li-loading-step ${i === loadingStep ? "li-loading-step--active" : i < loadingStep ? "li-loading-step--done" : ""}`}>
-                  {i < loadingStep ? "✓" : i === loadingStep ? "→" : "·"} {step}
+                  {i < loadingStep ? "" : i === loadingStep ? "" : ""} {step}
                 </span>
               ))}
             </div>
           </div>
         )}
 
-        {result && <TalentProfileCard data={result} />}
+        {result && (
+        <>
+          <TalentProfileCard data={result} />
+          <div className="edgex-tool-footer"><EDGEXBadge /></div>
+        </>
+      )}
       </div>
     </>
   );
