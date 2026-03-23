@@ -199,7 +199,7 @@ function ThinkingState() {
   return (
     <div className="ex-thinking">
       <div className="ex-thinking__icon">
-        <EDGEXIcon size={22} state="thinking" color="#0F6E56" />
+        <EDGEXIcon size={24} state="thinking" color="#0F6E56" />
         <div className="ex-thinking__glow" />
       </div>
       <span className="ex-thinking__text">{MESSAGES[idx]}</span>
@@ -478,7 +478,7 @@ function EmptyState({ onSend, context }) {
           <div className="ex-empty__orbit-ring" />
           <div className="ex-empty__orbit-ring ex-empty__orbit-ring--2" />
           <div className="ex-empty__icon-wrap">
-            <EDGEXIcon size={44} state="new" color="#0F6E56" />
+            <EDGEXIcon size={64} state="new" color="#0F6E56" />
           </div>
         </div>
         <div className="ex-empty__status-row">
