@@ -1,8 +1,10 @@
 // ============================================================================
 // pages/tools/index.js
 // HireEdge -- Career Tools Index
+// Styled to match /intelligence page: large header, nav cards, tool grid
 // ============================================================================
 
+import { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 
@@ -69,55 +71,106 @@ const TOOLS = [
   },
 ];
 
-function ToolCard({ tool }) {
-  return (
-    <Link href={tool.href} className="ti-card" style={{ "--tc": tool.color }}>
-      <div className="ti-card__icon" style={{ background: tool.color + "18", color: tool.color }}>
-        {tool.icon}
-      </div>
-      <div className="ti-card__body">
-        <div className="ti-card__header">
-          <span className="ti-card__sub">{tool.sub}</span>
-          {tool.plan === "pro" && <span className="ti-badge">PRO</span>}
-        </div>
-        <h3 className="ti-card__name">{tool.name}</h3>
-        <p className="ti-card__desc">{tool.desc}</p>
-      </div>
-      <div className="ti-card__arrow">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </div>
-    </Link>
-  );
-}
+const NAV_CARDS = [
+  {
+    icon: "🔍",
+    label: "Gap Analyser",
+    desc: "Find exactly what skills you're missing",
+    href: "/tools/career-gap-explainer",
+  },
+  {
+    icon: "🗺️",
+    label: "Career Roadmap",
+    desc: "Step-by-step plan to your target role",
+    href: "/tools/career-roadmap",
+  },
+  {
+    icon: "🧳",
+    label: "Career Pack",
+    desc: "Full transition plan in one report",
+    href: "/career-pack",
+  },
+];
 
 export default function ToolsIndexPage() {
+  const [filter, setFilter] = useState("all");
+
+  const filtered = TOOLS.filter(t => {
+    if (filter === "free") return t.plan === "free";
+    if (filter === "pro")  return t.plan === "pro";
+    return true;
+  });
+
   return (
     <>
       <Head>
         <title>Career Tools -- HireEdge</title>
       </Head>
-      <div className="ti-page">
-        <div className="ti-hero">
-          <span className="ti-hero__badge">TOOLS</span>
-          <h1 className="ti-hero__title">Career Tools</h1>
-          <p className="ti-hero__sub">Hands-on intelligence tools powered by real career data.</p>
+
+      <div className="tl-page">
+
+        {/* Header */}
+        <div className="tl-header">
+          <h1 className="tl-header__title">Career Tools</h1>
+          <p className="tl-header__sub">
+            Hands-on intelligence tools powered by real career data across 1,000+ roles.
+          </p>
         </div>
 
-        <div className="ti-section">
-          <p className="ti-section__label">Free Tools</p>
-          <div className="ti-grid">
-            {TOOLS.filter(t => t.plan === "free").map(t => <ToolCard key={t.id} tool={t} />)}
-          </div>
+        {/* Nav cards -- 3 col like Intelligence page */}
+        <div className="tl-nav-grid">
+          {NAV_CARDS.map(card => (
+            <Link key={card.href} href={card.href} className="tl-nav-card">
+              <span className="tl-nav-card__icon">{card.icon}</span>
+              <span className="tl-nav-card__label">{card.label}</span>
+              <span className="tl-nav-card__desc">{card.desc}</span>
+            </Link>
+          ))}
         </div>
 
-        <div className="ti-section">
-          <p className="ti-section__label">Pro Tools</p>
-          <div className="ti-grid">
-            {TOOLS.filter(t => t.plan === "pro").map(t => <ToolCard key={t.id} tool={t} />)}
-          </div>
+        {/* Filter chips */}
+        <div className="tl-filters">
+          {["all","free","pro"].map(f => (
+            <button
+              key={f}
+              className={"tl-chip" + (filter === f ? " tl-chip--active" : "")}
+              onClick={() => setFilter(f)}
+            >
+              {f === "all" ? "All Tools" : f === "free" ? "Free" : "Pro"}
+            </button>
+          ))}
         </div>
+
+        {/* Tool list */}
+        <div className="tl-list">
+          {filtered.map(tool => (
+            <Link
+              key={tool.id}
+              href={tool.href}
+              className="tl-tool-card"
+              style={{ "--tc": tool.color }}
+            >
+              <div
+                className="tl-tool-card__icon"
+                style={{ background: tool.color + "18", color: tool.color }}
+              >
+                {tool.icon}
+              </div>
+              <div className="tl-tool-card__body">
+                <div className="tl-tool-card__top">
+                  <span className="tl-tool-card__sub">{tool.sub}</span>
+                  {tool.plan === "pro" && <span className="tl-tool-badge">PRO</span>}
+                </div>
+                <h3 className="tl-tool-card__name">{tool.name}</h3>
+                <p className="tl-tool-card__desc">{tool.desc}</p>
+              </div>
+              <svg className="tl-tool-card__arrow" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Link>
+          ))}
+        </div>
+
       </div>
     </>
   );
