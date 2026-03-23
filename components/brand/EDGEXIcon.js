@@ -1,38 +1,41 @@
 // ============================================================================
 // components/brand/EDGEXIcon.js
 //
-// EDGEX premium symbol — SSR-safe, no hooks.
+// EDGEX — premium product symbol. SSR-safe, zero hooks.
 //
-// Design system:
-//   - Fixed 24×24 viewBox regardless of rendered size (consistent proportions)
-//   - Two strokes crossing at exact centre (12,12)
-//   - strokeLinecap="round" + extra padding = symbol feel, not close-icon feel
-//   - Stroke weight scales with size but stays bold (min 2.5px equivalent)
+// CONSTRUCTION:
+//   Not two crossing lines (= close icon).
+//   Four independent arms radiating from a hollow centre diamond.
+//   Each arm: bold stroke, round caps, starts 1.8px from centre.
+//   This reads as an engineered mark — an AI node — not a UI affordance.
 //
-// States:
-//   idle      — static, used for avatars and sidebar header
-//   header    — static, slightly smaller weight, used next to wordmark
-//   thinking  — slow 6s rotation, used while generating
-//   new       — sequential draw-in, used on empty state hero load
+// STATES:
+//   idle      — solid mark, no animation. Avatars, sidebar.
+//   hero      — solid mark + soft CSS glow via filter. Empty state.
+//   thinking  — very slow breathing pulse (opacity 0.6↔1.0, 3s). Generating.
+//   header    — thinner strokes, no animation. Next to wordmark.
 //
-// Usage:
-//   <EDGEXIcon size={64} state="new" />          hero
-//   <EDGEXIcon size={18} state="header" />       next to "EDGEX" wordmark
-//   <EDGEXIcon size={22} state="idle" />         AI message avatar
-//   <EDGEXIcon size={22} state="thinking" />     generating state
+// USAGE:
+//   <EDGEXIcon size={64} state="hero" />        empty state hero
+//   <EDGEXIcon size={22} state="idle" />        AI message avatar
+//   <EDGEXIcon size={24} state="thinking" />    generating
+//   <EDGEXIcon size={16} state="header" />      wordmark lockup
 // ============================================================================
 
 const TEAL = "#0F6E56";
 
-// Fixed geometry on 24×24 viewBox
-// Padding 4px each side → strokes from (4,4)→(20,20) and (20,4)→(4,20)
-// Centre cross at (12,12) — perfectly balanced
-const VB   = 24;
-const PAD  = 4.5;
-const A    = PAD;
-const B    = VB - PAD;
-// Diagonal length for dasharray animation
-const DIAG = Math.round(Math.sqrt(Math.pow(B - A, 2) * 2) * 100) / 100; // ≈ 21.92
+// Fixed 24×24 geometry — proportions locked at all sizes
+const CX = 12, CY = 12;  // centre
+const G  = 1.8;           // half-gap from centre (creates hollow diamond)
+const E  = 9.3;           // extent: arm tip distance from centre (axis)
+
+// Four arm endpoints: [x1,y1, x2,y2]
+const ARMS = [
+  [CX - G, CY - G,  CX - E, CY - E],   // top-left
+  [CX + G, CY - G,  CX + E, CY - E],   // top-right
+  [CX - G, CY + G,  CX - E, CY + E],   // bottom-left
+  [CX + G, CY + G,  CX + E, CY + E],   // bottom-right
+];
 
 export default function EDGEXIcon({
   size      = 24,
@@ -41,35 +44,26 @@ export default function EDGEXIcon({
   className = "",
   style     = {},
 }) {
+  const isHero     = state === "hero";
   const isThinking = state === "thinking";
-  const isNew      = state === "new";
   const isHeader   = state === "header";
 
-  // Stroke weight: bold for identity, slightly lighter for header
-  // Relative to viewBox (24), then scales with size automatically
-  const sw = isHeader ? 2.0 : 2.6;
+  // Stroke weight — bold for identity, slightly refined for header
+  const sw = isHeader ? 2.4 : 3.2;
+
+  // SVG-level filter for hero glow (no DOM wrappers needed)
+  const filterId = "edgex-glow";
 
   const svgStyle = {
-    display: "block",
+    display:    "block",
     flexShrink: 0,
+    overflow:   "visible",          // needed so glow filter isn't clipped
     ...(isThinking ? {
-      animation: "edgex-spin 6s linear infinite",
+      animation:       "edgex-breathe 3s ease-in-out infinite",
       transformOrigin: "center",
     } : {}),
     ...style,
   };
-
-  const lineA = isNew ? {
-    strokeDasharray:  DIAG,
-    strokeDashoffset: DIAG,
-    animation: "edgex-draw 0.5s cubic-bezier(0.4,0,0.2,1) 0.05s forwards",
-  } : {};
-
-  const lineB = isNew ? {
-    strokeDasharray:  DIAG,
-    strokeDashoffset: DIAG,
-    animation: "edgex-draw 0.5s cubic-bezier(0.4,0,0.2,1) 0.28s forwards",
-  } : {};
 
   return (
     <svg
@@ -82,39 +76,37 @@ export default function EDGEXIcon({
       style={svgStyle}
       aria-hidden="true"
     >
-      {/* Keyframes — injected only when needed */}
+      {/* Keyframes — injected only when the state needs them */}
       {isThinking && (
         <style>{`
-          @keyframes edgex-spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
-          }
-        `}</style>
-      )}
-      {isNew && (
-        <style>{`
-          @keyframes edgex-draw {
-            to { stroke-dashoffset: 0; }
+          @keyframes edgex-breathe {
+            0%,100% { opacity: 1; }
+            50%      { opacity: 0.45; }
           }
         `}</style>
       )}
 
-      {/* Top-left → bottom-right */}
-      <line
-        x1={A} y1={A} x2={B} y2={B}
+      {/* SVG filter for hero glow — defined once, referenced below */}
+      {isHero && (
+        <defs>
+          <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+      )}
+
+      {/* The four arms — each is an independent line segment */}
+      <g
         stroke={color}
         strokeWidth={sw}
         strokeLinecap="round"
-        style={lineA}
-      />
-      {/* Top-right → bottom-left */}
-      <line
-        x1={B} y1={A} x2={A} y2={B}
-        stroke={color}
-        strokeWidth={sw}
-        strokeLinecap="round"
-        style={lineB}
-      />
+        filter={isHero ? `url(#${filterId})` : undefined}
+      >
+        {ARMS.map(([x1, y1, x2, y2], i) => (
+          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />
+        ))}
+      </g>
     </svg>
   );
 }
