@@ -447,6 +447,9 @@ function IntelligencePreview({ onSend }) {
 
 
 // -- Premium empty state
+const CAT_ICONS  = { Setup:"S", Skills:"G", Salary:"$", Visa:"V", Plan:"P", Interview:"I", CV:"C", Transition:"T" };
+const CAT_COLORS = { Setup:"#6366f1", Skills:"#f59e0b", Salary:"#10b981", Visa:"#3b82f6", Plan:"#0F6E56", Interview:"#8b5cf6", CV:"#ec4899", Transition:"#6366f1" };
+
 function EmptyState({ onSend, context }) {
   const suggestions = getSmartSuggestions(context);
   const hasContext  = !!(context?.role || context?.target);
