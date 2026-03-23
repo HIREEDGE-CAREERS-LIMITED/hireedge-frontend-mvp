@@ -128,8 +128,8 @@ function renderText(text) {
 function AssistantMessage({ content, nextActions, toolCards, onSend, router }) {
   return (
     <div className="ex-msg ex-msg--assistant">
-      <div className="ex-msg__avatar">
-        <EDGEXIcon size={26} state="idle" />
+      <div className="ex-msg__avatar" style={{background:"transparent", borderRadius:0}}>
+        <EDGEXIcon size={26} state="idle" color="#0F6E56" />
       </div>
       <div className="ex-msg__body">
         <div className="ex-msg__text">{renderText(content)}</div>
@@ -167,8 +167,8 @@ function AssistantMessage({ content, nextActions, toolCards, onSend, router }) {
 function ClarificationMessage({ content, missingFields, actions, onSend }) {
   return (
     <div className="ex-msg ex-msg--assistant">
-      <div className="ex-msg__avatar">
-        <EDGEXIcon size={26} state="idle" />
+      <div className="ex-msg__avatar" style={{background:"transparent", borderRadius:0}}>
+        <EDGEXIcon size={26} state="idle" color="#0F6E56" />
       </div>
       <div className="ex-msg__body">
         <div className="ex-msg__clarify-banner">
@@ -214,8 +214,8 @@ function ErrorMessage({ content }) {
 function TypingIndicator() {
   return (
     <div className="ex-msg ex-msg--assistant">
-      <div className="ex-msg__avatar">
-        <EDGEXIcon size={26} state="thinking" />
+      <div className="ex-msg__avatar" style={{background:"transparent", borderRadius:0}}>
+        <EDGEXIcon size={26} state="thinking" color="#0F6E56" />
       </div>
       <div className="ex-msg__body">
         <div className="ex-typing"><span/><span/><span/></div>
@@ -237,8 +237,8 @@ const STARTERS = [
 function EmptyState({ onSend }) {
   return (
     <div className="ex-empty">
-      <div className="ex-empty__icon">
-        <EDGEXIcon size={36} state="new" />
+      <div className="ex-empty__icon" style={{background:"transparent", boxShadow:"none", borderRadius:0}}>
+        <EDGEXIcon size={48} state="new" color="#0F6E56" />
       </div>
       <h1 className="ex-empty__title">EDGEX</h1>
       <p className="ex-empty__sub">Career intelligence. Ask anything about transitions, salaries, skills, or visas.</p>
@@ -362,10 +362,8 @@ export default function ChatWindow() {
       {/* Header */}
       <div className="ex-header">
         <div className="ex-header__brand">
-          <span className="ex-header__star">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1L7.5 4.5H11.5L8.5 6.8L9.5 11L6 8.8L2.5 11L3.5 6.8L0.5 4.5H4.5L6 1Z" fill="currentColor"/>
-            </svg>
+          <span className="ex-header__star" style={{background:"transparent", display:"flex", alignItems:"center"}}>
+            <EDGEXIcon size={16} state="idle" color="#0F6E56" />
           </span>
           EDGEX
           <span className="ex-header__sub">Career Intelligence</span>
