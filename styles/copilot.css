@@ -205,16 +205,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
   position: relative;
   z-index: 1;
 }
 
 .ex-empty__orbit {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -222,17 +222,17 @@
 
 .ex-empty__orbit-ring {
   position: absolute;
-  inset: -14px;
+  inset: -16px;
   border-radius: 50%;
-  border: 1.5px solid rgba(15,110,86,0.30);
-  animation: ex-orbit-pulse 3s ease-in-out infinite;
+  border: 1px solid rgba(15,110,86,0.25);
+  animation: ex-orbit-pulse 4s ease-in-out infinite;
 }
 
 .ex-empty__orbit-ring--2 {
-  inset: -26px;
-  border: 1px solid rgba(15,110,86,0.15);
-  animation-delay: -1.5s;
-  animation-duration: 4s;
+  inset: -30px;
+  border: 1px solid rgba(15,110,86,0.10);
+  animation-delay: -2s;
+  animation-duration: 6s;
 }
 
 @keyframes ex-orbit-pulse {
