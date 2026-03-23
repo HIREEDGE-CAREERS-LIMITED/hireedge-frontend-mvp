@@ -13,6 +13,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useEDGEXContext } from "../../context/CopilotContext";
+import EDGEXIcon from "../brand/EDGEXIcon";
+import EDGEXIcon from "../brand/EDGEXIcon";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
@@ -128,9 +130,7 @@ function AssistantMessage({ content, nextActions, toolCards, onSend, router }) {
   return (
     <div className="ex-msg ex-msg--assistant">
       <div className="ex-msg__avatar">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1L8.8 5.2H13.5L9.8 7.9L11.1 12.5L7 9.8L2.9 12.5L4.2 7.9L0.5 5.2H5.2L7 1Z" fill="currentColor"/>
-        </svg>
+        <EDGEXIcon size={26} state="idle" />
       </div>
       <div className="ex-msg__body">
         <div className="ex-msg__text">{renderText(content)}</div>
@@ -169,9 +169,7 @@ function ClarificationMessage({ content, missingFields, actions, onSend }) {
   return (
     <div className="ex-msg ex-msg--assistant">
       <div className="ex-msg__avatar">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1L8.8 5.2H13.5L9.8 7.9L11.1 12.5L7 9.8L2.9 12.5L4.2 7.9L0.5 5.2H5.2L7 1Z" fill="currentColor"/>
-        </svg>
+        <EDGEXIcon size={26} state="idle" />
       </div>
       <div className="ex-msg__body">
         <div className="ex-msg__clarify-banner">
@@ -218,9 +216,7 @@ function TypingIndicator() {
   return (
     <div className="ex-msg ex-msg--assistant">
       <div className="ex-msg__avatar">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1L8.8 5.2H13.5L9.8 7.9L11.1 12.5L7 9.8L2.9 12.5L4.2 7.9L0.5 5.2H5.2L7 1Z" fill="currentColor"/>
-        </svg>
+        <EDGEXIcon size={26} state="thinking" />
       </div>
       <div className="ex-msg__body">
         <div className="ex-typing"><span/><span/><span/></div>
@@ -243,9 +239,7 @@ function EmptyState({ onSend }) {
   return (
     <div className="ex-empty">
       <div className="ex-empty__icon">
-        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-          <path d="M13 2L16 9.5H24L18 14.5L20.5 22.5L13 17.5L5.5 22.5L8 14.5L2 9.5H10L13 2Z" fill="currentColor"/>
-        </svg>
+        <EDGEXIcon size={36} state="new" />
       </div>
       <h1 className="ex-empty__title">EDGEX</h1>
       <p className="ex-empty__sub">Career intelligence. Ask anything about transitions, salaries, skills, or visas.</p>
