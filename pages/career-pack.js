@@ -1,10 +1,12 @@
 // ============================================================================
-// pages/tools/career-pack.js
-// HireEdge -- Career Pack Master Report (v1)
+// pages/career-pack.js
+// HireEdge -- Career Pack Master Report (v2)
 //
-// The main paid product. A unified Career Transition Plan combining
-// positioning, gap analysis, pathway, visa strategy, 30/60/90 execution,
-// tool activation, and final outcome into one premium report.
+// CHANGES v2:
+//   - Added "Current CV / Resume" textarea input (optional but improves output)
+//   - cvText passed to API body so backend can personalise CV section
+//   - Paywall feature list updated: CV bullet split into two clearer lines
+//   - Expanded paywall to 8 sections (was 7) matching actual report sections
 //
 // GATED: career_pack, pro, elite
 // API:   POST /api/tools/career-pack
@@ -121,12 +123,14 @@ function CareerPackPaywall() {
       <div className="cp-paywall__features">
         {[
           "Full Career Transition Plan (8 sections)",
-          "Positioning strategy + gap analysis",
-          "Recommended pathway with phases",
+          "Market positioning strategy + gap analysis",
+          "Recommended pathway with phases + probability score",
           "Visa eligibility for your target country",
           "30 / 60 / 90 day execution plan",
-          "CV, LinkedIn + interview activation",
-          "Final outcome with salary target",
+          "ATS-ready CV blueprint tailored to your target role",
+          "LinkedIn headline + profile rewrite guidance",
+          "Interview prep + salary negotiation target",
+          "Final outcome with transition probability + salary target",
         ].map((f, i) => (
           <div key={i} className="cp-paywall__feature">
             <span className="cp-paywall__feature-tick">+</span>
@@ -140,7 +144,7 @@ function CareerPackPaywall() {
         </Link>
         <p className="cp-paywall__cta-note">No subscription. Includes all 7 career tools.</p>
         <Link href="/billing?plan=pro" className="cp-paywall__cta cp-paywall__cta--secondary">
-          Go Pro for full platform -- PS19/month
+          Go Pro for full platform -- £19/month
         </Link>
       </div>
     </div>
@@ -280,7 +284,6 @@ function PositioningSection({ data }) {
 
 function GapSummarySection({ data }) {
   if (!data) return null;
-  const sevColour = { High: "#ef4444", Medium: "#f59e0b", Low: "#10b981" };
   return (
     <CpSection n={2} label="Gap Analysis" id="cp-gaps">
       <div className="cp-gap-header">
@@ -640,7 +643,7 @@ function ToolActivation({ data }) {
             )}
             {data.cv.remove?.length > 0 && (
               <div className="cp-tool-col cp-tool-col--remove">
-                <span className="cp-tool-col__label">Remove</span>
+                <span className="cp-tool-col__label">Remove / De-emphasise</span>
                 {data.cv.remove.map((item, i) => (
                   <div key={i} className="cp-tool-list-item">
                     <span className="cp-tool-list-item__dot cp-tool-list-item__dot--red" />
@@ -859,6 +862,8 @@ export default function CareerPackPage() {
   const [yearsExp,    setYearsExp]    = useState("");
   const [education,   setEducation]   = useState("");
   const [skills,      setSkills]      = useState("");
+  const [cvText,      setCvText]      = useState("");          // ← NEW
+  const [cvExpanded,  setCvExpanded]  = useState(false);      // ← NEW: collapsed by default
 
   const [result,     setResult]     = useState(null);
   const [loading,    setLoading]    = useState(false);
@@ -912,9 +917,10 @@ export default function CareerPackPage() {
           currentRole: currentRole.slug || currentRole.title,
           targetRole:  targetRole.slug  || targetRole.title,
           country,
-          yearsExp: yearsExp ? parseInt(yearsExp) : null,
+          yearsExp:  yearsExp  ? parseInt(yearsExp) : null,
           education: education || null,
-          skills:    skills   || null,
+          skills:    skills    || null,
+          cvText:    cvText.trim() || null,   // ← NEW: passed to backend
         }),
       });
       const json = await res.json();
@@ -952,6 +958,8 @@ export default function CareerPackPage() {
 
         {/* Form */}
         <div className="tool-form cp-form">
+
+          {/* Row 1 — Roles */}
           <div className="tool-form__row tool-form__row--2">
             <div className="tool-form__field">
               <label className="tool-form__label">
@@ -977,6 +985,7 @@ export default function CareerPackPage() {
             </div>
           </div>
 
+          {/* Row 2 — Country / Experience / Education */}
           <div className="tool-form__row tool-form__row--3">
             <div className="tool-form__field">
               <label className="tool-form__label">Target Country</label>
@@ -1014,6 +1023,7 @@ export default function CareerPackPage() {
             </div>
           </div>
 
+          {/* Row 3 — Skills */}
           <div className="tool-form__field">
             <label className="tool-form__label">
               Current Skills <span className="tool-form__optional">(optional -- improves accuracy)</span>
@@ -1025,6 +1035,41 @@ export default function CareerPackPage() {
               value={skills}
               onChange={e => setSkills(e.target.value)}
             />
+          </div>
+
+          {/* Row 4 — CV paste (collapsible) ← NEW */}
+          <div className="tool-form__field">
+            <button
+              type="button"
+              className="li-advanced-toggle"
+              onClick={() => setCvExpanded(v => !v)}
+            >
+              <span className="li-advanced-toggle__icon">{cvExpanded ? "▲" : "▼"}</span>
+              {cvExpanded ? "Hide CV" : "Paste your current CV / resume"}
+              <span className="li-advanced-toggle__tip">
+                {cvText.trim() ? "added ✓" : "optional — significantly improves CV + LinkedIn output"}
+              </span>
+            </button>
+
+            {cvExpanded && (
+              <div className="tool-form__cv-wrap">
+                <textarea
+                  className="tool-form__input tool-form__cv-textarea"
+                  placeholder={
+                    "Paste your full CV here — work history, skills, education, achievements...\n\n" +
+                    "The more detail you include, the more personalised your CV blueprint and LinkedIn rewrite will be."
+                  }
+                  rows={10}
+                  value={cvText}
+                  onChange={e => setCvText(e.target.value)}
+                />
+                {cvText.trim() && (
+                  <p className="tool-form__cv-count">
+                    {cvText.trim().split(/\s+/).length} words — {cvText.trim() ? "✓ ready" : ""}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Errors */}
