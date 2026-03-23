@@ -1,44 +1,261 @@
 // ============================================================================
-// components/copilot/ChatWindow.js  (v2)
+// components/copilot/ChatWindow.js  (v3)
 //
-// Key change from v1:
-//   - send() is now the ONLY entry point for all messages:
-//     predefined action clicks, empty-state tiles, and typed input.
-//   - No message is ever sent directly to the API without going through
-//     send(), which passes context to the backend validation layer.
-//   - Clarification responses (type: "clarification") are stored as a
-//     distinct message type and rendered by MessageBubble with question
-//     actions only -- never tool buttons.
-//   - Context is stored in state and accumulated across turns so the
-//     validation gate gets the full picture.
+// ChatGPT/Claude-style chat interface with HireEdge tool recommendations.
+// - Full height, single column, no sidebar
+// - Tool recommendation cards render inline in the message stream
+// - Clarification gate preserved from v2
+// - Streaming-style message appearance via CSS animation
 // ============================================================================
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/router";
 import { useEDGEXContext } from "../../context/CopilotContext";
-import MessageBubble from "./MessageBubble";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
+//  Tool catalogue 
+const TOOLS = {
+  gap:       { key: "gap",       label: "Career Gap Explainer", desc: "See exactly which skills and experiences are missing for your target role.", route: "/tools/career-gap-explainer",  color: "#f59e0b" },
+  roadmap:   { key: "roadmap",   label: "Career Roadmap",       desc: "Get a phased action plan from where you are to where you want to be.",      route: "/tools/career-roadmap",        color: "#10b981" },
+  visa:      { key: "visa",      label: "Visa Intelligence",    desc: "Check your eligibility for UK and international work visa routes.",          route: "/tools/visa-intelligence",     color: "#3b82f6" },
+  interview: { key: "interview", label: "Interview Prep",       desc: "Role-specific interview questions and answer frameworks.",                   route: "/tools/interview-prep",        color: "#8b5cf6" },
+  cv:        { key: "cv",        label: "CV Optimiser",         desc: "Tailor your CV for ATS and hiring managers in your target field.",           route: "/tools/resume-optimiser",      color: "#ec4899" },
+  pack:      { key: "pack",      label: "Career Pack",          desc: "Full transition report: positioning, gap analysis, 30/60/90 plan, CV + LinkedIn.", route: "/career-pack",           color: "#4f46e5", premium: true },
+};
+
+const ENDPOINT_TO_KEY = {
+  "/api/tools/career-gap-explainer": "gap",
+  "/api/tools/career-roadmap":       "roadmap",
+  "/api/tools/visa-intelligence":    "visa",
+  "/api/tools/interview-prep":       "interview",
+  "/api/tools/resume-optimiser":     "cv",
+  "/api/tools/career-pack":          "pack",
+};
+
+// Keywords that trigger each tool card inline
+const TOOL_TRIGGERS = {
+  gap:       /skill.?gap|missing skill|gap analysis|what.?skill|qualify/i,
+  roadmap:   /roadmap|action plan|step.?by.?step|career path|phases/i,
+  visa:      /visa|immigrat|skilled worker|work permit|sponsorship|right to work/i,
+  interview: /interview|interview prep|practice question|hiring manager/i,
+  cv:        /\bcv\b|resume|linkedin|profile optim/i,
+  pack:      /transition plan|90.day|30.day|full plan|complete plan|career pack/i,
+};
+
+function detectToolsFromText(text) {
+  const found = [];
+  for (const [key, pattern] of Object.entries(TOOL_TRIGGERS)) {
+    if (pattern.test(text)) found.push(key);
+  }
+  return found;
+}
+
+//  Inline tool card 
+function ToolCard({ toolKey, router }) {
+  const tool = TOOLS[toolKey];
+  if (!tool) return null;
+  return (
+    <button
+      className={"ex-tool-card" + (tool.premium ? " ex-tool-card--premium" : "")}
+      style={{ "--tool-color": tool.color }}
+      onClick={() => router.push(tool.route)}
+    >
+      <span className="ex-tool-card__dot" />
+      <span className="ex-tool-card__body">
+        <span className="ex-tool-card__label">
+          {tool.label}
+          {tool.premium && <span className="ex-tool-card__pro">PRO</span>}
+        </span>
+        <span className="ex-tool-card__desc">{tool.desc}</span>
+      </span>
+      <span className="ex-tool-card__arrow">-&gt;</span>
+    </button>
+  );
+}
+
+//  Message renderers 
+
+function UserMessage({ content }) {
+  return (
+    <div className="ex-msg ex-msg--user">
+      <div className="ex-msg__bubble ex-msg__bubble--user">{content}</div>
+    </div>
+  );
+}
+
+function AssistantMessage({ content, nextActions, toolCards, onSend, router }) {
+  // Bold **text** and newline formatting
+  function renderText(text) {
+    return text.split("\n").map((line, i) => {
+      if (!line.trim()) return <br key={i} />;
+      const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={j}>{part.slice(2, -2)}</strong>;
+        }
+        return <span key={j}>{part}</span>;
+      });
+      return <p key={i} className="ex-msg__para">{parts}</p>;
+    });
+  }
+
+  return (
+    <div className="ex-msg ex-msg--assistant">
+      <div className="ex-msg__avatar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 1L10.5 6H15L11 9.5L12.5 15L8 11.5L3.5 15L5 9.5L1 6H5.5L8 1Z" fill="currentColor"/>
+        </svg>
+      </div>
+      <div className="ex-msg__body">
+        <div className="ex-msg__text">{renderText(content)}</div>
+
+        {/* Inline tool cards */}
+        {toolCards && toolCards.length > 0 && (
+          <div className="ex-tool-cards">
+            {toolCards.map(key => <ToolCard key={key} toolKey={key} router={router} />)}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {nextActions && nextActions.length > 0 && (
+          <div className="ex-actions">
+            {nextActions.map((action, i) => {
+              if (action.type === "tool") {
+                const toolKey = ENDPOINT_TO_KEY[action.endpoint];
+                const route = TOOLS[toolKey]?.route || null;
+                if (!route) return null;
+                return (
+                  <button key={i} className="ex-action ex-action--tool" onClick={() => router.push(route)}>
+                    {action.label}
+                  </button>
+                );
+              }
+              return (
+                <button key={i} className="ex-action ex-action--q" onClick={() => onSend(action.prompt)}>
+                  {action.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClarificationMessage({ content, missingFields, actions, onSend }) {
+  return (
+    <div className="ex-msg ex-msg--assistant">
+      <div className="ex-msg__avatar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 1L10.5 6H15L11 9.5L12.5 15L8 11.5L3.5 15L5 9.5L1 6H5.5L8 1Z" fill="currentColor"/>
+        </svg>
+      </div>
+      <div className="ex-msg__body">
+        <div className="ex-msg__clarify-banner">
+          <span className="ex-msg__clarify-icon">!</span>
+          <span>{content}</span>
+        </div>
+        {missingFields && missingFields.length > 0 && (
+          <div className="ex-msg__missing">
+            {missingFields.map(f => (
+              <span key={f} className="ex-msg__missing-tag">
+                {f === "current_role" ? "Current role missing" : "Target role missing"}
+              </span>
+            ))}
+          </div>
+        )}
+        {actions && actions.length > 0 && (
+          <div className="ex-actions">
+            {actions.map((a, i) => (
+              <button key={i} className="ex-action ex-action--q" onClick={() => onSend(a.prompt)}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ErrorMessage({ content }) {
+  return (
+    <div className="ex-msg ex-msg--assistant">
+      <div className="ex-msg__avatar ex-msg__avatar--err">!</div>
+      <div className="ex-msg__body">
+        <p className="ex-msg__para ex-msg__para--err">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="ex-msg ex-msg--assistant">
+      <div className="ex-msg__avatar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 1L10.5 6H15L11 9.5L12.5 15L8 11.5L3.5 15L5 9.5L1 6H5.5L8 1Z" fill="currentColor"/>
+        </svg>
+      </div>
+      <div className="ex-msg__body">
+        <div className="ex-typing"><span/><span/><span/></div>
+      </div>
+    </div>
+  );
+}
+
+//  Empty state 
+const STARTERS = [
+  { label: "Plan my career transition",      prompt: "I want to plan a career transition. What do I need to know?" },
+  { label: "What skills am I missing?",      prompt: "I want to understand what skills I am missing for my target role." },
+  { label: "UK salary benchmarks",           prompt: "What are typical UK salary ranges for senior tech roles?" },
+  { label: "UK visa options for my move",    prompt: "What UK work visa routes are available for skilled workers?" },
+  { label: "How long will my transition take?", prompt: "How long does a typical career transition take and what affects the timeline?" },
+  { label: "What do hiring managers look for?", prompt: "What do UK hiring managers look for when screening career changers?" },
+];
+
+function EmptyState({ onSend }) {
+  return (
+    <div className="ex-empty">
+      <div className="ex-empty__icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <path d="M14 2L17.5 10H27L19.5 15.5L22 24L14 18.5L6 24L8.5 15.5L1 10H10.5L14 2Z" fill="currentColor"/>
+        </svg>
+      </div>
+      <h1 className="ex-empty__title">EDGEX</h1>
+      <p className="ex-empty__sub">Career intelligence. Ask anything about transitions, salaries, skills, or visas.</p>
+      <div className="ex-empty__starters">
+        {STARTERS.map((s, i) => (
+          <button key={i} className="ex-empty__starter" onClick={() => onSend(s.prompt)}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+//  Main component 
 export default function ChatWindow() {
-  const { context, updateContext, clearContext } = useEDGEXContext();
-  const [messages, setMessages]   = useState([]);
-  const [input, setInput]         = useState("");
-  const [loading, setLoading]     = useState(false);
-  const bottomRef = useRef(null);
+  const router = useRouter();
+  const { context, updateContext } = useEDGEXContext();
+  const [messages, setMessages] = useState([]);
+  const [input, setInput]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const bottomRef  = useRef(null);
+  const inputRef   = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
-  //  Core send function 
-  // ALL triggers -- typed input, action clicks, tile clicks -- go through here.
-  // Context is always forwarded so the backend validation layer has full picture.
   const send = useCallback(async (text) => {
-    if (!text || !text.trim() || loading) return;
-    const trimmed = text.trim();
+    const trimmed = (text || "").trim();
+    if (!trimmed || loading) return;
 
-    // Append user message
     setMessages(prev => [...prev, { role: "user", content: trimmed }]);
+    setInput("");
     setLoading(true);
 
     try {
@@ -48,194 +265,120 @@ export default function ChatWindow() {
           "Content-Type": "application/json",
           "X-HireEdge-Plan": getPlan(),
         },
-        body: JSON.stringify({
-          message: trimmed,
-          context,            // always pass full context -- validation depends on it
-        }),
+        body: JSON.stringify({ message: trimmed, context }),
       });
 
       const json = await res.json();
 
       if (!res.ok || !json.ok) {
-        setMessages(prev => [...prev, {
-          role: "assistant",
-          type: "error",
-          content: json.error || "Something went wrong. Please try again.",
-        }]);
+        setMessages(prev => [...prev, { role: "assistant", type: "error", content: json.error || "Something went wrong. Please try again." }]);
         return;
       }
 
       const data = json.data;
 
-      //  Clarification response (missing required fields) 
       if (data.type === "clarification") {
         setMessages(prev => [...prev, {
-          role:           "assistant",
-          type:           "clarification",
-          content:        data.reply,
-          missing_fields: data.missing_fields || [],
-          actions:        data.next_actions   || [],
+          role: "assistant", type: "clarification",
+          content: data.reply,
+          missingFields: data.missing_fields || [],
+          actions: data.next_actions || [],
         }]);
-        // Accumulate any partial context the backend resolved
         if (data.context) updateContext(data.context);
         return;
       }
 
-      //  Normal response 
+      // Detect tool cards from the reply text
+      const toolCards = detectToolsFromText(data.reply || "");
+
       setMessages(prev => [...prev, {
-        role:         "assistant",
-        type:         "assistant",
-        content:      data.reply,
-        next_actions: data.next_actions || [],
+        role: "assistant", type: "assistant",
+        content: data.reply,
+        nextActions: data.next_actions || [],
+        toolCards,
       }]);
 
-      // Persist resolved context for next turn
       if (data.context) updateContext(data.context);
 
-    } catch (err) {
-      setMessages(prev => [...prev, {
-        role:    "assistant",
-        type:    "error",
-        content: "Connection error. Please try again.",
-      }]);
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", type: "error", content: "Connection error. Please try again." }]);
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [context, loading, updateContext]);
-
-  //  Action handler (question buttons inside clarification or assistant bubbles)
-  const handleAction = useCallback((action) => {
-    if (action.type === "question" && action.prompt) {
-      send(action.prompt);
-    }
-    // type === "tool" is handled directly by MessageBubble via router.push
-    // It never calls send() -- no validation needed for direct navigation
-  }, [send]);
-
-  //  Input submission 
-  const handleSubmit = () => {
-    send(input);
-    setInput("");
-  };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      send(input);
     }
   };
 
-  //  Empty state tiles 
-  // These send the prompt text through send() -- they do NOT bypass validation.
-  const STARTER_TILES = [
-    {
-      category: "Transition",
-      label:    "Plan my career move",
-      prompt:   "I want to plan a career transition. Can you help me figure out the steps?",
-    },
-    {
-      category: "Skills",
-      label:    "Analyse my skill gaps",
-      prompt:   "I want to understand what skills I am missing for my target role.",
-    },
-    {
-      category: "Salary",
-      label:    "UK salary benchmarks",
-      prompt:   "What are typical UK salary ranges I should know about?",
-    },
-    {
-      category: "Visa",
-      label:    "UK visa options",
-      prompt:   "What UK work visa routes are available for my situation?",
-    },
-  ];
-
-  //  Render 
   return (
-    <div className="edgex-chat">
+    <div className="ex-chat">
 
-      {/* Messages area */}
-      <div className="edgex-chat__messages">
-        {messages.length === 0 && !loading && (
-          <div className="edgex-chat__empty">
-            <div className="edgex-chat__empty-logo">
-              <span className="edgex-chat__empty-x">X</span>
-            </div>
-            <h2 className="edgex-chat__empty-title">EDGEX Career Intelligence</h2>
-            <p className="edgex-chat__empty-sub">
-              Your AI career strategist. Ask about transitions, salaries, skill gaps, or visas.
-            </p>
-            <div className="edgex-chat__tiles">
-              {STARTER_TILES.map((tile, i) => (
-                <button
-                  key={i}
-                  className="edgex-chat__tile"
-                  onClick={() => send(tile.prompt)}
-                >
-                  <span className="edgex-chat__tile-category">{tile.category}</span>
-                  <span className="edgex-chat__tile-label">{tile.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Header */}
+      <div className="ex-header">
+        <div className="ex-header__brand">
+          <span className="ex-header__star">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 1L8.8 5.2H13.5L9.8 7.9L11.1 12.5L7 9.8L2.9 12.5L4.2 7.9L0.5 5.2H5.2L7 1Z" fill="currentColor"/>
+            </svg>
+          </span>
+          EDGEX
+          <span className="ex-header__sub">Career Intelligence</span>
+        </div>
+        <button className="ex-header__new" onClick={() => { setMessages([]); setInput(""); inputRef.current?.focus(); }}>
+          New chat
+        </button>
+      </div>
 
-        {messages.map((msg, i) => (
-          <MessageBubble
-            key={i}
-            message={msg}
-            onAction={handleAction}
-          />
-        ))}
+      {/* Messages */}
+      <div className="ex-messages">
+        {messages.length === 0 && !loading && <EmptyState onSend={send} />}
 
-        {loading && (
-          <div className="edgex-bubble edgex-bubble--assistant edgex-bubble--loading">
-            <div className="edgex-bubble__avatar edgex-bubble__avatar--edgex">
-              <span className="edgex-bubble__avatar-icon">X</span>
-            </div>
-            <div className="edgex-bubble__body">
-              <div className="edgex-bubble__typing">
-                <span /><span /><span />
-              </div>
-            </div>
-          </div>
-        )}
+        {messages.map((msg, i) => {
+          if (msg.role === "user") return <UserMessage key={i} content={msg.content} />;
+          if (msg.type === "clarification") return <ClarificationMessage key={i} content={msg.content} missingFields={msg.missingFields} actions={msg.actions} onSend={send} />;
+          if (msg.type === "error") return <ErrorMessage key={i} content={msg.content} />;
+          return <AssistantMessage key={i} content={msg.content} nextActions={msg.nextActions} toolCards={msg.toolCards} onSend={send} router={router} />;
+        })}
 
+        {loading && <TypingIndicator />}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar */}
-      <div className="edgex-chat__input-bar">
-        <textarea
-          className="edgex-chat__input"
-          placeholder="Ask about your career path, skills, salary, interviews..."
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          rows={1}
-          disabled={loading}
-        />
-        <button
-          className="edgex-chat__send"
-          onClick={handleSubmit}
-          disabled={loading || !input.trim()}
-          aria-label="Send"
-        >
-          &gt;
-        </button>
+      {/* Input */}
+      <div className="ex-input-wrap">
+        <div className="ex-input-box">
+          <textarea
+            ref={inputRef}
+            className="ex-input"
+            placeholder="Ask about your career, skills, salary, visa..."
+            value={input}
+            rows={1}
+            disabled={loading}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button className="ex-send" disabled={loading || !input.trim()} onClick={() => send(input)} aria-label="Send">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 14L14 8L2 2V6.5L10 8L2 9.5V14Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <p className="ex-input-hint">
+          <kbd>Enter</kbd> to send &nbsp;&nbsp; <kbd>Shift+Enter</kbd> for new line
+        </p>
       </div>
-      <p className="edgex-chat__hints">
-        <kbd>Enter</kbd> to send &nbsp; <kbd>Shift + Enter</kbd> for new line
-      </p>
+
     </div>
   );
 }
 
-//  Util 
 function getPlan() {
   if (typeof window === "undefined") return "free";
-  try {
-    const p = localStorage.getItem("hireedge_plan");
-    return p || "free";
-  } catch { return "free"; }
+  try { return localStorage.getItem("hireedge_plan") || "free"; }
+  catch { return "free"; }
 }
