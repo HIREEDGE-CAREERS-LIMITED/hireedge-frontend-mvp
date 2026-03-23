@@ -120,49 +120,49 @@ function MemoryBlock({ context, messages }) {
   const hasData = context?.role || context?.target || context?.country;
 
   return (
-    <div className="edgex-sidebar__block">
-      <div className="edgex-sidebar__block-header">
-        <span className="edgex-sidebar__block-label">Session Context</span>
-        <span className="edgex-sidebar__block-count">{messages.length} msg</span>
+    <div className="exs-block">
+      <div className="exs-block__header">
+        <span className="exs-block__label">Session Context</span>
+        <span className="exs-block__count">{messages.length} msg</span>
       </div>
 
       {hasData ? (
-        <div className="edgex-memory">
+        <div className="exs-memory">
           {context.role && (
-            <div className="edgex-memory__row">
-              <span className="edgex-memory__key">Current role</span>
-              <span className="edgex-memory__val">{context.role}</span>
+            <div className="exs-memory__row">
+              <span className="exs-memory__key">Current role</span>
+              <span className="exs-memory__val">{context.role}</span>
             </div>
           )}
           {context.target && (
-            <div className="edgex-memory__row">
-              <span className="edgex-memory__key">Target role</span>
-              <span className="edgex-memory__val edgex-memory__val--accent">{context.target}</span>
+            <div className="exs-memory__row">
+              <span className="exs-memory__key">Target role</span>
+              <span className="exs-memory__val exs-memory__val--accent">{context.target}</span>
             </div>
           )}
           {context.country && (
-            <div className="edgex-memory__row">
-              <span className="edgex-memory__key">Country</span>
-              <span className="edgex-memory__val">{context.country}</span>
+            <div className="exs-memory__row">
+              <span className="exs-memory__key">Country</span>
+              <span className="exs-memory__val">{context.country}</span>
             </div>
           )}
           {context.yearsExp && (
-            <div className="edgex-memory__row">
-              <span className="edgex-memory__key">Experience</span>
-              <span className="edgex-memory__val">{context.yearsExp}y</span>
+            <div className="exs-memory__row">
+              <span className="exs-memory__key">Experience</span>
+              <span className="exs-memory__val">{context.yearsExp}y</span>
             </div>
           )}
           {context.lastIntent && (
-            <div className="edgex-memory__row">
-              <span className="edgex-memory__key">Last intent</span>
-              <span className="edgex-memory__val edgex-memory__val--muted">
+            <div className="exs-memory__row">
+              <span className="exs-memory__key">Last intent</span>
+              <span className="exs-memory__val exs-memory__val--muted">
                 {(context.lastIntent || "").replace(/_/g, " ")}
               </span>
             </div>
           )}
         </div>
       ) : (
-        <p className="edgex-memory__empty">
+        <p className="exs-memory__empty">
           Tell EDGEX your current role and target -- it will use this across all recommendations.
         </p>
       )}
@@ -174,25 +174,25 @@ function MemoryBlock({ context, messages }) {
 
 function ToolRecommendations({ tools, router }) {
   return (
-    <div className="edgex-sidebar__block">
-      <div className="edgex-sidebar__block-header">
-        <span className="edgex-sidebar__block-label">Recommended Tools</span>
+    <div className="exs-block">
+      <div className="exs-block__header">
+        <span className="exs-block__label">Recommended Tools</span>
       </div>
-      <div className="edgex-tool-recs">
+      <div className="exs-tools">
         {tools.map((t, i) => (
-          <div key={t.key} className="edgex-tool-rec" style={{ "--tr-colour": t.colour }}>
-            <div className="edgex-tool-rec__header">
-              <span className="edgex-tool-rec__icon" style={{ background: t.colour + "22", color: t.colour }}>
+          <div key={t.key} className="exs-tool" style={{ "--tool-colour": t.colour }}>
+            <div className="exs-tool__header">
+              <span className="exs-tool__icon" style={{ background: t.colour + "22", color: t.colour }}>
                 {t.icon}
               </span>
-              <div className="edgex-tool-rec__meta">
-                <span className="edgex-tool-rec__name">{t.name}</span>
-                {t.isPro && <span className="edgex-tool-rec__pro">PRO</span>}
+              <div className="exs-tool__meta">
+                <span className="exs-tool__name">{t.name}</span>
+                {t.isPro && <span className="exs-tool__pro">PRO</span>}
               </div>
             </div>
-            <p className="edgex-tool-rec__desc">{t.desc}</p>
+            <p className="exs-tool__desc">{t.desc}</p>
             <button
-              className="edgex-tool-rec__cta"
+              className="exs-tool__btn"
               onClick={() => router.push(t.route)}
               style={{ borderColor: t.colour + "44", color: t.colour }}
             >
@@ -210,22 +210,22 @@ function ToolRecommendations({ tools, router }) {
 function PremiumCTA({ router, hasPro }) {
   if (hasPro) return null;
   return (
-    <div className="edgex-sidebar__block edgex-premium-cta">
-      <div className="edgex-premium-cta__glow" />
-      <span className="edgex-premium-cta__badge">Career Pack</span>
-      <p className="edgex-premium-cta__title">
+    <div className="exs-block exs-premium">
+      <div className="exs-premium__glow" />
+      <span className="exs-premium__badge">Career Pack</span>
+      <p className="exs-premium__title">
         Turn this conversation into a complete transition plan
       </p>
-      <p className="edgex-premium-cta__body">
+      <p className="exs-premium__body">
         One unified report: positioning, gap analysis, pathway, visa strategy, 30/60/90 execution, CV + LinkedIn + interview activation.
       </p>
       <button
-        className="edgex-premium-cta__btn"
+        className="exs-premium__btn"
         onClick={() => router.push("/billing?plan=career_pack")}
       >
         Unlock Career Pack -- £6.99
       </button>
-      <p className="edgex-premium-cta__note">One-time. No subscription.</p>
+      <p className="exs-premium__note">One-time. No subscription.</p>
     </div>
   );
 }
@@ -240,7 +240,7 @@ function EDGEXSidebar({ context, messages, router }) {
   const recommendedTools = deriveRecommendedTools(messages, context);
 
   return (
-    <aside className="edgex-sidebar">
+    <aside className="exs-sidebar">
       <MemoryBlock context={context} messages={messages} />
       <ToolRecommendations tools={recommendedTools} router={router} />
       <PremiumCTA router={router} hasPro={isPaid} />
@@ -252,7 +252,7 @@ function EDGEXSidebar({ context, messages, router }) {
 
 function SidebarToggle({ open, onToggle }) {
   return (
-    <button className="edgex-sidebar-toggle" onClick={onToggle} title="Toggle sidebar">
+    <button className="exs-toggle" onClick={onToggle} title="Toggle sidebar">
       <svg width="16" height="16" viewBox="0 0 18 18" fill="none"
         stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
         {open
@@ -274,11 +274,11 @@ export default function EDGEXShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="edgex-shell">
+    <div className="exs-shell">
 
       {/* Mobile sidebar toggle */}
-      <div className="edgex-mobile-bar">
-        <div className="edgex-mobile-bar__title">
+      <div className="exs-mobile-bar">
+        <div className="exs-mobile-bar__title">
           <EDGEXIcon size={14} />
           <span>EDGEX</span>
         </div>
@@ -286,10 +286,10 @@ export default function EDGEXShell() {
       </div>
 
       {/* Main layout */}
-      <div className="edgex-shell__layout">
+      <div className="exs-layout">
 
         {/* Chat column -- uses existing ChatWindow unchanged */}
-        <div className="edgex-shell__chat">
+        <div className="exs-chat-col">
           <ChatWindow />
         </div>
 
