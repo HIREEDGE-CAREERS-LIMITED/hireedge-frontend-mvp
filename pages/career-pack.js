@@ -136,7 +136,7 @@ function CareerPackPaywall() {
       </div>
       <div className="cp-paywall__ctas">
         <Link href="/billing?plan=career_pack" className="cp-paywall__cta cp-paywall__cta--primary">
-          Unlock Career Pack -- PS6.99 one-time
+          Unlock Career Pack -- £6.99 one-time
         </Link>
         <p className="cp-paywall__cta-note">No subscription. Includes all 7 career tools.</p>
         <Link href="/billing?plan=pro" className="cp-paywall__cta cp-paywall__cta--secondary">
