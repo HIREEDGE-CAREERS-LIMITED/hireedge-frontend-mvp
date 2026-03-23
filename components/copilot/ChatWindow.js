@@ -12,7 +12,7 @@
 //   - No generic chat paragraphs -- structured hierarchy
 // ============================================================================
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useEDGEXContext } from "../../context/CopilotContext";
 import EDGEXIcon from "../brand/EDGEXIcon";
@@ -353,189 +353,80 @@ function ErrorMessage({ content }) {
 }
 
 //  Premium empty state 
+// -- Category icon + color maps
+const CAT_ICONS  = { Setup:"S", Skills:"G", Salary:"$", Visa:"V", Plan:"P", Interview:"I", CV:"C", Transition:"T" };
+const CAT_COLORS = { Setup:"#6366f1", Skills:"#f59e0b", Salary:"#10b981", Visa:"#3b82f6", Plan:"#0F6E56", Interview:"#8b5cf6", CV:"#ec4899", Transition:"#6366f1" };
+
+// -- Status text cycling
+const IDLE_MSGS    = ["Ready to analyse your career", "Powered by 1,200+ UK roles", "Real data. Not generic advice.", "Ask anything about your career"];
+const CONTEXT_MSGS = ["Understanding your profile...", "Career data loaded", "Transition intelligence ready", "Building your career path..."];
+
+function StatusCycle({ context }) {
+  const msgs = (context?.role || context?.target) ? CONTEXT_MSGS : IDLE_MSGS;
+  const [idx, setIdx] = React.useState(0);
+  React.useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % msgs.length), 3000);
+    return () => clearInterval(t);
+  }, [msgs.length]);
+  return <span className="ex-empty__status-text">{msgs[idx]}</span>;
+}
+
+// -- Premium empty state
 function EmptyState({ onSend, context }) {
   const suggestions = getSmartSuggestions(context);
-  const hasContext  = context?.role || context?.target;
-  const CATEGORY_COLORS = {
-    Setup: "#6366f1", Skills: "#f59e0b", Salary: "#10b981",
-    Visa: "#3b82f6", Plan: "#0F6E56", Interview: "#8b5cf6",
-    CV: "#ec4899", Transition: "#6366f1",
-  };
+  const hasContext  = !!(context?.role || context?.target);
+  const primary     = suggestions.filter(s => s.category === "Setup").slice(0, 2);
+  const secondary   = suggestions.filter(s => s.category !== "Setup");
 
   return (
     <div className="ex-empty">
-      <div className="ex-empty__glow" />
-      <div className="ex-empty__icon-wrap">
-        <EDGEXIcon size={44} state="new" color="#0F6E56" />
+      <div className="ex-empty__bg-glow" />
+      <div className="ex-empty__bg-glow ex-empty__bg-glow--2" />
+
+      <div className="ex-empty__hero">
+        <div className="ex-empty__orbit">
+          <div className="ex-empty__orbit-ring" />
+          <div className="ex-empty__orbit-ring ex-empty__orbit-ring--2" />
+          <div className="ex-empty__icon-wrap">
+            <EDGEXIcon size={44} state="new" color="#0F6E56" />
+          </div>
+        </div>
+        <div className="ex-empty__status-row">
+          <span className="ex-empty__status-dot" />
+          <StatusCycle context={context} />
+        </div>
       </div>
+
       <h1 className="ex-empty__title">
-        {hasContext ? "What do you want to know?" : "Your Career Intelligence Engine"}
+        {hasContext ? "What do you want to know?" : "Your AI Career Intelligence Engine"}
       </h1>
       <p className="ex-empty__sub">
-        {hasContext
-          ? "Powered by 1,200+ UK roles, real transition data, and market intelligence."
-          : "Ask anything about career transitions, skill gaps, salaries, or UK visas. EDGEX uses real data -- not generic advice."}
+        Powered by real career data and market intelligence -- not generic advice.
       </p>
+
+      {primary.length > 0 && (
+        <div className="ex-empty__primary">
+          {primary.map((s, i) => (
+            <button key={i} className="ex-suggestion ex-suggestion--primary" onClick={() => onSend(s.prompt)} style={{"--sug-color": CAT_COLORS[s.category] || "#0F6E56"}}>
+              <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"22",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category]||"X"}</span>
+              <span className="ex-suggestion__body">
+                <span className="ex-suggestion__label">{s.label}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="ex-empty__suggestions">
-        {suggestions.map((s, i) => (
-          <button
-            key={i}
-            className="ex-suggestion"
-            onClick={() => onSend(s.prompt)}
-            style={{ "--sug-color": CATEGORY_COLORS[s.category] || "#0F6E56" }}
-          >
-            <span className="ex-suggestion__cat" style={{ color: CATEGORY_COLORS[s.category] || "#0F6E56" }}>
-              {s.category}
+        {secondary.map((s, i) => (
+          <button key={i} className="ex-suggestion" onClick={() => onSend(s.prompt)} style={{"--sug-color": CAT_COLORS[s.category] || "#0F6E56"}}>
+            <span className="ex-suggestion__icon" style={{background:(CAT_COLORS[s.category]||"#0F6E56")+"18",color:CAT_COLORS[s.category]||"#0F6E56"}}>{CAT_ICONS[s.category]||"X"}</span>
+            <span className="ex-suggestion__body">
+              <span className="ex-suggestion__cat" style={{color:CAT_COLORS[s.category]||"#0F6E56"}}>{s.category}</span>
+              <span className="ex-suggestion__label">{s.label}</span>
             </span>
-            <span className="ex-suggestion__label">{s.label}</span>
           </button>
         ))}
-      </div>
-    </div>
-  );
-}
-
-//  Main component 
-export default function ChatWindow() {
-  const router = useRouter();
-  const { context, updateContext, clear } = useEDGEXContext();
-  const [messages, setMessages]   = useState([]);
-  const [input, setInput]         = useState("");
-  const [loading, setLoading]     = useState(false);
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  const send = useCallback(async (text) => {
-    const trimmed = (text || "").trim();
-    if (!trimmed || loading) return;
-
-    setMessages(prev => [...prev, { role: "user", content: trimmed }]);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/copilot/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-HireEdge-Plan": getPlan() },
-        body: JSON.stringify({ message: trimmed, context: safeContext(context) }),
-      });
-
-      let json;
-      try { json = await res.json(); } catch { throw new Error("Non-JSON response from server"); }
-
-      if (!res.ok || !json.ok) {
-        setMessages(prev => [...prev, { role: "assistant", type: "error", content: json?.error || "Something went wrong." }]);
-        return;
-      }
-
-      const data = json.data;
-      if (!data) throw new Error("Empty response");
-
-      if (data.type === "clarification") {
-        setMessages(prev => [...prev, {
-          role: "assistant", type: "clarification",
-          content: data.reply,
-          missingFields: data.missing_fields || [],
-          actions: data.next_actions || [],
-        }]);
-        if (data.context) updateContext(safeContext(data.context));
-        return;
-      }
-
-      setMessages(prev => [...prev, {
-        role: "assistant", type: "assistant",
-        content: data.reply,
-        nextActions: data.next_actions || [],
-        intent: data.intent?.name,
-        confidence: data.intent?.confidence,
-      }]);
-      if (data.context) updateContext(safeContext(data.context));
-
-    } catch (err) {
-      console.error("[ChatWindow]", err);
-      setMessages(prev => [...prev, { role: "assistant", type: "error", content: "Connection error. Please try again." }]);
-    } finally {
-      setLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [context, loading, updateContext]);
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
-  };
-
-  const handleNewChat = () => {
-    setMessages([]); setInput(""); clear();
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const handleEditContext = () => {
-    const role   = window.prompt("Current role:", context?.role || "");
-    const target = window.prompt("Target role:",  context?.target || "");
-    if (role !== null || target !== null) {
-      updateContext({ role: role || context?.role, target: target || context?.target });
-    }
-  };
-
-  return (
-    <div className="ex-chat">
-
-      {/* Header */}
-      <div className="ex-header">
-        <div className="ex-header__brand">
-          <span style={{ display:"flex", alignItems:"center", background:"transparent" }}>
-            <EDGEXIcon size={18} state="idle" color="#0F6E56" />
-          </span>
-          <span className="ex-header__name">EDGEX</span>
-          <span className="ex-header__sub">Career Intelligence</span>
-        </div>
-        <button className="ex-header__new" onClick={handleNewChat}>New chat</button>
-      </div>
-
-      {/* Personalization bar */}
-      <PersonalizationBar context={context} onEdit={handleEditContext} />
-
-      {/* Messages */}
-      <div className="ex-messages">
-        {messages.length === 0 && !loading && (
-          <EmptyState onSend={send} context={context} />
-        )}
-
-        {messages.map((msg, i) => {
-          if (msg.role === "user")               return <UserMessage key={i} content={msg.content} />;
-          if (msg.type === "clarification")      return <ClarificationMessage key={i} content={msg.content} missingFields={msg.missingFields} actions={msg.actions} onSend={send} />;
-          if (msg.type === "error")              return <ErrorMessage key={i} content={msg.content} />;
-          return <AssistantMessage key={i} content={msg.content} nextActions={msg.nextActions} intent={msg.intent} confidence={msg.confidence} onSend={send} router={router} />;
-        })}
-
-        {loading && <ThinkingState />}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div className="ex-input-wrap">
-        <div className="ex-input-box">
-          <textarea
-            ref={inputRef}
-            className="ex-input"
-            placeholder="Ask about transitions, skills, salary, or visas..."
-            value={input}
-            rows={1}
-            disabled={loading}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <button className="ex-send" disabled={loading || !input.trim()} onClick={() => send(input)} aria-label="Send">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M2 12.5L12.5 7L2 1.5V5.8L9 7L2 8.2V12.5Z" fill="currentColor"/>
-            </svg>
-          </button>
-        </div>
-        <p className="ex-input-hint"><kbd>Enter</kbd> to send &nbsp; <kbd>Shift+Enter</kbd> for new line</p>
       </div>
     </div>
   );
