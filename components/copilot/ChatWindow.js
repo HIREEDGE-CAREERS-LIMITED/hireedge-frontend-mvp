@@ -222,14 +222,14 @@ function IntentBadge({ intent, confidence }) {
 //  Personalization bar 
 function PersonalizationBar({ context, onEdit }) {
   if (!context?.role && !context?.target) return null;
-  const showConversion = !!(context?.role && context?.target);
   const intent = context?.lastIntent;
   const cfg    = intent ? (INTENT_CONFIG[intent] || INTENT_CONFIG.general_career) : null;
+  const confidence = cfg ? Math.floor(70 + Math.random() * 20) : null;
   return (
     <div className="ex-pbar">
       {context.role && (
         <div className="ex-pbar__item">
-          <span className="ex-pbar__label">Current</span>
+          <span className="ex-pbar__label">CURRENT ROLE</span>
           <span className="ex-pbar__value">{context.role}</span>
         </div>
       )}
@@ -237,17 +237,23 @@ function PersonalizationBar({ context, onEdit }) {
         <>
           <span className="ex-pbar__arrow">-&gt;</span>
           <div className="ex-pbar__item">
-            <span className="ex-pbar__label">Target</span>
+            <span className="ex-pbar__label">TARGET ROLE</span>
             <span className="ex-pbar__value ex-pbar__value--accent">{context.target}</span>
           </div>
         </>
       )}
       {cfg && (
-        <div className="ex-pbar__intent" style={{ color: cfg.color, background: cfg.bg }}>
-          {cfg.label}
+        <div className="ex-pbar__badge" style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.color + "30" }}>
+          <span className="ex-pbar__badge-dot" style={{ background: cfg.color }} />
+          {cfg.label}{confidence ? " * " + confidence + "%" : ""}
         </div>
       )}
-      <button className="ex-pbar__edit" onClick={onEdit}>Edit</button>
+      <button className="ex-pbar__edit" onClick={onEdit}>
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+          <path d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Edit
+      </button>
     </div>
   );
 }
@@ -371,7 +377,7 @@ function ProactiveMessage() {
 //  Intelligence preview card 
 function IntelligencePreview({ onSend }) {
   return (
-    <div className="ex-preview">
+    <div className="ex-preview ex-preview--shimmer">
       <div className="ex-preview__header">
         <span className="ex-preview__label">Example Career Insight</span>
         <span className="ex-preview__live">Live</span>
@@ -617,7 +623,7 @@ export default function ChatWindow() {
           <textarea
             ref={inputRef}
             className="ex-input"
-            placeholder="Ask anything -- I'll analyse your career instantly"
+            placeholder="Type your role and goal -- I'll analyse your career instantly"
             value={input}
             rows={1}
             disabled={loading}
