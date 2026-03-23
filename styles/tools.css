@@ -1055,3 +1055,191 @@
   .ex-preview { display: none; }
   .ex-proactive { display: none; }
 }
+/* ============================================================================
+   EDGEX Branding CSS
+   Append to: styles/tools.css
+   Covers: badge, powered-by label, tool header, career pack header
+   ============================================================================ */
+
+/*  Powered by EDGEX badge (small -- tool outputs)  */
+.edgex-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.edgex-badge--small {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(15, 110, 86, 0.06);
+  border: 1px solid rgba(15, 110, 86, 0.14);
+}
+
+.edgex-badge--small .edgex-badge__text {
+  font-size: 10px;
+  font-weight: 600;
+  color: #0F6E56;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/*  Large badge -- Career Pack report header  */
+.edgex-badge--large {
+  padding: 6px 14px 6px 10px;
+  border-radius: 8px;
+  background: rgba(15, 110, 86, 0.06);
+  border: 1px solid rgba(15, 110, 86, 0.16);
+  margin-bottom: 16px;
+  display: inline-flex;
+}
+
+.edgex-badge--large .edgex-badge__text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0F6E56;
+  letter-spacing: 0.04em;
+}
+
+/*  Tool output footer -- "Powered by EDGEX" row  */
+.edgex-tool-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 0 4px;
+  margin-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/*  Career Pack report header  */
+.edgex-report-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.edgex-report-header__badge {
+  display: flex;
+}
+
+.edgex-report-header__title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+
+.edgex-report-header__sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.38);
+  margin: 0;
+}
+
+/*  EDGEX label in tool page headers  */
+.edgex-tool-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #0F6E56;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(15, 110, 86, 0.06);
+  border: 1px solid rgba(15, 110, 86, 0.14);
+  border-radius: 5px;
+  padding: 3px 7px;
+  margin-bottom: 10px;
+}
+
+/* ============================================================================
+   TOOLS INDEX PAGE (ti- prefix)
+   Add to: styles/tools.css
+   ============================================================================ */
+
+.ti-page { max-width: 860px; padding: 28px 32px; }
+
+.ti-hero { margin-bottom: 32px; }
+.ti-hero__badge {
+  display: inline-block;
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.35);
+  border-radius: 4px; padding: 3px 8px;
+  margin-bottom: 10px;
+}
+.ti-hero__title { font-size: 26px; font-weight: 800; color: #fff; margin: 0 0 6px; letter-spacing: -0.4px; }
+.ti-hero__sub   { font-size: 14px; color: rgba(255,255,255,0.35); margin: 0; }
+
+.ti-section { margin-bottom: 28px; }
+.ti-section__label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.10em;
+  color: rgba(255,255,255,0.25);
+  margin: 0 0 12px;
+}
+
+.ti-grid { display: flex; flex-direction: column; gap: 8px; }
+
+.ti-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-left: 3px solid var(--tc, #0F6E56);
+  border-radius: 12px;
+  padding: 16px 18px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.ti-card:hover {
+  background: rgba(255,255,255,0.045);
+  transform: translateX(3px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  text-decoration: none;
+}
+.ti-card:active { transform: scale(0.99); }
+
+.ti-card__icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 800;
+  flex-shrink: 0;
+}
+
+.ti-card__body { flex: 1; min-width: 0; }
+
+.ti-card__header { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+
+.ti-card__sub {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.28);
+}
+
+.ti-badge {
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(99,102,241,0.18);
+  color: #a5b4fc;
+  border-radius: 4px; padding: 2px 6px;
+}
+
+.ti-card__name { font-size: 15px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+.ti-card__desc { font-size: 12px; color: rgba(255,255,255,0.38); margin: 0; line-height: 1.5; }
+
+.ti-card__arrow { color: rgba(255,255,255,0.20); flex-shrink: 0; transition: color 0.18s, transform 0.18s; }
+.ti-card:hover .ti-card__arrow { color: rgba(255,255,255,0.55); transform: translateX(3px); }
+
+@media (max-width: 600px) {
+  .ti-page { padding: 20px 16px; }
+  .ti-card { padding: 13px 14px; gap: 12px; }
+  .ti-card__icon { width: 36px; height: 36px; font-size: 13px; }
+}
