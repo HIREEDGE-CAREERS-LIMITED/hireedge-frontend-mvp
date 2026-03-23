@@ -376,63 +376,60 @@ function ProactiveMessage() {
 
 //  Intelligence preview card 
 function IntelligencePreview({ onSend }) {
+  const [open, setOpen] = React.useState(false);
   return (
-    <div className="ex-preview ex-preview--shimmer">
+    <div
+      className={"ex-preview ex-preview--shimmer" + (open ? " ex-preview--open" : "")}
+      style={{cursor: open ? "default" : "pointer"}}
+      onClick={() => !open && setOpen(true)}
+    >
       <div className="ex-preview__header">
         <span className="ex-preview__label">Example Career Insight</span>
-        <span className="ex-preview__live">Live</span>
-      </div>
-      <div className="ex-preview__content">
-        <div className="ex-preview__row">
-          <span className="ex-preview__key">Transition</span>
-          <span className="ex-preview__val">Sales Manager <span className="ex-preview__arrow">-&gt;</span> Product Manager</span>
-        </div>
-        <div className="ex-preview__row">
-          <span className="ex-preview__key">Difficulty</span>
-          <span className="ex-preview__val">
-            <span className="ex-preview__badge ex-preview__badge--medium">Medium</span>
-            <span className="ex-preview__muted">65/100</span>
-          </span>
-        </div>
-        <div className="ex-preview__row">
-          <span className="ex-preview__key">Salary jump</span>
-          <span className="ex-preview__val ex-preview__val--green">GBP45k -&gt; GBP65k (+30%)</span>
-        </div>
-        <div className="ex-preview__row">
-          <span className="ex-preview__key">Top skill gap</span>
-          <span className="ex-preview__val">Product lifecycle management</span>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          <span className="ex-preview__live">Live</span>
+          {!open && <span style={{fontSize:"10px",color:"rgba(255,255,255,0.22)"}}>tap to expand</span>}
         </div>
       </div>
-      <button
-        className="ex-preview__cta"
-        onClick={() => onSend("I am a sales manager and want to become a product manager. Run a full transition analysis.")}
-      >
-        Run this analysis
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{marginLeft:"6px"}}>
-          <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
+      <div className="ex-preview__summary">
+        <span className="ex-preview__pill">Sales Manager</span>
+        <span className="ex-preview__arrow-sm">-&gt;</span>
+        <span className="ex-preview__pill ex-preview__pill--green">Product Manager</span>
+        <span className="ex-preview__pill ex-preview__pill--amber">+30% salary</span>
+      </div>
+      {open && (
+        <>
+          <div className="ex-preview__content">
+            <div className="ex-preview__row">
+              <span className="ex-preview__key">Difficulty</span>
+              <span className="ex-preview__val">
+                <span className="ex-preview__badge ex-preview__badge--medium">Medium</span>
+                <span className="ex-preview__muted">65/100</span>
+              </span>
+            </div>
+            <div className="ex-preview__row">
+              <span className="ex-preview__key">Salary jump</span>
+              <span className="ex-preview__val ex-preview__val--green">GBP45k -&gt; GBP65k (+30%)</span>
+            </div>
+            <div className="ex-preview__row">
+              <span className="ex-preview__key">Top skill gap</span>
+              <span className="ex-preview__val">Product lifecycle management</span>
+            </div>
+          </div>
+          <button
+            className="ex-preview__cta"
+            onClick={(e) => { e.stopPropagation(); onSend("I am a sales manager and want to become a product manager. Run a full transition analysis."); }}
+          >
+            Run this analysis
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{marginLeft:"6px"}}>
+              <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </>
+      )}
     </div>
   );
 }
 
-// -- Category icon + color maps
-const CAT_ICONS  = { Setup:"S", Skills:"G", Salary:"$", Visa:"V", Plan:"P", Interview:"I", CV:"C", Transition:"T" };
-const CAT_COLORS = { Setup:"#6366f1", Skills:"#f59e0b", Salary:"#10b981", Visa:"#3b82f6", Plan:"#0F6E56", Interview:"#8b5cf6", CV:"#ec4899", Transition:"#6366f1" };
-
-// -- Status text cycling
-const IDLE_MSGS    = ["Ready to analyse your career", "Powered by 1,200+ UK roles", "Real data. Not generic advice.", "Ask anything about your career"];
-const CONTEXT_MSGS = ["Understanding your profile...", "Career data loaded", "Transition intelligence ready", "Building your career path..."];
-
-function StatusCycle({ context }) {
-  const msgs = (context?.role || context?.target) ? CONTEXT_MSGS : IDLE_MSGS;
-  const [idx, setIdx] = React.useState(0);
-  React.useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % msgs.length), 3000);
-    return () => clearInterval(t);
-  }, [msgs.length]);
-  return <span className="ex-empty__status-text">{msgs[idx]}</span>;
-}
 
 // -- Premium empty state
 function EmptyState({ onSend, context }) {
