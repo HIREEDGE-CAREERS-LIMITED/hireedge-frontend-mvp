@@ -67,27 +67,29 @@ function getSmartSuggestions(context) {
 
   if (!hasRole && !hasTarget) {
     return [
-      { label: "Set my current role",         prompt: "What is your current role?",                       category: "Setup" },
-      { label: "Set my target role",          prompt: "What role do you want to move into?",              category: "Setup" },
-      { label: "UK salary benchmarks",        prompt: "What salary does a senior software engineer earn in London?", category: "Salary" },
-      { label: "UK visa options",             prompt: "What UK work visa routes are available for skilled workers?", category: "Visa" },
+      { label: "Start my career analysis",    prompt: "I want to start a full career analysis. What is your current role and where do you want to go?", category: "Setup", primary: true },
+      { label: "Find my skill gaps",          prompt: "I want to discover exactly which skills I am missing for my target role.",                       category: "Skills" },
+      { label: "Check my salary potential",   prompt: "What salary could I earn if I successfully transitioned to a higher role in the UK?",            category: "Salary" },
+      { label: "Plan my career transition",   prompt: "I want a step-by-step transition plan to move into a new career.",                               category: "Plan"   },
+      { label: "Explore visa options",        prompt: "What UK work visa routes are available for skilled workers wanting to relocate?",                 category: "Visa"   },
+      { label: "Benchmark my market value",   prompt: "What is my current market value and what salary should I be targeting in the UK?",               category: "Salary" },
     ];
   }
   if (hasRole && !hasTarget) {
     return [
-      { label: "Where can I move from " + role + "?", prompt: "What roles can I transition into from " + role + "?", category: "Transition" },
-      { label: "My salary benchmark",        prompt: "What salary should a " + role + " earn in the UK?",          category: "Salary" },
-      { label: "My skill gaps",              prompt: "What skills am I missing to advance my " + role + " career?", category: "Skills" },
-      { label: "Career roadmap",             prompt: "Build me a career roadmap from my current " + role + " role", category: "Plan" },
+      { label: "Map my career transition",        prompt: "What is the best career transition path from " + role + "?", category: "Transition", primary: true },
+      { label: "Uncover my salary potential",     prompt: "What salary should a " + role + " target in the UK?",        category: "Salary" },
+      { label: "Identify my skill gaps",          prompt: "What skills am I missing to advance beyond " + role + "?",   category: "Skills" },
+      { label: "Build my transition roadmap",     prompt: "Build me a phased career roadmap from my " + role + " role", category: "Plan"   },
     ];
   }
   return [
-    { label: "Skill gaps for " + target,     prompt: "What skills am I missing to become a " + target + "?",       category: "Skills"      },
-    { label: target + " salary in UK",       prompt: "What salary does a " + target + " earn in the UK?",          category: "Salary"      },
-    { label: "Transition roadmap",           prompt: "Build me a step-by-step transition plan from " + role + " to " + target, category: "Plan" },
-    { label: "Visa for " + target + " role", prompt: "What UK visa do I need to work as a " + target + "?",        category: "Visa"        },
-    { label: "Interview prep",              prompt: "Help me prepare for a " + target + " interview",              category: "Interview"   },
-    { label: "CV for " + target,            prompt: "How should I tailor my CV for a " + target + " role?",        category: "CV"          },
+    { label: "Reveal my skill gaps",              prompt: "What skills am I missing to become a " + target + "?",                                   category: "Skills",    primary: true },
+    { label: "Show my salary jump",               prompt: "What salary does a " + target + " earn in the UK vs " + role + "?",                      category: "Salary"    },
+    { label: "Build my transition plan",          prompt: "Build me a step-by-step transition plan from " + role + " to " + target,                 category: "Plan"      },
+    { label: "Check UK visa eligibility",         prompt: "What UK visa do I need to work as a " + target + "?",                                    category: "Visa"      },
+    { label: "Prepare for my interview",          prompt: "Help me prepare for a " + target + " interview with role-specific questions.",            category: "Interview" },
+    { label: "Optimise my CV",                    prompt: "How should I tailor my CV for a " + target + " role?",                                   category: "CV"        },
   ];
 }
 
@@ -220,6 +222,7 @@ function IntentBadge({ intent, confidence }) {
 //  Personalization bar 
 function PersonalizationBar({ context, onEdit }) {
   if (!context?.role && !context?.target) return null;
+  const showConversion = !!(context?.role && context?.target);
   const intent = context?.lastIntent;
   const cfg    = intent ? (INTENT_CONFIG[intent] || INTENT_CONFIG.general_career) : null;
   return (
@@ -353,6 +356,60 @@ function ErrorMessage({ content }) {
 }
 
 //  Premium empty state 
+//  Proactive AI message 
+function ProactiveMessage() {
+  return (
+    <div className="ex-proactive">
+      <div className="ex-proactive__dot" />
+      <span className="ex-proactive__text">
+        Tell me your current role and target -- I will map your transition instantly.
+      </span>
+    </div>
+  );
+}
+
+//  Intelligence preview card 
+function IntelligencePreview({ onSend }) {
+  return (
+    <div className="ex-preview">
+      <div className="ex-preview__header">
+        <span className="ex-preview__label">Example Career Insight</span>
+        <span className="ex-preview__live">Live</span>
+      </div>
+      <div className="ex-preview__content">
+        <div className="ex-preview__row">
+          <span className="ex-preview__key">Transition</span>
+          <span className="ex-preview__val">Sales Manager <span className="ex-preview__arrow">-&gt;</span> Product Manager</span>
+        </div>
+        <div className="ex-preview__row">
+          <span className="ex-preview__key">Difficulty</span>
+          <span className="ex-preview__val">
+            <span className="ex-preview__badge ex-preview__badge--medium">Medium</span>
+            <span className="ex-preview__muted">65/100</span>
+          </span>
+        </div>
+        <div className="ex-preview__row">
+          <span className="ex-preview__key">Salary jump</span>
+          <span className="ex-preview__val ex-preview__val--green">GBP45k -&gt; GBP65k (+30%)</span>
+        </div>
+        <div className="ex-preview__row">
+          <span className="ex-preview__key">Top skill gap</span>
+          <span className="ex-preview__val">Product lifecycle management</span>
+        </div>
+      </div>
+      <button
+        className="ex-preview__cta"
+        onClick={() => onSend("I am a sales manager and want to become a product manager. Run a full transition analysis.")}
+      >
+        Run this analysis
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{marginLeft:"6px"}}>
+          <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 // -- Category icon + color maps
 const CAT_ICONS  = { Setup:"S", Skills:"G", Salary:"$", Visa:"V", Plan:"P", Interview:"I", CV:"C", Transition:"T" };
 const CAT_COLORS = { Setup:"#6366f1", Skills:"#f59e0b", Salary:"#10b981", Visa:"#3b82f6", Plan:"#0F6E56", Interview:"#8b5cf6", CV:"#ec4899", Transition:"#6366f1" };
@@ -375,11 +432,14 @@ function StatusCycle({ context }) {
 function EmptyState({ onSend, context }) {
   const suggestions = getSmartSuggestions(context);
   const hasContext  = !!(context?.role || context?.target);
-  const primary     = suggestions.filter(s => s.category === "Setup").slice(0, 2);
+  const primary     = suggestions.filter(s => s.primary).slice(0, 1);
   const secondary   = suggestions.filter(s => s.category !== "Setup");
 
   return (
     <div className="ex-empty">
+      <div className="ex-particles">
+        {[...Array(6)].map((_,i) => <span key={i} className={"ex-particle ex-particle--"+i} />)}
+      </div>
       <div className="ex-empty__bg-glow" />
       <div className="ex-empty__bg-glow ex-empty__bg-glow--2" />
 
@@ -403,6 +463,9 @@ function EmptyState({ onSend, context }) {
       <p className="ex-empty__sub">
         Powered by real career data and market intelligence -- not generic advice.
       </p>
+
+      {!hasContext && <ProactiveMessage />}
+      {!hasContext && <IntelligencePreview onSend={onSend} />}
 
       {primary.length > 0 && (
         <div className="ex-empty__primary">
@@ -554,7 +617,7 @@ export default function ChatWindow() {
           <textarea
             ref={inputRef}
             className="ex-input"
-            placeholder="Ask about transitions, skills, salary, or visas..."
+            placeholder="Ask anything -- I'll analyse your career instantly"
             value={input}
             rows={1}
             disabled={loading}
