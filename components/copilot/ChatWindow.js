@@ -263,7 +263,7 @@ function EmptyState({ onSend }) {
 //  Main component 
 export default function ChatWindow() {
   const router = useRouter();
-  const { context, updateContext } = useEDGEXContext();
+  const { context, updateContext, clear } = useEDGEXContext();
   const [messages, setMessages] = useState([]);
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
@@ -380,6 +380,7 @@ export default function ChatWindow() {
         <button className="ex-header__new" onClick={() => {
           setMessages([]);
           setInput("");
+          clear();
           setTimeout(() => inputRef.current?.focus(), 50);
         }}>
           New chat
