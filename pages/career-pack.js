@@ -824,6 +824,9 @@ function CareerPackReport({ data, country }) {
         </svg>
         Career Transition Plan
       </div>
+      <div className="edgex-report-header">
+        <div className="edgex-report-header__badge"><EDGEXBadge size="large" /></div>
+      </div>
       <HeroSummary hero={data.hero} />
       <ReportNav />
       <div className="cp-report__sections">
@@ -834,6 +837,7 @@ function CareerPackReport({ data, country }) {
         <ExecutionPlan      data={data.execution_plan} />
         <ToolActivation     data={data.tool_plan} />
         <FinalOutcome       data={data.final_outcome} />
+        <div className="edgex-tool-footer"><EDGEXBadge /></div>
       </div>
     </div>
   );
