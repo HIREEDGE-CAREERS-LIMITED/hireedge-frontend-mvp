@@ -1,107 +1,75 @@
 // ============================================================================
-// context/CopilotContext.js
-// HireEdge -- EDGEX Context (v3)
-// Fixes: localStorage message persistence, useEDGEXContext + useCopilot exports
+// context/CopilotContext.js  (v4)
+//
+// BREAKING CHANGE from v3:
+//   - Removed: messages, loading, send, inputDraft, setDraft
+//   - Kept:    context (role/target/etc), updateContext, clear
+//
+// WHY: ChatWindow-v4 owns all message state locally.
+//      Context only stores the resolved career profile so the sidebar
+//      (EDGEXShell) can read role/target/lastIntent without coupling
+//      to the message list.
+//
+// EDGEXShell reads context.role, context.target, context.lastIntent.
+// ChatWindow calls updateContext() after each API response.
 // ============================================================================
 
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import {
-  sendMessage,
-  saveContext,
-  loadContext,
-  clearContext,
-  createUserMessage,
-  createAssistantMessage,
-  createErrorMessage,
-} from "../services/copilotService";
+import { createContext, useContext, useState, useCallback } from "react";
 
-// ── Storage keys ──────────────────────────────────────────────────────────
+//  Storage helpers 
 
-const MESSAGES_KEY = "hireedge_edgex_messages";
-const MAX_STORED   = 50; // cap to avoid localStorage bloat
+const CTX_KEY = "hireedge_edgex_context";
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-
-function loadMessages() {
-  if (typeof window === "undefined") return [];
+function loadContext() {
+  if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(MESSAGES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+    const raw = localStorage.getItem(CTX_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
 }
 
-function saveMessages(messages) {
+function saveContext(ctx) {
   if (typeof window === "undefined") return;
-  try {
-    // Keep only the last MAX_STORED messages
-    const toSave = messages.slice(-MAX_STORED);
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(toSave));
-  } catch {
-    // Fail silently if localStorage is full or unavailable
-  }
+  try { localStorage.setItem(CTX_KEY, JSON.stringify(ctx)); } catch {}
 }
 
-function clearMessages() {
+function clearStoredContext() {
   if (typeof window === "undefined") return;
-  try { localStorage.removeItem(MESSAGES_KEY); } catch { /* silent */ }
+  try { localStorage.removeItem(CTX_KEY); } catch {}
 }
 
-// ── Context ───────────────────────────────────────────────────────────────
+//  Context 
 
 const CopilotContext = createContext(null);
 
-// ── Provider ──────────────────────────────────────────────────────────────
+//  Provider 
 
 export function CopilotProvider({ children }) {
-  // Restore messages from localStorage on first render
-  const [messages,   setMessages] = useState(() => loadMessages());
-  const [loading,    setLoading]  = useState(false);
-  const [inputDraft, setDraft]    = useState("");
-  const [context,    setCtx]      = useState(() => loadContext());
+  const [context, setContext] = useState(() => loadContext());
 
-  // Persist messages to localStorage whenever they change
-  useEffect(() => {
-    saveMessages(messages);
-  }, [messages]);
-
-  const send = useCallback(async (text) => {
-    const trimmed = (text || "").trim();
-    if (!trimmed || loading) return;
-
-    setDraft("");
-    setMessages(prev => [...prev, createUserMessage(trimmed)]);
-    setLoading(true);
-
-    try {
-      const plan   = typeof window !== "undefined" ? (localStorage.getItem("hireedge_plan") || "free") : "free";
-      const userId = typeof window !== "undefined" ? (localStorage.getItem("hireedge_user_id") || "") : "";
-
-      const response = await sendMessage(trimmed, context, { plan, userId });
-      setMessages(prev => [...prev, createAssistantMessage(response)]);
-
-      if (response?.data?.context) {
-        const newCtx = response.data.context;
-        setCtx(newCtx);
-        saveContext(newCtx);
+  // Merge new fields into context and persist
+  const updateContext = useCallback((partial) => {
+    if (!partial || typeof partial !== "object") return;
+    setContext(prev => {
+      const next = { ...prev };
+      const keys = ["role", "target", "yearsExp", "country", "lastIntent"];
+      for (const k of keys) {
+        if (partial[k] !== undefined && partial[k] !== null) {
+          next[k] = partial[k];
+        }
       }
-    } catch (err) {
-      setMessages(prev => [...prev, createErrorMessage(err)]);
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, context]);
-
-  // Clear messages + context + localStorage
-  const clear = useCallback(() => {
-    setMessages([]);
-    setCtx({});
-    clearMessages();
-    clearContext();
+      saveContext(next);
+      return next;
+    });
   }, []);
 
-  const value = { messages, loading, send, clear, context, inputDraft, setDraft };
+  // Clear context + localStorage
+  const clear = useCallback(() => {
+    setContext({});
+    clearStoredContext();
+  }, []);
+
+  const value = { context, updateContext, clear };
 
   return (
     <CopilotContext.Provider value={value}>
@@ -110,19 +78,19 @@ export function CopilotProvider({ children }) {
   );
 }
 
-// ── Hooks ─────────────────────────────────────────────────────────────────
+//  Hooks 
 
-/** Primary hook -- use in all new code */
 export function useEDGEXContext() {
   const ctx = useContext(CopilotContext);
   if (!ctx) {
     return {
-      messages: [], loading: false, send: () => {}, clear: () => {},
-      context: {}, inputDraft: "", setDraft: () => {},
+      context:       {},
+      updateContext: () => {},
+      clear:         () => {},
     };
   }
   return ctx;
 }
 
-/** Legacy alias -- keeps all existing components working unchanged */
+// Legacy alias -- keeps any component that still calls useCopilot() working
 export function useCopilot() { return useEDGEXContext(); }
