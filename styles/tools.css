@@ -870,3 +870,188 @@
   color: rgba(255,255,255,0.45);
   font-style: italic;
 }
+
+/* ============================================================================
+   COMPACT EMPTY STATE -- Fix overflow / scrolling on standard viewports
+   ============================================================================ */
+
+.ex-empty {
+  padding: 16px 20px 12px;
+  justify-content: flex-start;
+  overflow-y: auto;
+  gap: 0;
+}
+
+.ex-empty__hero {
+  margin-bottom: 12px;
+}
+
+.ex-empty__orbit {
+  width: 60px;
+  height: 60px;
+}
+
+.ex-empty__icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+}
+
+.ex-empty__title {
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+
+.ex-empty__sub {
+  font-size: 12px;
+  margin: 0 0 14px;
+  max-width: 360px;
+}
+
+.ex-proactive {
+  margin-bottom: 12px;
+  padding: 7px 12px;
+}
+
+.ex-proactive__text {
+  font-size: 12px;
+}
+
+.ex-preview {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  max-width: 480px;
+}
+
+.ex-preview__content {
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.ex-preview__row {
+  gap: 8px;
+}
+
+.ex-preview__key {
+  font-size: 10px;
+  min-width: 80px;
+}
+
+.ex-preview__val {
+  font-size: 11px;
+}
+
+.ex-preview__cta {
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.ex-empty__primary {
+  margin-bottom: 8px;
+}
+
+.ex-suggestion--primary {
+  padding: 12px 14px !important;
+}
+
+.ex-suggestion--primary .ex-suggestion__label {
+  font-size: 13px !important;
+}
+
+.ex-suggestion--primary .ex-suggestion__icon {
+  width: 30px !important;
+  height: 30px !important;
+}
+
+.ex-empty__suggestions {
+  gap: 6px;
+  max-width: 480px;
+}
+
+.ex-suggestion {
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.ex-suggestion__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  font-size: 10px;
+}
+
+.ex-suggestion__label {
+  font-size: 11px;
+}
+
+.ex-suggestion__cat {
+  font-size: 9px;
+}
+
+/* Tighten orbit rings for smaller icon */
+.ex-empty__orbit-ring {
+  inset: -8px;
+}
+
+.ex-empty__orbit-ring--2 {
+  inset: -16px;
+}
+
+/* ============================================================================
+   COLLAPSIBLE PREVIEW CARD + SUMMARY PILLS
+   ============================================================================ */
+
+/* Collapsed state: header + summary only, minimal height */
+.ex-preview { cursor: pointer; }
+.ex-preview--open { cursor: default; }
+
+.ex-preview__summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+.ex-preview__pill {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.65);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.ex-preview__pill--green {
+  background: rgba(16,185,129,0.10);
+  color: #10b981;
+  border-color: rgba(16,185,129,0.18);
+}
+
+.ex-preview__pill--amber {
+  background: rgba(245,158,11,0.10);
+  color: #f59e0b;
+  border-color: rgba(245,158,11,0.18);
+}
+
+.ex-preview__arrow-sm {
+  font-size: 11px;
+  color: rgba(255,255,255,0.22);
+}
+
+/* Expanded content slides in */
+.ex-preview__content {
+  margin-top: 10px;
+  animation: ex-in 0.18s ease;
+}
+
+.ex-preview--open .ex-preview__cta {
+  animation: ex-in 0.18s ease;
+}
+
+/* Override: hide the preview on very small viewports */
+@media (max-height: 600px) {
+  .ex-preview { display: none; }
+  .ex-proactive { display: none; }
+}
