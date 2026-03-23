@@ -14304,3 +14304,103 @@
   color: var(--text-secondary);
   line-height: 1.55;
 }
+
+/* ============================================================================
+   EDGEX Branding CSS
+   Append to: styles/tools.css
+   Covers: badge, powered-by label, tool header, career pack header
+   ============================================================================ */
+
+/*  Powered by EDGEX badge (small -- tool outputs)  */
+.edgex-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.edgex-badge--small {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(15, 110, 86, 0.06);
+  border: 1px solid rgba(15, 110, 86, 0.14);
+}
+
+.edgex-badge--small .edgex-badge__text {
+  font-size: 10px;
+  font-weight: 600;
+  color: #0F6E56;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/*  Large badge -- Career Pack report header  */
+.edgex-badge--large {
+  padding: 6px 14px 6px 10px;
+  border-radius: 8px;
+  background: rgba(15, 110, 86, 0.06);
+  border: 1px solid rgba(15, 110, 86, 0.16);
+  margin-bottom: 16px;
+  display: inline-flex;
+}
+
+.edgex-badge--large .edgex-badge__text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0F6E56;
+  letter-spacing: 0.04em;
+}
+
+/*  Tool output footer -- "Powered by EDGEX" row  */
+.edgex-tool-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 0 4px;
+  margin-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/*  Career Pack report header  */
+.edgex-report-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.edgex-report-header__badge {
+  display: flex;
+}
+
+.edgex-report-header__title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+
+.edgex-report-header__sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.38);
+  margin: 0;
+}
+
+/*  EDGEX label in tool page headers  */
+.edgex-tool-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #0F6E56;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(15, 110, 86, 0.06);
+  border: 1px solid rgba(15, 110, 86, 0.14);
+  border-radius: 5px;
+  padding: 3px 7px;
+  margin-bottom: 10px;
+}
