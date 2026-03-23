@@ -90,7 +90,7 @@ const TOOLS = [
 //  Derive recommended tools from conversation 
 
 function deriveRecommendedTools(messages, context) {
-  if (!messages.length) return TOOLS.slice(0, 3);
+  if (!messages || !messages.length) return TOOLS.slice(0, 3);
 
   const text = messages
     .map(m => m.content || "")
@@ -234,7 +234,7 @@ function PremiumCTA({ router, hasPro }) {
 
 function EDGEXSidebar({ context, messages, router }) {
   const isPaid = typeof window !== "undefined"
-    ? ["career_pack", "pro", "elite"].includes(localStorage.getItem("hireedge_plan") || "free")
+    ? ["career_pack", "pro", "elite"].includes((typeof localStorage !== "undefined" && localStorage.getItem("hireedge_plan")) || "free")
     : false;
 
   const recommendedTools = deriveRecommendedTools(messages, context);
@@ -267,7 +267,9 @@ function SidebarToggle({ open, onToggle }) {
 //  Main shell 
 
 export default function EDGEXShell() {
-  const { messages, context } = useEDGEXContext();
+  const raw = useEDGEXContext() || {};
+  const messages = raw.messages || [];
+  const context = raw.context || {};
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
