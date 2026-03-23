@@ -1,217 +1,241 @@
 // ============================================================================
-// components/copilot/ChatWindow.js
-// HireEdge -- EDGEX Chat Window (v2)
+// components/copilot/ChatWindow.js  (v2)
 //
-// Upgrades from v1:
-//   - useCopilot() -> useEDGEXContext() (canonical, legacy alias still works)
-//   - Empty state: 2x2 category grid instead of emoji row
-//   - Header: context bar showing detected role/target
-//   - Preserves all existing CSS class names from copilot.css
+// Key change from v1:
+//   - send() is now the ONLY entry point for all messages:
+//     predefined action clicks, empty-state tiles, and typed input.
+//   - No message is ever sent directly to the API without going through
+//     send(), which passes context to the backend validation layer.
+//   - Clarification responses (type: "clarification") are stored as a
+//     distinct message type and rendered by MessageBubble with question
+//     actions only -- never tool buttons.
+//   - Context is stored in state and accumulated across turns so the
+//     validation gate gets the full picture.
 // ============================================================================
 
-import { useRef, useEffect } from "react";
-import { useRouter } from "next/router";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useEDGEXContext } from "../../context/CopilotContext";
 import MessageBubble from "./MessageBubble";
-import InputBar from "./InputBar";
-import { resolveAction, buildUrl } from "../../utils/actionRouter";
 
-//  Starter prompt categories 
-
-const STARTER_CATEGORIES = [
-  {
-    label: "Career Transition",
-    colour: "#10b981",
-    prompts: [
-      "How do I transition from Sales Manager to Product Manager?",
-      "What roles can I move into from Data Analyst?",
-    ],
-  },
-  {
-    label: "Skills and Gaps",
-    colour: "#f59e0b",
-    prompts: [
-      "What skills do I need to become a Data Architect?",
-      "What is missing from my profile for a senior engineering role?",
-    ],
-  },
-  {
-    label: "Visa and Global",
-    colour: "#818cf8",
-    prompts: [
-      "Can I get a UK Skilled Worker visa as a Software Engineer?",
-      "What are my visa options for working in Canada?",
-    ],
-  },
-  {
-    label: "Strategy and Tools",
-    colour: "#f87171",
-    prompts: [
-      "Which HireEdge tool should I use first?",
-      "Build me a 90-day career transition plan",
-    ],
-  },
-];
-
-//  EDGEX icon 
-
-function EDGEXIcon({ size = 18 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 18 18" fill="none"
-      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
-      aria-hidden="true">
-      <path d="M9 1v4M9 13v4M1 9h4M13 9h4M3.5 3.5l2.8 2.8M11.7 11.7l2.8 2.8M3.5 14.5l2.8-2.8M11.7 6.3l2.8-2.8" />
-    </svg>
-  );
-}
-
-//  Context bar 
-
-function ContextBar({ context }) {
-  if (!context?.role && !context?.target) return null;
-  return (
-    <div className="edgex-ctx-bar">
-      {context.role && (
-        <span className="edgex-ctx-bar__chip edgex-ctx-bar__chip--from">{context.role}</span>
-      )}
-      {context.role && context.target && (
-        <span className="edgex-ctx-bar__sep">-&gt;</span>
-      )}
-      {context.target && (
-        <span className="edgex-ctx-bar__chip edgex-ctx-bar__chip--to">{context.target}</span>
-      )}
-    </div>
-  );
-}
-
-//  Premium empty state 
-
-function EmptyState({ onSend }) {
-  return (
-    <div className="chat__empty edgex-empty-v2">
-      <div className="edgex-empty-v2__glow" />
-
-      <div className="edgex-empty-v2__icon-ring">
-        <EDGEXIcon size={26} />
-      </div>
-
-      <h2 className="chat__empty-title">EDGEX Career Intelligence</h2>
-      <p className="chat__empty-subtitle">
-        One conversation to navigate roles, transitions, skill gaps, visa routes, salary benchmarks, and career strategy.
-      </p>
-
-      <div className="edgex-starter-grid">
-        {STARTER_CATEGORIES.map((cat, ci) => (
-          <div key={ci} className="edgex-starter-col">
-            <span className="edgex-starter-col__label" style={{ color: cat.colour }}>
-              {cat.label}
-            </span>
-            {cat.prompts.map((p, pi) => (
-              <button
-                key={pi}
-                className="edgex-starter-btn"
-                onClick={() => onSend(p)}
-                style={{ "--sc": cat.colour }}
-              >
-                <span className="edgex-starter-btn__dot" style={{ background: cat.colour }} />
-                <span>{p}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-//  Main ChatWindow 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
 export default function ChatWindow() {
-  const { messages, loading, send, clear, context } = useEDGEXContext();
-  const scrollRef = useRef(null);
-  const router    = useRouter();
-  const isEmpty   = messages.length === 0;
+  const { context, updateContext, clearContext } = useEDGEXContext();
+  const [messages, setMessages]   = useState([]);
+  const [input, setInput]         = useState("");
+  const [loading, setLoading]     = useState(false);
+  const bottomRef = useRef(null);
 
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: messages.length > 1 ? "smooth" : "instant" });
-  }, [messages.length, loading]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  const handleAction = (action) => {
-    if (!action) return;
-    if (action.type === "question") {
-      if (action.prompt) send(action.prompt);
-      return;
+  //  Core send function 
+  // ALL triggers -- typed input, action clicks, tile clicks -- go through here.
+  // Context is always forwarded so the backend validation layer has full picture.
+  const send = useCallback(async (text) => {
+    if (!text || !text.trim() || loading) return;
+    const trimmed = text.trim();
+
+    // Append user message
+    setMessages(prev => [...prev, { role: "user", content: trimmed }]);
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/copilot/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-HireEdge-Plan": getPlan(),
+        },
+        body: JSON.stringify({
+          message: trimmed,
+          context,            // always pass full context -- validation depends on it
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.ok) {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          type: "error",
+          content: json.error || "Something went wrong. Please try again.",
+        }]);
+        return;
+      }
+
+      const data = json.data;
+
+      //  Clarification response (missing required fields) 
+      if (data.type === "clarification") {
+        setMessages(prev => [...prev, {
+          role:           "assistant",
+          type:           "clarification",
+          content:        data.reply,
+          missing_fields: data.missing_fields || [],
+          actions:        data.next_actions   || [],
+        }]);
+        // Accumulate any partial context the backend resolved
+        if (data.context) updateContext(data.context);
+        return;
+      }
+
+      //  Normal response 
+      setMessages(prev => [...prev, {
+        role:         "assistant",
+        type:         "assistant",
+        content:      data.reply,
+        next_actions: data.next_actions || [],
+      }]);
+
+      // Persist resolved context for next turn
+      if (data.context) updateContext(data.context);
+
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role:    "assistant",
+        type:    "error",
+        content: "Connection error. Please try again.",
+      }]);
+    } finally {
+      setLoading(false);
     }
-    const resolved = resolveAction(action, context || {});
-    if (resolved) {
-      router.push(buildUrl(resolved.route, resolved.query));
-      return;
+  }, [context, loading, updateContext]);
+
+  //  Action handler (question buttons inside clarification or assistant bubbles)
+  const handleAction = useCallback((action) => {
+    if (action.type === "question" && action.prompt) {
+      send(action.prompt);
     }
-    if (action.prompt) send(action.prompt);
+    // type === "tool" is handled directly by MessageBubble via router.push
+    // It never calls send() -- no validation needed for direct navigation
+  }, [send]);
+
+  //  Input submission 
+  const handleSubmit = () => {
+    send(input);
+    setInput("");
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  //  Empty state tiles 
+  // These send the prompt text through send() -- they do NOT bypass validation.
+  const STARTER_TILES = [
+    {
+      category: "Transition",
+      label:    "Plan my career move",
+      prompt:   "I want to plan a career transition. Can you help me figure out the steps?",
+    },
+    {
+      category: "Skills",
+      label:    "Analyse my skill gaps",
+      prompt:   "I want to understand what skills I am missing for my target role.",
+    },
+    {
+      category: "Salary",
+      label:    "UK salary benchmarks",
+      prompt:   "What are typical UK salary ranges I should know about?",
+    },
+    {
+      category: "Visa",
+      label:    "UK visa options",
+      prompt:   "What UK work visa routes are available for my situation?",
+    },
+  ];
+
+  //  Render 
   return (
-    <div className="chat">
-      {/* Header */}
-      <div className="chat__header">
-        <div className="chat__header-left">
-          <div className="chat__title">
-            <span className="chat__title-icon" style={{ color: "var(--accent-400)" }}>
-              <EDGEXIcon size={18} />
-            </span>
-            <span>EDGEX</span>
-            <span className="chat__title-badge">Career Intelligence</span>
+    <div className="edgex-chat">
+
+      {/* Messages area */}
+      <div className="edgex-chat__messages">
+        {messages.length === 0 && !loading && (
+          <div className="edgex-chat__empty">
+            <div className="edgex-chat__empty-logo">
+              <span className="edgex-chat__empty-x">X</span>
+            </div>
+            <h2 className="edgex-chat__empty-title">EDGEX Career Intelligence</h2>
+            <p className="edgex-chat__empty-sub">
+              Your AI career strategist. Ask about transitions, salaries, skill gaps, or visas.
+            </p>
+            <div className="edgex-chat__tiles">
+              {STARTER_TILES.map((tile, i) => (
+                <button
+                  key={i}
+                  className="edgex-chat__tile"
+                  onClick={() => send(tile.prompt)}
+                >
+                  <span className="edgex-chat__tile-category">{tile.category}</span>
+                  <span className="edgex-chat__tile-label">{tile.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <ContextBar context={context} />
-        </div>
-
-        {messages.length > 0 && (
-          <button className="chat__clear" onClick={clear} title="New conversation">
-            <svg width="14" height="14" viewBox="0 0 18 18" fill="none"
-              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <path d="M3 3l12 12M3 15L15 3" />
-            </svg>
-            <span>New chat</span>
-          </button>
         )}
-      </div>
 
-      {/* Messages */}
-      <div className="chat__messages" ref={scrollRef}>
-        {isEmpty ? (
-          <EmptyState onSend={send} />
-        ) : (
-          <>
-            {messages.map(msg => (
-              <MessageBubble key={msg.id} message={msg} onAction={handleAction} />
-            ))}
-            {loading && (
-              <div className="bubble bubble--assistant">
-                <div className="bubble__avatar">
-                  <div className="bubble__avatar-ai">
-                    <EDGEXIcon size={16} />
-                  </div>
-                </div>
-                <div className="bubble__body">
-                  <div className="bubble__header">
-                    <span className="bubble__sender">EDGEX</span>
-                  </div>
-                  <div className="bubble__typing">
-                    <span className="bubble__dot" />
-                    <span className="bubble__dot" />
-                    <span className="bubble__dot" />
-                  </div>
-                </div>
+        {messages.map((msg, i) => (
+          <MessageBubble
+            key={i}
+            message={msg}
+            onAction={handleAction}
+          />
+        ))}
+
+        {loading && (
+          <div className="edgex-bubble edgex-bubble--assistant edgex-bubble--loading">
+            <div className="edgex-bubble__avatar edgex-bubble__avatar--edgex">
+              <span className="edgex-bubble__avatar-icon">X</span>
+            </div>
+            <div className="edgex-bubble__body">
+              <div className="edgex-bubble__typing">
+                <span /><span /><span />
               </div>
-            )}
-          </>
+            </div>
+          </div>
         )}
+
+        <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <InputBar />
+      {/* Input bar */}
+      <div className="edgex-chat__input-bar">
+        <textarea
+          className="edgex-chat__input"
+          placeholder="Ask about your career path, skills, salary, interviews..."
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          disabled={loading}
+        />
+        <button
+          className="edgex-chat__send"
+          onClick={handleSubmit}
+          disabled={loading || !input.trim()}
+          aria-label="Send"
+        >
+          &gt;
+        </button>
+      </div>
+      <p className="edgex-chat__hints">
+        <kbd>Enter</kbd> to send &nbsp; <kbd>Shift + Enter</kbd> for new line
+      </p>
     </div>
   );
+}
+
+//  Util 
+function getPlan() {
+  if (typeof window === "undefined") return "free";
+  try {
+    const p = localStorage.getItem("hireedge_plan");
+    return p || "free";
+  } catch { return "free"; }
 }
