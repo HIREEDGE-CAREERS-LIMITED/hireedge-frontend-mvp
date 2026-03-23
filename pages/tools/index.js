@@ -1,14 +1,13 @@
 // ============================================================================
 // pages/tools/index.js
-// HireEdge -- Career Tools Index
-// Free: Gap Explainer, Talent Profile
-// Pro: Career Roadmap, Resume Optimiser, LinkedIn Optimiser, Interview Prep, Visa Intelligence
+// HireEdge -- Career Tools Index  
+// Option 3: All 7 tools in one 3-col grid, FREE/PRO badges distinguish them
 // ============================================================================
 
 import Head from "next/head";
 import Link from "next/link";
 
-const FREE_TOOLS = [
+const TOOLS = [
   {
     id:   "career-gap-explainer",
     name: "Career Gap Explainer",
@@ -16,6 +15,7 @@ const FREE_TOOLS = [
     desc: "Find exactly what skills and experiences are missing for your target role.",
     icon: "🔍",
     href: "/tools/career-gap-explainer",
+    plan: "free",
   },
   {
     id:   "talent-profile",
@@ -24,10 +24,8 @@ const FREE_TOOLS = [
     desc: "Build a data-driven profile showing your market position and unique strengths.",
     icon: "⭐",
     href: "/tools/talent-profile",
+    plan: "free",
   },
-];
-
-const PRO_TOOLS = [
   {
     id:   "career-roadmap",
     name: "Career Roadmap",
@@ -35,6 +33,7 @@ const PRO_TOOLS = [
     desc: "Get a phased action plan from where you are to where you want to be.",
     icon: "🗺️",
     href: "/tools/career-roadmap",
+    plan: "pro",
   },
   {
     id:   "resume-optimiser",
@@ -43,6 +42,7 @@ const PRO_TOOLS = [
     desc: "ATS-ready CV blueprint tailored for your target role with scoring and rewrites.",
     icon: "📄",
     href: "/tools/resume-optimiser",
+    plan: "pro",
   },
   {
     id:   "linkedin-optimiser",
@@ -51,6 +51,7 @@ const PRO_TOOLS = [
     desc: "Headlines and profile improvements that get you found by recruiters.",
     icon: "💼",
     href: "/tools/linkedin-optimiser",
+    plan: "pro",
   },
   {
     id:   "interview-prep",
@@ -59,6 +60,7 @@ const PRO_TOOLS = [
     desc: "Role-specific questions, STAR answers, and salary negotiation intel.",
     icon: "🎯",
     href: "/tools/interview-prep",
+    plan: "pro",
   },
   {
     id:   "visa-intelligence",
@@ -67,6 +69,7 @@ const PRO_TOOLS = [
     desc: "Check your UK and international visa routes, requirements, and timelines.",
     icon: "🛂",
     href: "/tools/visa-intelligence",
+    plan: "pro",
   },
 ];
 
@@ -81,41 +84,23 @@ export default function ToolsIndexPage() {
           <p className="tl-header__sub">Hands-on intelligence tools powered by real career data across 1,000+ roles.</p>
         </div>
 
-        {/* Row 1: 2 Free tools */}
-        <div className="tl-section">
-          <p className="tl-section__label">Free Tools</p>
-          <div className="tl-grid tl-grid--2">
-            {FREE_TOOLS.map(t => (
-              <Link key={t.id} href={t.href} className="tl-card">
-                <span className="tl-card__icon">{t.icon}</span>
-                <div className="tl-card__body">
+        <div className="tl-grid">
+          {TOOLS.map(t => (
+            <Link key={t.id} href={t.href} className="tl-card">
+              <span className="tl-card__icon">{t.icon}</span>
+              <div className="tl-card__body">
+                <div className="tl-card__top">
                   <span className="tl-card__sub">{t.sub}</span>
-                  <span className="tl-card__name">{t.name}</span>
-                  <span className="tl-card__desc">{t.desc}</span>
+                  {t.plan === "free"
+                    ? <span className="tl-card__free-badge">FREE</span>
+                    : <span className="tl-card__pro-badge">PRO</span>
+                  }
                 </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 2: 5 Pro tools */}
-        <div className="tl-section">
-          <p className="tl-section__label">Pro Tools</p>
-          <div className="tl-grid tl-grid--5">
-            {PRO_TOOLS.map(t => (
-              <Link key={t.id} href={t.href} className="tl-card tl-card--pro">
-                <span className="tl-card__icon">{t.icon}</span>
-                <div className="tl-card__body">
-                  <div className="tl-card__top">
-                    <span className="tl-card__sub">{t.sub}</span>
-                    <span className="tl-card__pro-badge">PRO</span>
-                  </div>
-                  <span className="tl-card__name">{t.name}</span>
-                  <span className="tl-card__desc">{t.desc}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+                <span className="tl-card__name">{t.name}</span>
+                <span className="tl-card__desc">{t.desc}</span>
+              </div>
+            </Link>
+          ))}
         </div>
 
       </div>
