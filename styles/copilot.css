@@ -48,7 +48,7 @@
 .ex-chat { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
 /*  Header  */
-.ex-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+.ex-header { display: flex; align-items: center; justify-content: flex-end; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
 .ex-header__brand { display: flex; align-items: center; gap: 9px; }
 .ex-header__name { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -0.2px; }
 .ex-header__sub { font-size: 11px; color: rgba(255,255,255,0.25); }
@@ -222,15 +222,15 @@
 
 .ex-empty__orbit-ring {
   position: absolute;
-  inset: -12px;
+  inset: -14px;
   border-radius: 50%;
-  border: 1px solid rgba(15,110,86,0.15);
+  border: 1.5px solid rgba(15,110,86,0.30);
   animation: ex-orbit-pulse 3s ease-in-out infinite;
 }
 
 .ex-empty__orbit-ring--2 {
-  inset: -22px;
-  border-color: rgba(15,110,86,0.07);
+  inset: -26px;
+  border: 1px solid rgba(15,110,86,0.15);
   animation-delay: -1.5s;
   animation-duration: 4s;
 }
@@ -322,16 +322,17 @@
 }
 
 .ex-suggestion--primary {
-  flex: 1;
-  padding: 16px 18px !important;
-  background: rgba(15,110,86,0.06) !important;
-  border-color: rgba(15,110,86,0.18) !important;
+  grid-column: 1 / -1;
+  padding: 16px 20px !important;
+  background: rgba(15,110,86,0.10) !important;
+  border-color: rgba(15,110,86,0.30) !important;
+  border-width: 1.5px !important;
 }
 
 .ex-suggestion--primary:hover {
-  background: rgba(15,110,86,0.12) !important;
-  border-color: rgba(15,110,86,0.35) !important;
-  box-shadow: 0 0 20px rgba(15,110,86,0.12);
+  background: rgba(15,110,86,0.16) !important;
+  border-color: rgba(15,110,86,0.50) !important;
+  box-shadow: 0 0 24px rgba(15,110,86,0.15);
 }
 
 .ex-suggestion--primary .ex-suggestion__label {
@@ -488,9 +489,10 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #0F6E56;
+  background: rgba(15,110,86,0.7);
   opacity: 0;
-  animation: ex-float 12s ease-in-out infinite;
+  animation: ex-float 10s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 .ex-particle--0 { left: 15%; top: 70%; animation-delay: 0s;   animation-duration: 11s; width: 2px; height: 2px; }
 .ex-particle--1 { left: 80%; top: 60%; animation-delay: 2s;   animation-duration: 14s; opacity: 0; }
