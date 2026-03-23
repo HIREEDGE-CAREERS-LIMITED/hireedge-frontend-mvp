@@ -25,7 +25,6 @@ import Head from "next/head";
 import Link from "next/link";
 import RoleSearch from "../../components/intelligence/RoleSearch";
 import { useEDGEXContext } from "../../context/CopilotContext";
-import EDGEXBadge from "../../components/brand/EDGEXBadge";
 
 const API       = process.env.NEXT_PUBLIC_API_URL || "https://hireedge-backend-mvp.vercel.app";
 const PAID_PLANS = ["career_pack", "pro", "elite"];
