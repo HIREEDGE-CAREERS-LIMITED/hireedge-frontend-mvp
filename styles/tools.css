@@ -9514,9 +9514,9 @@
 .tl-card__desc { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.5; }
 .tl-card__pro-badge { font-size: 9px; font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.06em; background: rgba(99,102,241,0.15); color: #a5b4fc; border-radius: var(--radius-sm); padding: 1px 5px; }
 
+
 /* ============================================================================
-   TOOLS INDEX v8 -- Option 3: all 7 in one 3-col grid, FREE/PRO badges
-   Dark mode automatic via CSS variables
+   TOOLS INDEX v8 final -- badge prominent top of card, FREE green / PRO indigo
    ============================================================================ */
 
 .tl-page {
@@ -9540,7 +9540,6 @@
   line-height: 1.6;
 }
 
-/* 3-col grid -- all 7 tools together */
 .tl-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -9550,12 +9549,11 @@
 @media (max-width: 960px) { .tl-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .tl-grid { grid-template-columns: 1fr; } }
 
-/* Card */
 .tl-card {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-4);
+  padding: var(--space-4);
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -9570,14 +9568,11 @@
   text-decoration: none;
 }
 
-.tl-card__icon { font-size: var(--text-xl); line-height: 1; }
-
-.tl-card__body { display: flex; flex-direction: column; gap: 3px; }
-
-.tl-card__top {
+/* Top row: sub-label left, badge right -- always visible */
+.tl-card__badge-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: space-between;
 }
 
 .tl-card__sub {
@@ -9588,38 +9583,54 @@
   color: var(--text-muted);
 }
 
+/* FREE badge -- green, larger and more visible */
+.tl-card__free-badge {
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(16,185,129,0.15);
+  color: var(--accent-400);
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+}
+
+/* PRO badge -- indigo, larger and more visible */
+.tl-card__pro-badge {
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(99,102,241,0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+}
+
+/* Icon + name row */
+.tl-card__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tl-card__icon {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 .tl-card__name {
   font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  line-height: 1.3;
 }
 
 .tl-card__desc {
   font-size: var(--text-xs);
   color: var(--text-muted);
   line-height: 1.5;
-}
-
-/* FREE badge -- green */
-.tl-card__free-badge {
-  font-size: 9px;
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: rgba(16,185,129,0.12);
-  color: var(--accent-400);
-  border-radius: var(--radius-sm);
-  padding: 1px 5px;
-}
-
-/* PRO badge -- indigo */
-.tl-card__pro-badge {
-  font-size: 9px;
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  background: rgba(99,102,241,0.15);
-  color: #a5b4fc;
-  border-radius: var(--radius-sm);
-  padding: 1px 5px;
 }
