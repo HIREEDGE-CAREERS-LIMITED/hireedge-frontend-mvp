@@ -279,7 +279,7 @@ export default function EDGEXShell() {
       {/* Mobile sidebar toggle */}
       <div className="exs-mobile-bar">
         <div className="exs-mobile-bar__title">
-          <EDGEXIcon size={14} />
+          <EDGEXIcon size={16} state="header" />
           <span>EDGEX</span>
         </div>
         <SidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(v => !v)} />
