@@ -14,7 +14,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useEDGEXContext } from "../../context/CopilotContext";
 import EDGEXIcon from "../brand/EDGEXIcon";
-import EDGEXIcon from "../brand/EDGEXIcon";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
