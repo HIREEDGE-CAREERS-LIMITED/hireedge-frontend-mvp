@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { NAV_SECTIONS, ACCOUNT_NAV } from "../../config/navigation";
 import EDGEXIcon from "../brand/EDGEXIcon";
+import HireEdgeLogo from "../brand/HireEdgeLogo";
 
 const ICONS = {
   spark: (
@@ -86,7 +87,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Render the correct icon: EDGEXIcon for EDGEX nav item, generic icons for everything else
+  // Render correct icon: EDGEXIcon for EDGEX nav item, generic icons for everything else
   const renderNavIcon = (section) => {
     if (section.id === "edgex") {
       return <EDGEXNavIcon />;
@@ -109,10 +110,15 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       />
 
       <aside className={sidebarClass}>
-        {/* Header / Logo */}
+        {/* Header / Logo
+            HireEdgeLogo interactive: nudges forward on hover — subtle, not distracting.
+            Collapsed: 24px. Expanded: 28px. No animation on load (static context). */}
         <div className="sidebar__header">
           <Link href="/copilot" className="sidebar__logo">
-            <span className="sidebar__logo-mark">H</span>
+            <HireEdgeLogo
+              size={collapsed ? 24 : 28}
+              interactive
+            />
             {!collapsed && <span>HireEdge</span>}
           </Link>
           {!collapsed && (
