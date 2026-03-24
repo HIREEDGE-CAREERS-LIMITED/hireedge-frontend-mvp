@@ -7,7 +7,6 @@
 // See also: components/layout/AppShell.js
 // ============================================================================
 
-import "../styles/marketing.css";
 import Link from "next/link";
 import Head from "next/head";
 
