@@ -837,3 +837,168 @@
   color: var(--text-secondary);
   text-align: left;
 }
+
+/* ============================================================================
+   Billing page — conversion additions
+   APPEND these rules to the existing billing/pricing stylesheet.
+   Do NOT replace existing billing-* or pricing-card-* rules.
+   ============================================================================ */
+
+/* ── Trust row ───────────────────────────────────────────────────────────── */
+
+.billing-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  background: rgba(15, 110, 86, 0.06);
+  border: 1px solid rgba(15, 110, 86, 0.14);
+  border-radius: 10px;
+}
+
+.billing-trust__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.billing-trust__tick {
+  color: var(--accent-500, #10b981);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* ── Value headline (under plan name) ───────────────────────────────────── */
+
+.pricing-card__headline {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  margin: 3px 0 10px;
+  line-height: 1.4;
+}
+
+/* ── Payment clarity note (under price) ─────────────────────────────────── */
+
+.pricing-card__price-note2 {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin: 5px 0 0;
+  line-height: 1.4;
+}
+
+/* ── Positioning line ────────────────────────────────────────────────────── */
+
+.pricing-card__positioning {
+  font-size: 11px;
+  color: var(--accent-400, #34d399);
+  font-weight: 600;
+  margin: 6px 0 0;
+  letter-spacing: 0.01em;
+}
+
+/* ── Comparison note ─────────────────────────────────────────────────────── */
+
+.billing-compare {
+  max-width: 520px;
+  margin: 28px auto 0;
+  text-align: center;
+  padding: 18px 24px;
+  background: var(--bg-elevated, rgba(255,255,255,0.03));
+  border: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
+  border-radius: 12px;
+}
+
+.billing-compare__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+.billing-compare__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  margin: 0 0 5px;
+}
+
+.billing-compare__row:last-child {
+  margin-bottom: 0;
+}
+
+.billing-compare__label {
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 76px;
+  text-align: right;
+}
+
+.billing-compare__sep {
+  color: var(--text-tertiary);
+}
+
+.billing-compare__desc {
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+
+/* ── CTA tag (e.g. "Best for starters") ─────────────────────────────────── */
+
+.pricing-card__cta-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-400, #34d399);
+  margin-bottom: 8px;
+}
+
+/* ── CTA note (e.g. "Most users choose Pro") ────────────────────────────── */
+
+.pricing-card__cta-note {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent-400, #34d399);
+  text-align: center;
+  margin: 8px 0 0;
+}
+
+/* ── CTA sub (e.g. "No commitment • Upgrade instantly") ─────────────────── */
+
+.pricing-card__cta-sub {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 4px 0 0;
+}
+
+/* ── Pro primary CTA — larger + stronger glow ───────────────────────────── */
+
+.pricing-card__btn--primary-lg {
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 0 0 1px rgba(79,70,229,0.25),
+    0 4px 20px rgba(79,70,229,0.35),
+    0 1px 4px rgba(0,0,0,0.2);
+}
+
+.pricing-card__btn--primary-lg:hover {
+  box-shadow:
+    0 0 0 1px rgba(79,70,229,0.35),
+    0 6px 28px rgba(79,70,229,0.50),
+    0 1px 4px rgba(0,0,0,0.25);
+  transform: translateY(-1px);
+}
