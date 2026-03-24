@@ -328,7 +328,7 @@ export default function MarketingHome() {
             <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Three steps to clarity.</h2>
             <div className="mkt-steps">
               {HOW_STEPS.map((s, i) => (
-                <div key={i} className={`mkt-step mkt-reveal mkt-reveal--delay-${i}`}>
+                <div key={i} className={`mkt-step mkt-reveal mkt-reveal--delay-${i}`} data-num={s.num}>
                   <div className="mkt-step__num">{s.num}</div>
                   <div className="mkt-step__content">
                     <h3 className="mkt-step__title">{s.title}</h3>
