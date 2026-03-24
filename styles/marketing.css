@@ -1704,3 +1704,315 @@ body.mkt-js-ready .mkt-reveal--right.mkt-reveal--in {
 .mkt-cta-final__sub {
   max-width: 420px;
 }
+
+
+/* ============================================================================
+   PREMIUM POLISH — v6
+   Goal: push from strong startup SaaS to true premium SaaS.
+   Pure CSS — no JSX changes. Only overrides and targeted enhancements.
+
+   Focus areas:
+   1. Flow diagram — elegant, contained, feels like a product diagram
+   2. Section rhythm — more confident spacing, less cluttered
+   3. Scroll reveal — smoother, more refined easing
+   4. Motion — restrained, intentional, higher quality
+   5. Cards — more depth, more layering
+   6. Typography — tighter hierarchy throughout
+   ============================================================================ */
+
+/* ── 1. Scroll reveal — premium easing, longer travel ───────────────────── */
+
+body.mkt-js-ready .mkt-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.mkt-js-ready .mkt-reveal--right {
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.mkt-js-ready .mkt-reveal--delay-1 { transition-delay: 0.08s; }
+body.mkt-js-ready .mkt-reveal--delay-2 { transition-delay: 0.16s; }
+body.mkt-js-ready .mkt-reveal--delay-3 { transition-delay: 0.24s; }
+
+body.mkt-js-ready .mkt-reveal--in,
+body.mkt-js-ready .mkt-reveal--right.mkt-reveal--in {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* ── 2. Platform flow — premium contained diagram ────────────────────────── */
+
+.mkt-flow {
+  margin: 40px 0 56px;
+  padding: 20px 24px;
+  background: rgba(255,255,255,0.016);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 20px;
+  justify-content: space-between;
+  overflow: visible;
+  position: relative;
+}
+
+/* Subtle top glow on the flow container */
+.mkt-flow::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: 20%; right: 20%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(79,70,229,0.35),
+    rgba(16,185,129,0.25),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.mkt-flow__item { align-items: center; }
+
+.mkt-flow__node {
+  padding: 13px 18px;
+  border-radius: 12px;
+  min-width: 100px;
+  gap: 5px;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s ease,
+              border-color 0.22s ease;
+}
+
+.mkt-flow__node:hover {
+  transform: translateY(-3px);
+}
+
+.mkt-flow__node--you {
+  border-color: rgba(255,255,255,0.20);
+  background: rgba(255,255,255,0.055);
+  box-shadow: 0 2px 14px rgba(0,0,0,0.22);
+}
+.mkt-flow__node--you:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  border-color: rgba(255,255,255,0.28);
+}
+
+.mkt-flow__node--platform {
+  border-color: rgba(79,70,229,0.32);
+  background: rgba(79,70,229,0.09);
+  box-shadow: 0 2px 14px rgba(79,70,229,0.10);
+}
+.mkt-flow__node--platform:hover {
+  box-shadow: 0 8px 24px rgba(79,70,229,0.18);
+  border-color: rgba(79,70,229,0.48);
+}
+
+.mkt-flow__node--outcome {
+  border-color: rgba(16,185,129,0.38);
+  background: rgba(16,185,129,0.09);
+  box-shadow: 0 2px 14px rgba(16,185,129,0.10);
+}
+.mkt-flow__node--outcome:hover {
+  box-shadow: 0 8px 24px rgba(16,185,129,0.18);
+  border-color: rgba(16,185,129,0.52);
+}
+
+.mkt-flow__node-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: rgba(255,255,255,0.92);
+}
+
+.mkt-flow__node-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.38);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.mkt-flow__arrow {
+  color: rgba(255,255,255,0.16);
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+
+/* ── 3. Hero — stronger depth, refined composition ───────────────────────── */
+
+.mkt-hero { padding: 100px 32px 84px; }
+
+.mkt-hero::before {
+  width: 900px;
+  height: 480px;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(79,70,229,0.09) 0%,
+    rgba(16,185,129,0.03) 45%,
+    transparent 70%
+  );
+}
+
+/* ── 4. Nav — crisper scroll transition ──────────────────────────────────── */
+
+.mkt-nav {
+  transition: background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;
+}
+
+.mkt-nav--scrolled {
+  background: rgba(8,9,10,0.94);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom-color: rgba(255,255,255,0.07);
+}
+
+/* ── 5. Buttons — tighter, more confident transitions ────────────────────── */
+
+.mkt-btn {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.18s ease,
+              background 0.15s ease,
+              color 0.15s ease,
+              border-color 0.15s ease;
+}
+
+.mkt-btn--primary:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 8px 32px rgba(79,70,229,0.48);
+}
+
+.mkt-btn--xl.mkt-btn--primary:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(79,70,229,0.52);
+}
+
+/* ── 6. Demo cards — more polished hover state ───────────────────────────── */
+
+.mkt-chat {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s ease;
+}
+
+.mkt-chat:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 1px rgba(79,70,229,0.12),
+    0 40px 96px rgba(0,0,0,0.68),
+    0 12px 32px rgba(0,0,0,0.35);
+}
+
+/* ── 7. Cards across the board — consistent hover behaviour ──────────────── */
+
+.mkt-pain-card,
+.mkt-step,
+.mkt-prompt {
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mkt-platform-card {
+  transition: border-color 0.22s ease,
+              background 0.22s ease,
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s ease;
+}
+
+.mkt-platform-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 56px rgba(0,0,0,0.42);
+}
+
+.mkt-pricing-card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s ease,
+              border-color 0.22s ease;
+}
+
+/* ── 8. Section h2 — slightly tighter leading ────────────────────────────── */
+
+.mkt-section__h2 { line-height: 1.10; }
+
+/* ── 9. Section label line — slightly longer ─────────────────────────────── */
+
+.mkt-section__label::before { width: 20px; }
+
+/* ── 10. Platform section — more breathing room above the flow ───────────── */
+
+.mkt-flow { margin-top: 44px; }
+
+/* ── 11. EDGEX prompts — more refined hover ──────────────────────────────── */
+
+.mkt-prompt:hover {
+  transform: translateX(5px);
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.038);
+}
+
+/* ── 12. Pro pricing card — stronger permanent presence ──────────────────── */
+
+.mkt-pricing-card--pro {
+  transform: translateY(-6px);
+  box-shadow:
+    0 0 0 1px rgba(79,70,229,0.20),
+    0 12px 40px rgba(79,70,229,0.16);
+}
+
+.mkt-pricing-card--pro:hover {
+  transform: translateY(-10px);
+  box-shadow:
+    0 0 0 1px rgba(79,70,229,0.30),
+    0 24px 60px rgba(79,70,229,0.28);
+}
+
+/* ── 13. CTA final — stronger radial, more presence ─────────────────────── */
+
+.mkt-cta-final {
+  background:
+    radial-gradient(ellipse 65% 55% at 50% 0%, rgba(79,70,229,0.16) 0%, transparent 68%);
+  border-top-color: rgba(79,70,229,0.14);
+}
+
+/* ── 14. Footer — very subtle top separator ──────────────────────────────── */
+
+.mkt-footer {
+  border-top: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.008);
+}
+
+/* ── 15. Trust bar figures — gradient text ───────────────────────────────── */
+
+.mkt-trust-bar__fig {
+  background: linear-gradient(135deg, #ffffff 50%, rgba(255,255,255,0.55) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 21px;
+}
+
+/* ── 16. Intelligence strip — glassier ───────────────────────────────────── */
+
+.mkt-intel-strip {
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+
+/* ── 17. Solution row icon — indigo pill, cleaner ────────────────────────── */
+
+.mkt-solution-row__icon {
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  background: rgba(79,70,229,0.14);
+  border-color: rgba(79,70,229,0.22);
+  border-radius: 6px;
+  color: rgba(139,148,255,0.9);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.mkt-solution-row:hover .mkt-solution-row__icon {
+  background: rgba(79,70,229,0.22);
+  transform: scale(1.08);
+}
