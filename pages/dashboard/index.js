@@ -18,6 +18,7 @@ import SavedRolesList      from "../../components/dashboard/SavedRolesList";
 import RecommendationFeed  from "../../components/dashboard/RecommendationFeed";
 import ActivityTimeline    from "../../components/dashboard/ActivityTimeline";
 import QuickActionCard     from "../../components/dashboard/QuickActionCard";
+import HireEdgeLogo        from "../../components/brand/HireEdgeLogo";
 
 export default function DashboardPage() {
   const [profile,         setProfile]         = useState(null);
@@ -66,7 +67,7 @@ export default function DashboardPage() {
       .finally(() => setLoading((p) => ({ ...p, activity: false })));
   }, []);
 
-  // No career context → onboarding
+  // No career context → onboarding welcome state
   if (!careerCtx && !loading.profile) {
     return (
       <div className="dash">
@@ -74,14 +75,16 @@ export default function DashboardPage() {
           <h1 className="dash__title">Dashboard</h1>
         </div>
         <div className="dash__onboarding">
-          <div className="dash__onboarding-icon shimmer-text">✦</div>
+          {/* HireEdgeLogo replaces generic ✦ sparkle — platform identity moment.
+              animated prop: mark reveals left→right on load, then holds still. */}
+          <div className="dash__onboarding-icon">
+            <HireEdgeLogo size={48} animated />
+          </div>
           <h2 className="dash__onboarding-title">Welcome to HireEdge</h2>
-          {/* CHANGED: "Copilot" → "EDGEX" in onboarding copy */}
           <p className="dash__onboarding-text">
             Start by telling EDGEX about your current role and skills.
             Your personalised dashboard will build itself as you explore.
           </p>
-          {/* CHANGED: "Open Copilot" → "Open EDGEX" */}
           <a href="/copilot" className="dash__onboarding-cta">
             Open EDGEX
             <span>→</span>
