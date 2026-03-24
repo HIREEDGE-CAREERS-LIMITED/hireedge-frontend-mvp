@@ -3,22 +3,166 @@
 // HireEdge — Billing / Plan Selection
 //
 // CHANGES vs previous version:
-//   - PricingCard: renders plan.headline, plan.priceNote2, plan.positioning
-//   - TrustRow component added above .billing-grid
-//   - ComparisonNote component added below .billing-grid
-//   - All plan data (prices, CTAs) driven from lib/planConfig.js — no hardcoding here
-//   - Layout structure, toggle, FAQ, UsageMeter, PlanBadge: unchanged
+//   - Career Pack price: £19.99 → £6.99
+//   - Career Pack CTA: "Get Career Pack" → "Unlock Career Pack — £6.99"
+//   - Pro CTA: "Upgrade to Pro" → "Start Pro — £14.99/month"
+//   - Elite CTA: "Go Elite" → "Upgrade to Elite — £29.99/month"
+//   - Added: headline, priceNote2, positioning per plan
+//   - Removed: "Talent Profile" from Free features (Pro tool)
+//   - PricingCard renders new headline, priceNote2, positioning fields
+//   - TrustRow added above .billing-grid
+//   - ComparisonNote added below .billing-grid
+//   - Layout, toggle, FAQ, UsageMeter, PlanBadge: unchanged
 // ============================================================================
 
 import { useState } from "react";
-import {
-  PLAN_ORDER,
-  PLANS_CONFIG,
-  getCurrentPlan,
-  setPlan,
-  getPlan,
-  getUsage,
-} from "../lib/planConfig";
+
+// ── Plan data (inline — single source of truth for this page) ─────────────
+
+const STORAGE_KEY = "hireedge_plan";
+
+const PLANS_CONFIG = {
+  free: {
+    id:              "free",
+    name:            "Free",
+    headline:        "Explore your career basics",
+    price:           "£0",
+    priceNote:       "forever",
+    priceNote2:      null,
+    positioning:     null,
+    copilot_per_day: 10,
+    tools_per_day:   15,
+    career_pack:     false,
+    premium_tools:   false,
+    unlimited:       false,
+    features: [
+      "Role Explorer",
+      "Salary Insights",
+      "Skills Gap Analysis",
+      "Career Graph",
+      "Gap Explainer",
+      "10 EDGEX messages/day",
+      "15 tool uses/day",
+    ],
+    cta: null,
+  },
+  career_pack: {
+    id:              "career_pack",
+    name:            "Career Pack",
+    headline:        "One-time career transformation plan",
+    price:           "£6.99",
+    priceNote:       "one-time",
+    priceNote2:      "One-time payment • No subscription",
+    positioning:     "Best for a one-time structured plan",
+    copilot_per_day: 20,
+    tools_per_day:   25,
+    career_pack:     true,
+    premium_tools:   false,
+    unlimited:       false,
+    features: [
+      "Everything in Free",
+      "Full Career Pack (build + export)",
+      "Career Roadmap",
+      "20 EDGEX messages/day",
+      "25 tool uses/day",
+    ],
+    cta:        "Unlock Career Pack — £6.99",
+    stripe_key: "career_pack",
+  },
+  pro: {
+    id:              "pro",
+    name:            "Pro",
+    headline:        "Full career acceleration toolkit",
+    price:           "£14.99",
+    priceNote:       "/month",
+    priceNote2:      "Monthly subscription • Cancel anytime",
+    positioning:     "Best for continuous career growth",
+    yearlyPrice:     "£119.88/yr (£9.99/mo)",
+    copilot_per_day: 100,
+    tools_per_day:   100,
+    career_pack:     true,
+    premium_tools:   true,
+    unlimited:       false,
+    popular:         true,
+    features: [
+      "Everything in Career Pack",
+      "Resume Optimiser",
+      "LinkedIn Optimiser",
+      "Interview Prep",
+      "Visa Intelligence",
+      "Talent Profile",
+      "100 EDGEX messages/day",
+      "100 tool uses/day",
+    ],
+    cta:        "Start Pro — £14.99/month",
+    stripe_key: "career_pro",
+  },
+  elite: {
+    id:              "elite",
+    name:            "Elite",
+    headline:        "Maximum growth with priority support",
+    price:           "£29.99",
+    priceNote:       "/month",
+    priceNote2:      "Monthly subscription • Cancel anytime",
+    positioning:     null,
+    yearlyPrice:     "£239.88/yr (£19.99/mo)",
+    copilot_per_day: Infinity,
+    tools_per_day:   Infinity,
+    career_pack:     true,
+    premium_tools:   true,
+    unlimited:       true,
+    features: [
+      "Everything in Pro",
+      "Unlimited EDGEX messages",
+      "Unlimited tool uses",
+      "Priority support",
+      "Early access to new features",
+    ],
+    cta:        "Upgrade to Elite — £29.99/month",
+    stripe_key: "career_elite",
+  },
+};
+
+const PLAN_ORDER = ["free", "career_pack", "pro", "elite"];
+
+function getCurrentPlan() {
+  return localStorage.getItem(STORAGE_KEY) || "free";
+}
+
+function setPlan(planId) {
+  localStorage.setItem(STORAGE_KEY, planId);
+}
+
+function getPlan(planId) {
+  return PLANS_CONFIG[planId] || PLANS_CONFIG.free;
+}
+
+function getUsage() {
+  const plan = getPlan(getCurrentPlan());
+  const raw = (() => {
+    try {
+      const stored = localStorage.getItem("hireedge_usage");
+      const parsed = stored ? JSON.parse(stored) : {};
+      const today  = new Date().toISOString().slice(0, 10);
+      if (parsed.date !== today) return { copilot: 0, tools: 0, date: today };
+      return parsed;
+    } catch {
+      return { copilot: 0, tools: 0, date: "" };
+    }
+  })();
+  return {
+    copilot: {
+      used:  raw.copilot,
+      limit: plan.copilot_per_day,
+      pct:   plan.copilot_per_day === Infinity ? 0 : Math.round((raw.copilot / plan.copilot_per_day) * 100),
+    },
+    tools: {
+      used:  raw.tools,
+      limit: plan.tools_per_day,
+      pct:   plan.tools_per_day === Infinity ? 0 : Math.round((raw.tools / plan.tools_per_day) * 100),
+    },
+  };
+}
 
 // ── Plan badge ────────────────────────────────────────────────────────────
 
