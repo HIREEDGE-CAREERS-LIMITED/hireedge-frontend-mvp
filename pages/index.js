@@ -1,16 +1,62 @@
 // ============================================================================
-// pages/index.js
-// HireEdge — Marketing landing page
+// pages/index.js  —  HireEdge Marketing Landing Page v3
 //
-// This page opts OUT of the app shell (no sidebar, no topbar).
-// AppShell.js must include "/" in NO_SHELL_ROUTES for this to work.
-// See also: components/layout/AppShell.js
+// UPGRADES vs v2:
+//   - useScrollReveal: IntersectionObserver fade/slide on every section
+//   - useNavScroll: sticky nav gains backdrop blur + border on scroll
+//   - Card hover: translateY lift + glow (CSS transitions)
+//   - Button hover: scale + shadow pulse
+//   - Flow diagram: SVG arrows, animated on scroll
+//   - Pricing: Elite plan added (£29.99/month), Pro dominant
+//   - Section transitions: gradient bridges between alt/plain sections
+//   - No external dependencies
+//
+// AppShell.js must include "/" in NO_SHELL_ROUTES.
+// CSS in styles/marketing.css — import in pages/_app.js
 // ============================================================================
 
+import { useEffect } from "react";
 import Link from "next/link";
 import Head from "next/head";
 
-// ── HireEdge wordmark + wedge logo (inline — no import needed) ────────────
+// ── Scroll reveal ─────────────────────────────────────────────────────────
+
+function useScrollReveal() {
+  useEffect(() => {
+    const els = document.querySelectorAll(".mkt-reveal");
+    if (!els.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("mkt-reveal--in");
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.07 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+}
+
+// ── Nav scroll effect ─────────────────────────────────────────────────────
+
+function useNavScroll() {
+  useEffect(() => {
+    const nav = document.getElementById("mkt-nav-root");
+    if (!nav) return;
+    const fn = () =>
+      window.scrollY > 20
+        ? nav.classList.add("mkt-nav--scrolled")
+        : nav.classList.remove("mkt-nav--scrolled");
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+}
+
+// ── Logo ──────────────────────────────────────────────────────────────────
 
 function Logo({ size = 28 }) {
   return (
@@ -30,20 +76,16 @@ function Logo({ size = 28 }) {
 
 function Nav() {
   return (
-    <nav className="mkt-nav">
+    <nav id="mkt-nav-root" className="mkt-nav">
       <div className="mkt-nav__inner">
-        <Link href="/" className="mkt-nav__logo">
-          <Logo size={24} />
-        </Link>
+        <Link href="/" className="mkt-nav__logo"><Logo size={24} /></Link>
         <div className="mkt-nav__links">
           <Link href="/intelligence" className="mkt-nav__link">Intelligence</Link>
           <Link href="/tools"        className="mkt-nav__link">Tools</Link>
           <Link href="/billing"      className="mkt-nav__link">Pricing</Link>
         </div>
         <div className="mkt-nav__actions">
-          <Link href="/copilot" className="mkt-nav__cta">
-            Start free
-          </Link>
+          <Link href="/copilot" className="mkt-nav__cta">Start free</Link>
         </div>
       </div>
     </nav>
@@ -53,82 +95,45 @@ function Nav() {
 // ── Data ──────────────────────────────────────────────────────────────────
 
 const PAIN_POINTS = [
-  {
-    head: "You're guessing.",
-    body: "Most people decide their next move based on what a friend did, what looks good on LinkedIn, or what feels safe. Not data.",
-  },
-  {
-    head: "Advice online is for everyone. Which means it's for no one.",
-    body: "Generic frameworks, US salary benchmarks, recycled playbooks. None of it knows your role, your market, or your gap.",
-  },
-  {
-    head: "Recruiters see things you don't.",
-    body: "They know which skills are actually required vs. listed. They know what salary bands are real. You're negotiating blind.",
-  },
-  {
-    head: "Your career decisions are fragmented.",
-    body: "Your CV is in one place. Salary research in another. Career advice in a third. No single view of where you actually stand.",
-  },
+  { head: "You're guessing.", body: "Most people decide their next move based on what a friend did, what looks good on LinkedIn, or what feels safe. Not data." },
+  { head: "Advice online is for everyone. Which means it's for no one.", body: "Generic frameworks, US salary benchmarks, recycled playbooks. None of it knows your role, your market, or your gap." },
+  { head: "Recruiters see things you don't.", body: "They know which skills are actually required vs. listed. They know what salary bands are real. You're negotiating blind." },
+  { head: "Your career decisions are fragmented.", body: "Your CV is in one place. Salary research in another. Career advice in a third. No single view of where you actually stand." },
 ];
 
 const HOW_STEPS = [
-  {
-    num: "01",
-    title: "Ask EDGEX",
-    body: "Tell EDGEX your current role, your target, and what you're unsure about. It asks the right follow-ups.",
-  },
-  {
-    num: "02",
-    title: "Get your gap analysis",
-    body: "EDGEX maps your gap against real UK role data — skills, salary, transition paths, timeline, and what's actually blocking you.",
-  },
-  {
-    num: "03",
-    title: "Execute with tools",
-    body: "Use Career Pack or Pro tools to rewrite your CV, rebuild your LinkedIn, prep for interviews, and move.",
-  },
+  { num: "01", title: "Ask EDGEX", body: "Tell EDGEX your current role, your target, and what you're unsure about. It asks the right follow-ups." },
+  { num: "02", title: "Get your gap analysis", body: "EDGEX maps your gap against real UK role data — skills, salary, transition paths, timeline, and what's actually blocking you." },
+  { num: "03", title: "Execute with tools", body: "Use Career Pack or Pro tools to rewrite your CV, rebuild your LinkedIn, prep for interviews, and move." },
 ];
 
 const PLATFORM_LAYERS = [
-  {
-    id:    "edgex",
-    tag:   "AI engine",
-    name:  "EDGEX",
-    color: "#4f46e5",
-    body:  "The intelligence layer. Ask anything about your career — salary, transitions, gaps, visa, negotiation. EDGEX gives structured, specific answers grounded in UK job market data.",
-    href:  "/copilot",
-    cta:   "Open EDGEX",
-  },
-  {
-    id:    "intelligence",
-    tag:   "Data layer",
-    name:  "Career Intelligence",
-    color: "#0F6E56",
-    body:  "1,200+ UK roles with live salary ranges, required skills, transition logic, and market demand signals — all searchable without a subscription.",
-    href:  "/intelligence",
-    cta:   "Explore data",
-  },
-  {
-    id:    "tools",
-    tag:   "Execution layer",
-    name:  "Career Tools",
-    color: "#0F6E56",
-    body:  "Six AI-powered tools that produce real outputs. Not scores, not dashboards — rewritten CVs, rebuilt profiles, structured interview prep, and visa strategy.",
-    href:  "/tools",
-    cta:   "See all tools",
-  },
+  { id: "edgex", tag: "AI engine", name: "EDGEX", color: "#4f46e5", href: "/copilot", cta: "Open EDGEX", body: "The intelligence layer. Ask anything about your career — salary, transitions, gaps, visa, negotiation. EDGEX gives structured, specific answers grounded in UK job market data." },
+  { id: "intelligence", tag: "Data layer", name: "Career Intelligence", color: "#0F6E56", href: "/intelligence", cta: "Explore data", body: "1,200+ UK roles with live salary ranges, required skills, transition logic, and market demand signals — all searchable without a subscription." },
+  { id: "tools", tag: "Execution layer", name: "Career Tools", color: "#0F6E56", href: "/tools", cta: "See all tools", body: "Six AI-powered tools that produce real outputs. Not scores, not dashboards — rewritten CVs, rebuilt profiles, structured interview prep, and visa strategy." },
 ];
 
 const TRUST_STATS = [
-  { figure: "1,200+",                        label: "UK roles mapped" },
-  { figure: "Salary benchmarks",             label: "from live UK job data" },
-  { figure: "Real transitions",              label: "not generic advice" },
-  { figure: "Built for UK",                  label: "job market decisions" },
+  { figure: "1,200+", label: "UK roles mapped" },
+  { figure: "Salary benchmarks", label: "from live UK job data" },
+  { figure: "Real transitions", label: "not generic advice" },
+  { figure: "Built for UK", label: "job market decisions" },
+];
+
+const FLOW_NODES = [
+  { label: "You", sub: "your situation", cls: "you" },
+  { label: "EDGEX", sub: "AI reasoning", cls: "platform" },
+  { label: "Intelligence", sub: "UK role data", cls: "platform" },
+  { label: "Tools", sub: "real outputs", cls: "platform" },
+  { label: "Outcome", sub: "your next role", cls: "outcome" },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function MarketingHome() {
+  useScrollReveal();
+  useNavScroll();
+
   return (
     <>
       <Head>
@@ -139,43 +144,32 @@ export default function MarketingHome() {
       <div className="mkt">
         <Nav />
 
-        {/* ── 1. HERO ────────────────────────────────────────────────── */}
+        {/* ─────────────────────────────────────────────── HERO */}
         <section className="mkt-hero">
-          <div className="mkt-hero__inner">
+          <div className="mkt-hero__inner mkt-reveal">
             <div className="mkt-hero__eyebrow">
               <span className="mkt-dot" />
               AI Career Intelligence · Built for the UK job market
             </div>
-
             <h1 className="mkt-hero__h1">
               Know your salary,<br />
               your gaps, and your<br />
               best next move —<br />
               <span className="mkt-hero__h1-em">before you apply.</span>
             </h1>
-
             <p className="mkt-hero__sub">
               HireEdge gives you structured career intelligence — role data, transition logic, salary benchmarks, and AI analysis — so you stop guessing and start moving.
             </p>
-
             <p className="mkt-hero__bridge">
               Stop second-guessing your next move. Know exactly where you stand — and what to do next.
             </p>
-
             <div className="mkt-hero__actions">
-              <Link href="/copilot" className="mkt-btn mkt-btn--primary mkt-btn--lg">
-                Start with EDGEX — free
-              </Link>
-              <Link href="/billing" className="mkt-btn mkt-btn--ghost mkt-btn--lg">
-                View plans
-              </Link>
+              <Link href="/copilot" className="mkt-btn mkt-btn--primary mkt-btn--lg">Start with EDGEX — free</Link>
+              <Link href="/billing" className="mkt-btn mkt-btn--ghost mkt-btn--lg">View plans</Link>
             </div>
+            <p className="mkt-hero__disclaimer">No credit card. No setup. Start in seconds.</p>
 
-            <p className="mkt-hero__disclaimer">
-              No credit card. No setup. Start in seconds.
-            </p>
-
-            {/* Intelligence strip — live output preview */}
+            {/* Intelligence strip */}
             <div className="mkt-intel-strip">
               <div className="mkt-intel-strip__label">
                 <span className="mkt-intel-strip__dot" />
@@ -202,8 +196,8 @@ export default function MarketingHome() {
             </div>
           </div>
 
-          {/* Demo — structured output cards */}
-          <div className="mkt-hero__demo">
+          {/* Dashboard demo card */}
+          <div className="mkt-hero__demo mkt-reveal mkt-reveal--right">
             <div className="mkt-chat">
               <div className="mkt-chat__bar">
                 <span className="mkt-chat__dot" /><span className="mkt-chat__dot" /><span className="mkt-chat__dot" />
@@ -212,7 +206,6 @@ export default function MarketingHome() {
               <div className="mkt-chat__msg mkt-chat__msg--user">
                 <p>I'm a mid-level software engineer in Birmingham. I want to move into product at a Series B. How realistic is that, and what's my biggest gap?</p>
               </div>
-              {/* Structured output cards — dashboard feel */}
               <div className="mkt-chat__output">
                 <div className="mkt-out-card mkt-out-card--fit">
                   <div className="mkt-out-card__label">Role fit score</div>
@@ -247,7 +240,7 @@ export default function MarketingHome() {
           </div>
         </section>
 
-        {/* ── 2. TRUST BAR ──────────────────────────────────────────── */}
+        {/* ─────────────────────────────────────────── TRUST BAR */}
         <div className="mkt-trust-bar">
           {TRUST_STATS.map((s, i) => (
             <div key={i} className="mkt-trust-bar__item">
@@ -265,16 +258,16 @@ export default function MarketingHome() {
           </div>
         </div>
 
-        {/* ── 3. PROBLEM ────────────────────────────────────────────── */}
+        {/* ──────────────────────────────────────────── PROBLEM */}
         <section className="mkt-section">
           <div className="mkt-section__inner">
-            <div className="mkt-section__label">The problem</div>
-            <h2 className="mkt-section__h2">
+            <div className="mkt-section__label mkt-reveal">The problem</div>
+            <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">
               Most career decisions<br />are made in the dark.
             </h2>
             <div className="mkt-pain-grid">
               {PAIN_POINTS.map((p, i) => (
-                <div key={i} className="mkt-pain-card">
+                <div key={i} className={`mkt-pain-card mkt-reveal mkt-reveal--delay-${i % 3}`}>
                   <h4 className="mkt-pain-card__head">{p.head}</h4>
                   <p className="mkt-pain-card__body">{p.body}</p>
                 </div>
@@ -283,58 +276,43 @@ export default function MarketingHome() {
           </div>
         </section>
 
-        {/* ── 4. SOLUTION ───────────────────────────────────────────── */}
+        <div className="mkt-bridge mkt-bridge--down" />
+
+        {/* ─────────────────────────────────────────── SOLUTION */}
         <section className="mkt-section mkt-section--alt">
           <div className="mkt-section__inner">
-            <div className="mkt-section__label">The solution</div>
-            <h2 className="mkt-section__h2">
-              One platform.<br />
-              Full career clarity.
-            </h2>
-            <p className="mkt-section__sub">
-              HireEdge replaces guesswork with structured intelligence at every stage of your career decision.
-            </p>
+            <div className="mkt-section__label mkt-reveal">The solution</div>
+            <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">One platform.<br />Full career clarity.</h2>
+            <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">HireEdge replaces guesswork with structured intelligence at every stage of your career decision.</p>
             <div className="mkt-solution-grid">
-              <div className="mkt-solution-row">
-                <div className="mkt-solution-row__icon">→</div>
-                <div>
-                  <div className="mkt-solution-row__title">Understand where you actually stand</div>
-                  <p className="mkt-solution-row__body">See how your skills, salary, and experience map against real UK role requirements — not what's listed on LinkedIn.</p>
+              {[
+                { title: "Understand where you actually stand", body: "See how your skills, salary, and experience map against real UK role requirements — not what's listed on LinkedIn." },
+                { title: "See exactly what's missing", body: "Gap analysis built from actual job postings, not guesswork. Know which skills matter for your specific target." },
+                { title: "Build a path, not a vague plan", body: "Structured transition logic — timeline, milestones, risks, and what to do first. Specific to your role." },
+                { title: "Execute with the right tools", body: "CV rewrite, LinkedIn rebuild, interview prep, and visa strategy — all tied to your specific target role." },
+              ].map((row, i) => (
+                <div key={i} className={`mkt-solution-row mkt-reveal mkt-reveal--delay-${i % 2}`}>
+                  <div className="mkt-solution-row__icon">→</div>
+                  <div>
+                    <div className="mkt-solution-row__title">{row.title}</div>
+                    <p className="mkt-solution-row__body">{row.body}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="mkt-solution-row">
-                <div className="mkt-solution-row__icon">→</div>
-                <div>
-                  <div className="mkt-solution-row__title">See exactly what's missing</div>
-                  <p className="mkt-solution-row__body">Gap analysis built from actual job postings, not guesswork. Know which skills matter and which don't for your specific target.</p>
-                </div>
-              </div>
-              <div className="mkt-solution-row">
-                <div className="mkt-solution-row__icon">→</div>
-                <div>
-                  <div className="mkt-solution-row__title">Build a path, not a vague plan</div>
-                  <p className="mkt-solution-row__body">Structured transition logic — timeline, milestones, risks, and what to do first. Specific to your role, not a generic framework.</p>
-                </div>
-              </div>
-              <div className="mkt-solution-row">
-                <div className="mkt-solution-row__icon">→</div>
-                <div>
-                  <div className="mkt-solution-row__title">Execute with the right tools</div>
-                  <p className="mkt-solution-row__body">CV rewrite, LinkedIn rebuild, interview prep, and visa strategy — all tied to your specific target role, not a template.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ── 5. HOW IT WORKS ───────────────────────────────────────── */}
+        <div className="mkt-bridge mkt-bridge--up" />
+
+        {/* ──────────────────────────────────── HOW IT WORKS */}
         <section className="mkt-section">
           <div className="mkt-section__inner">
-            <div className="mkt-section__label">How it works</div>
-            <h2 className="mkt-section__h2">Three steps to clarity.</h2>
+            <div className="mkt-section__label mkt-reveal">How it works</div>
+            <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Three steps to clarity.</h2>
             <div className="mkt-steps">
               {HOW_STEPS.map((s, i) => (
-                <div key={i} className="mkt-step">
+                <div key={i} className={`mkt-step mkt-reveal mkt-reveal--delay-${i}`}>
                   <div className="mkt-step__num">{s.num}</div>
                   <div className="mkt-step__content">
                     <h3 className="mkt-step__title">{s.title}</h3>
@@ -346,25 +324,19 @@ export default function MarketingHome() {
           </div>
         </section>
 
-        {/* ── 6. EDGEX SECTION ─────────────────────────────────────── */}
+        <div className="mkt-bridge mkt-bridge--down" />
+
+        {/* ─────────────────────────────────────────────── EDGEX */}
         <section className="mkt-section mkt-section--alt">
           <div className="mkt-section__inner mkt-edgex-section">
-            <div className="mkt-edgex-section__text">
+            <div className="mkt-edgex-section__text mkt-reveal">
               <div className="mkt-section__label">EDGEX</div>
-              <h2 className="mkt-section__h2">
-                Career intelligence<br />you can talk to.
-              </h2>
-              <p className="mkt-edgex-section__body">
-                EDGEX isn't a chatbot. It's a career reasoning engine trained on UK job market structure. Ask it where you stand. Ask it what your gap is. Ask it what salary to negotiate. Ask it what your visa options are.
-              </p>
-              <p className="mkt-edgex-section__body">
-                It responds with frameworks, numbers, and specific next steps — not encouragement.
-              </p>
-              <Link href="/copilot" className="mkt-btn mkt-btn--primary">
-                Open EDGEX →
-              </Link>
+              <h2 className="mkt-section__h2">Career intelligence<br />you can talk to.</h2>
+              <p className="mkt-edgex-section__body">EDGEX isn't a chatbot. It's a career reasoning engine trained on UK job market structure. Ask it where you stand. Ask it what your gap is. Ask it what salary to negotiate. Ask it what your visa options are.</p>
+              <p className="mkt-edgex-section__body">It responds with frameworks, numbers, and specific next steps — not encouragement.</p>
+              <Link href="/copilot" className="mkt-btn mkt-btn--primary">Open EDGEX →</Link>
             </div>
-            <div className="mkt-edgex-section__prompts">
+            <div className="mkt-edgex-section__prompts mkt-reveal mkt-reveal--right">
               <div className="mkt-prompt-label">Things people ask EDGEX</div>
               {[
                 "What salary should I negotiate for a Senior PM role in London?",
@@ -381,58 +353,57 @@ export default function MarketingHome() {
           </div>
         </section>
 
-        {/* ── 7. PLATFORM ──────────────────────────────────────────── */}
+        <div className="mkt-bridge mkt-bridge--up" />
+
+        {/* ─────────────────────────────────────────── PLATFORM */}
         <section className="mkt-section">
           <div className="mkt-section__inner">
-            <div className="mkt-section__label">Platform</div>
-            <h2 className="mkt-section__h2">Everything you need to move<br />your career forward.</h2>
-            <p className="mkt-section__sub">
-              Every part of HireEdge is useful on its own. Together, they form a complete career intelligence system.
-            </p>
+            <div className="mkt-section__label mkt-reveal">Platform</div>
+            <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Everything you need to move<br />your career forward.</h2>
+            <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">Every part of HireEdge is useful on its own. Together, they form a complete career intelligence system.</p>
 
-            {/* Visual flow diagram */}
-            <div className="mkt-flow">
-              {[
-                { label: "You", sub: "your situation" },
-                { label: "EDGEX", sub: "AI reasoning" },
-                { label: "Intelligence", sub: "UK role data" },
-                { label: "Tools", sub: "real outputs" },
-                { label: "Outcome", sub: "your next role" },
-              ].map((node, i, arr) => (
+            {/* Flow diagram */}
+            <div className="mkt-flow mkt-reveal mkt-reveal--delay-1">
+              {FLOW_NODES.map((node, i) => (
                 <div key={i} className="mkt-flow__item">
-                  <div className={`mkt-flow__node ${i === 0 ? "mkt-flow__node--you" : i === arr.length - 1 ? "mkt-flow__node--outcome" : "mkt-flow__node--platform"}`}>
+                  <div className={`mkt-flow__node mkt-flow__node--${node.cls}`}>
                     <span className="mkt-flow__node-label">{node.label}</span>
                     <span className="mkt-flow__node-sub">{node.sub}</span>
                   </div>
-                  {i < arr.length - 1 && <div className="mkt-flow__arrow">→</div>}
+                  {i < FLOW_NODES.length - 1 && (
+                    <div className="mkt-flow__arrow">
+                      <svg width="20" height="12" viewBox="0 0 20 12" fill="none" aria-hidden="true">
+                        <path d="M1 6h16M13 1l5 5-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+
             <div className="mkt-platform-grid">
-              {PLATFORM_LAYERS.map((l) => (
-                <div key={l.id} className="mkt-platform-card">
-                  <span className="mkt-platform-card__tag" style={{ color: l.color }}>
-                    {l.tag}
-                  </span>
+              {PLATFORM_LAYERS.map((l, i) => (
+                <div key={l.id} className={`mkt-platform-card mkt-reveal mkt-reveal--delay-${i}`}>
+                  <span className="mkt-platform-card__tag" style={{ color: l.color }}>{l.tag}</span>
                   <h3 className="mkt-platform-card__name">{l.name}</h3>
                   <p className="mkt-platform-card__body">{l.body}</p>
-                  <Link href={l.href} className="mkt-platform-card__link">
-                    {l.cta} →
-                  </Link>
+                  <Link href={l.href} className="mkt-platform-card__link">{l.cta} →</Link>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── 8. PRICING ────────────────────────────────────────────── */}
+        <div className="mkt-bridge mkt-bridge--down" />
+
+        {/* ─────────────────────────────────────────────── PRICING */}
         <section className="mkt-section mkt-section--alt">
           <div className="mkt-section__inner">
-            <div className="mkt-section__label">Pricing</div>
-            <h2 className="mkt-section__h2">Start free. No lock-in.</h2>
+            <div className="mkt-section__label mkt-reveal">Pricing</div>
+            <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Start free. No lock-in.</h2>
             <div className="mkt-pricing-row">
 
-              <div className="mkt-pricing-card">
+              <div className="mkt-pricing-card mkt-reveal">
                 <div className="mkt-pricing-card__name">Free</div>
                 <div className="mkt-pricing-card__price">£0</div>
                 <div className="mkt-pricing-card__note">forever</div>
@@ -441,13 +412,11 @@ export default function MarketingHome() {
                   <li>Career Intelligence</li>
                   <li>Gap Explainer</li>
                 </ul>
-                <Link href="/copilot" className="mkt-btn mkt-btn--ghost mkt-btn--sm">
-                  Start free
-                </Link>
+                <Link href="/copilot" className="mkt-btn mkt-btn--ghost mkt-btn--sm">Start free</Link>
               </div>
 
-              <div className="mkt-pricing-card mkt-pricing-card--featured">
-                <div className="mkt-pricing-card__badge">Most popular</div>
+              <div className="mkt-pricing-card mkt-pricing-card--featured mkt-reveal mkt-reveal--delay-1">
+                <div className="mkt-pricing-card__badge">Best for starters</div>
                 <div className="mkt-pricing-card__name">Career Pack</div>
                 <div className="mkt-pricing-card__price">£6.99</div>
                 <div className="mkt-pricing-card__note">one-time · no subscription</div>
@@ -457,12 +426,10 @@ export default function MarketingHome() {
                   <li>CV + LinkedIn + interview plan</li>
                 </ul>
                 <p className="mkt-pricing-card__forever">Pay once — yours forever.</p>
-                <Link href="/billing?plan=career_pack" className="mkt-btn mkt-btn--teal mkt-btn--sm">
-                  Get Career Pack
-                </Link>
+                <Link href="/billing?plan=career_pack" className="mkt-btn mkt-btn--teal mkt-btn--sm">Get Career Pack</Link>
               </div>
 
-              <div className="mkt-pricing-card mkt-pricing-card--pro">
+              <div className="mkt-pricing-card mkt-pricing-card--pro mkt-reveal mkt-reveal--delay-2">
                 <div className="mkt-pricing-card__badge mkt-pricing-card__badge--indigo">Most popular</div>
                 <div className="mkt-pricing-card__name">Pro</div>
                 <div className="mkt-pricing-card__price">£14.99</div>
@@ -474,9 +441,21 @@ export default function MarketingHome() {
                   <li>Visa Intelligence</li>
                 </ul>
                 <p className="mkt-pricing-card__nudge">Most users start here.</p>
-                <Link href="/billing?plan=pro" className="mkt-btn mkt-btn--primary mkt-btn--sm">
-                  Start Pro
-                </Link>
+                <Link href="/billing?plan=pro" className="mkt-btn mkt-btn--primary mkt-btn--sm">Start Pro</Link>
+              </div>
+
+              <div className="mkt-pricing-card mkt-pricing-card--elite mkt-reveal mkt-reveal--delay-3">
+                <div className="mkt-pricing-card__name">Elite</div>
+                <div className="mkt-pricing-card__price">£29.99</div>
+                <div className="mkt-pricing-card__note">/month · cancel anytime</div>
+                <ul className="mkt-pricing-card__features">
+                  <li>Everything in Pro</li>
+                  <li>Unlimited EDGEX messages</li>
+                  <li>Unlimited tool uses</li>
+                  <li>Priority support</li>
+                  <li>Early access to new features</li>
+                </ul>
+                <Link href="/billing?plan=elite" className="mkt-btn mkt-btn--ghost mkt-btn--sm">Go Elite</Link>
               </div>
 
             </div>
@@ -486,9 +465,11 @@ export default function MarketingHome() {
           </div>
         </section>
 
-        {/* ── 9. FINAL CTA ─────────────────────────────────────────── */}
+        <div className="mkt-bridge mkt-bridge--up" />
+
+        {/* ──────────────────────────────────────────── FINAL CTA */}
         <section className="mkt-cta-final">
-          <div className="mkt-cta-final__inner">
+          <div className="mkt-cta-final__inner mkt-reveal">
             <h2 className="mkt-cta-final__h2">
               Your next career move<br />should not be a guess.
             </h2>
@@ -496,20 +477,14 @@ export default function MarketingHome() {
               Know your position. Close your gaps. Move with clarity.
             </p>
             <div className="mkt-cta-final__actions">
-              <Link href="/copilot" className="mkt-btn mkt-btn--primary mkt-btn--xl">
-                Start with EDGEX — it's free
-              </Link>
-              <Link href="/billing" className="mkt-btn mkt-btn--ghost mkt-btn--xl">
-                View pricing
-              </Link>
+              <Link href="/copilot" className="mkt-btn mkt-btn--primary mkt-btn--xl">Start with EDGEX — it's free</Link>
+              <Link href="/billing" className="mkt-btn mkt-btn--ghost mkt-btn--xl">View pricing</Link>
             </div>
-            <p className="mkt-cta-final__note">
-              Free to start. No credit card. Career Pack from £6.99.
-            </p>
+            <p className="mkt-cta-final__note">Free to start. No credit card. Career Pack from £6.99.</p>
           </div>
         </section>
 
-        {/* ── FOOTER ───────────────────────────────────────────────── */}
+        {/* ─────────────────────────────────────────────── FOOTER */}
         <footer className="mkt-footer">
           <div className="mkt-footer__inner">
             <Logo size={20} />
@@ -525,6 +500,7 @@ export default function MarketingHome() {
             </p>
           </div>
         </footer>
+
       </div>
     </>
   );
