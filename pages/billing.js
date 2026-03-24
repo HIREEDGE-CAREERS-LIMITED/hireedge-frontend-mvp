@@ -15,7 +15,7 @@
 //   - Layout, toggle, FAQ, UsageMeter, PlanBadge: unchanged
 // ============================================================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // ── Plan data (inline — single source of truth for this page) ─────────────
 
@@ -126,10 +126,12 @@ const PLANS_CONFIG = {
 const PLAN_ORDER = ["free", "career_pack", "pro", "elite"];
 
 function getCurrentPlan() {
+  if (typeof window === "undefined") return "free";
   return localStorage.getItem(STORAGE_KEY) || "free";
 }
 
 function setPlan(planId) {
+  if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, planId);
 }
 
@@ -140,6 +142,7 @@ function getPlan(planId) {
 function getUsage() {
   const plan = getPlan(getCurrentPlan());
   const raw = (() => {
+    if (typeof window === "undefined") return { copilot: 0, tools: 0, date: "" };
     try {
       const stored = localStorage.getItem("hireedge_usage");
       const parsed = stored ? JSON.parse(stored) : {};
@@ -377,8 +380,13 @@ function FAQItem({ q, a }) {
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
-  const [currentPlan, setCurrentPlan] = useState(getCurrentPlan());
+  const [currentPlan, setCurrentPlan] = useState("free");
   const [billingCycle, setBillingCycle] = useState("monthly");
+
+  // Read localStorage only after mount — localStorage is not available during SSR
+  useEffect(() => {
+    setCurrentPlan(getCurrentPlan());
+  }, []);
 
   const handleSelect = (planId) => {
     setPlan(planId);
