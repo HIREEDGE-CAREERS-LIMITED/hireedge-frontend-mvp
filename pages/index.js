@@ -430,9 +430,11 @@ export default function MarketingHome() {
               <div className="mkt-flow-panel__track">
                 {FLOW_NODES.map((node, i) => (
                   <div key={i} className="mkt-flow-panel__step">
-                    <div className={`mkt-flow-panel__node mkt-flow-panel__node--${node.cls}`}>
-                      <span className="mkt-flow-panel__node-index">{String(i + 1).padStart(2, "0")}</span>
-                      <span className="mkt-flow-panel__node-label">{node.label}</span>
+                    <div className="mkt-flow-panel__station">
+                      <span className={`mkt-flow-panel__node-index mkt-flow-panel__node-index--${node.cls}`}>{String(i + 1).padStart(2, "0")}</span>
+                      <div className={`mkt-flow-panel__node mkt-flow-panel__node--${node.cls}`}>
+                        <span className="mkt-flow-panel__node-label">{node.label}</span>
+                      </div>
                       <span className="mkt-flow-panel__node-sub">{node.sub}</span>
                     </div>
                     {i < FLOW_NODES.length - 1 && (
