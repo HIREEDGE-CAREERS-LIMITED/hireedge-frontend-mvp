@@ -4,7 +4,9 @@
 //
 // Root layout component. Wraps every page with Sidebar + Topbar + Content.
 // Handles sidebar collapse state and mobile responsive behaviour.
-// Pages that opt out of the shell (login, signup) pass `noShell` prop.
+//
+// CHANGE: Added "/" to NO_SHELL_ROUTES so the marketing landing page
+// renders full-viewport without sidebar/topbar.
 // ============================================================================
 
 import { useState, useEffect } from "react";
@@ -12,8 +14,10 @@ import { useRouter } from "next/router";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
-// Routes that render without the app shell (auth pages)
-const NO_SHELL_ROUTES = ["/login", "/signup"];
+// Routes that render without the app shell
+// "/" = marketing landing page (full viewport, own nav/footer)
+// "/login", "/signup" = auth pages
+const NO_SHELL_ROUTES = ["/", "/login", "/signup"];
 
 export default function AppShell({ children }) {
   const router = useRouter();
@@ -44,16 +48,10 @@ export default function AppShell({ children }) {
     });
   };
 
-  // No shell for auth pages
+  // No shell for marketing + auth pages
   if (NO_SHELL_ROUTES.includes(router.pathname)) {
     return <>{children}</>;
   }
-
-  // Detect if current page is copilot (full-bleed, no padding)
-  const isCopilot = router.pathname === "/copilot";
-
-  // TODO: Replace with real auth/billing context
-  const userPlan = "free";
 
   return (
     <div className="app-shell">
@@ -63,14 +61,11 @@ export default function AppShell({ children }) {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-
       <div className="app-shell__main">
         <Topbar
           onMobileMenuClick={() => setMobileOpen(true)}
-          plan={userPlan}
         />
-
-        <main className={`app-shell__content ${isCopilot ? "app-shell__content--copilot" : ""}`}>
+        <main className={`app-shell__content ${router.pathname === "/copilot" ? "app-shell__content--copilot" : ""}`}>
           {children}
         </main>
       </div>
