@@ -1103,3 +1103,478 @@ body.mkt-js-ready .mkt-reveal--right.mkt-reveal--in {
   .mkt-footer__inner { gap: 20px; }
   .mkt-footer__copy  { margin: 0; }
 }
+
+/* ============================================================================
+   DESIGN POLISH v4 — Premium SaaS upgrade
+   Appended to marketing.css. Overrides and enhances existing rules.
+   Covers: spacing rhythm, depth, glow, flow diagram, section transitions,
+   pricing card polish, CTA upgrade, typography hierarchy.
+   ============================================================================ */
+
+/* ── Tighten section vertical rhythm ────────────────────────────────────── */
+
+.mkt-section { padding: 112px 32px; }
+.mkt-section--alt { padding: 0; }
+.mkt-section--alt .mkt-section__inner { padding: 112px 32px; max-width: 1080px; margin: 0 auto; }
+
+/* Stronger alt section separation */
+.mkt-section--alt {
+  background: rgba(255,255,255,0.022);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+}
+
+/* Gradient edge on alt sections — top and bottom fade */
+.mkt-section--alt::before,
+.mkt-section--alt::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 48px;
+  pointer-events: none;
+  z-index: 1;
+}
+.mkt-section--alt::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(8,9,10,0.4), transparent);
+}
+.mkt-section--alt::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(8,9,10,0.4), transparent);
+}
+
+/* ── Remove bridges — alt section gradients handle the transitions ────── */
+.mkt-bridge { display: none; }
+
+/* ── Section label — stronger teal weight ───────────────────────────────── */
+
+.mkt-section__label {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: #10b981;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mkt-section__label::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 1.5px;
+  background: #10b981;
+  border-radius: 1px;
+  opacity: 0.7;
+}
+
+/* ── Section h2 — sharper hierarchy ─────────────────────────────────────── */
+
+.mkt-section__h2 {
+  font-size: clamp(30px, 3.8vw, 44px);
+  letter-spacing: -1.2px;
+  margin: 0 0 16px;
+}
+
+/* ── Hero — stronger visual weight ──────────────────────────────────────── */
+
+.mkt-hero {
+  padding: 96px 32px 80px;
+  gap: 72px;
+  position: relative;
+}
+
+/* Radial glow behind hero */
+.mkt-hero::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 400px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(79,70,229,0.08) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mkt-hero__inner,
+.mkt-hero__demo { position: relative; z-index: 1; }
+
+.mkt-hero__h1 {
+  font-size: clamp(38px, 5vw, 56px);
+  letter-spacing: -2px;
+  margin-bottom: 22px;
+}
+
+.mkt-hero__sub {
+  font-size: 17px;
+  color: rgba(255,255,255,0.50);
+  margin-bottom: 12px;
+}
+
+.mkt-hero__bridge {
+  font-size: 15.5px;
+  color: rgba(255,255,255,0.72);
+  margin-bottom: 32px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(79,70,229,0.5);
+}
+
+/* ── Nav — tighter, more premium ────────────────────────────────────────── */
+
+.mkt-nav__inner { height: 56px; }
+.mkt-nav__link { font-size: 13.5px; }
+.mkt-nav { background: rgba(8,9,10,0.5); }
+.mkt-nav--scrolled { background: rgba(8,9,10,0.95); }
+
+/* ── Intelligence strip — more glassy ───────────────────────────────────── */
+
+.mkt-intel-strip {
+  background: rgba(255,255,255,0.025);
+  border-color: rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 16px 18px;
+  backdrop-filter: blur(8px);
+}
+
+.mkt-intel-chip {
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.mkt-intel-chip--role   { background: rgba(79,70,229,0.12);  border-color: rgba(79,70,229,0.28); }
+.mkt-intel-chip--salary { background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.25); }
+.mkt-intel-chip--gap    { background: rgba(251,146,60,0.10); border-color: rgba(251,146,60,0.25); }
+.mkt-intel-chip--action { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.13); }
+
+.mkt-intel-chip__val { font-size: 12.5px; color: rgba(255,255,255,0.90); }
+
+/* ── Demo card — more depth ──────────────────────────────────────────────── */
+
+.mkt-chat {
+  border-radius: 16px;
+  border-color: rgba(255,255,255,0.10);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.6);
+}
+
+.mkt-out-card {
+  border-radius: 9px;
+  padding: 11px 14px;
+}
+
+.mkt-out-card__score-val { color: #6366f1; font-size: 22px; }
+
+.mkt-out-card__bar-fill {
+  background: linear-gradient(90deg, #4f46e5 0%, #818cf8 100%);
+}
+
+/* ── Trust bar — stronger numbers ───────────────────────────────────────── */
+
+.mkt-trust-bar {
+  background: rgba(255,255,255,0.018);
+}
+
+.mkt-trust-bar__fig {
+  font-size: 20px;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #fff 60%, rgba(255,255,255,0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Problem grid — more contrast ────────────────────────────────────────── */
+
+.mkt-pain-grid {
+  margin-top: 52px;
+  border-color: rgba(255,255,255,0.08);
+  border-radius: 16px;
+}
+
+.mkt-pain-card {
+  padding: 36px 34px;
+  background: rgba(255,255,255,0.025);
+}
+
+.mkt-pain-card:hover {
+  background: rgba(255,255,255,0.045);
+}
+
+.mkt-pain-card__head {
+  font-size: 15.5px;
+  color: rgba(255,255,255,0.90);
+  letter-spacing: -0.2px;
+}
+
+.mkt-pain-card__body {
+  font-size: 13.5px;
+  color: rgba(255,255,255,0.44);
+  line-height: 1.65;
+}
+
+/* ── Steps — connected feel ──────────────────────────────────────────────── */
+
+.mkt-steps {
+  border-radius: 16px;
+  margin-top: 52px;
+  border-color: rgba(255,255,255,0.08);
+}
+
+.mkt-step {
+  padding: 40px 34px;
+  background: rgba(255,255,255,0.025);
+  position: relative;
+}
+
+.mkt-step::after {
+  content: attr(data-num);
+  position: absolute;
+  top: 34px; right: 28px;
+  font-size: 48px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.03);
+  letter-spacing: -2px;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.mkt-step__num {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(79,70,229,0.8);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mkt-step__num::before {
+  content: "";
+  width: 18px;
+  height: 1.5px;
+  background: rgba(79,70,229,0.6);
+  border-radius: 1px;
+  display: inline-block;
+}
+
+.mkt-step__title { font-size: 17px; letter-spacing: -0.3px; }
+
+/* ── EDGEX prompts — card-feel ────────────────────────────────────────────── */
+
+.mkt-prompt {
+  padding: 13px 16px;
+  border-radius: 9px;
+  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.025);
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mkt-prompt::before {
+  content: "→";
+  font-size: 11px;
+  color: rgba(16,185,129,0.6);
+  flex-shrink: 0;
+}
+
+.mkt-prompt__q { font-size: 13px; color: rgba(255,255,255,0.60); }
+
+.mkt-prompt:hover .mkt-prompt__q { color: rgba(255,255,255,0.85); }
+
+/* ── Architecture flow — premium node design ─────────────────────────────── */
+
+.mkt-flow {
+  margin: 36px 0 52px;
+  background: rgba(255,255,255,0.018);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 24px 28px;
+  justify-content: space-between;
+}
+
+.mkt-flow__node {
+  padding: 14px 22px;
+  border-radius: 12px;
+  min-width: 104px;
+  gap: 5px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+
+.mkt-flow__node--you {
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+
+.mkt-flow__node--platform {
+  border-color: rgba(79,70,229,0.35);
+  background: rgba(79,70,229,0.10);
+  box-shadow: 0 2px 16px rgba(79,70,229,0.12);
+}
+
+.mkt-flow__node--outcome {
+  border-color: rgba(16,185,129,0.40);
+  background: rgba(16,185,129,0.10);
+  box-shadow: 0 2px 16px rgba(16,185,129,0.12);
+}
+
+.mkt-flow__node-label { font-size: 12.5px; letter-spacing: -0.2px; }
+
+.mkt-flow__node-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.38);
+}
+
+.mkt-flow__arrow {
+  color: rgba(255,255,255,0.22);
+  padding: 0 10px;
+}
+
+/* ── Platform cards — stronger glow on hover ─────────────────────────────── */
+
+.mkt-platform-card {
+  padding: 30px;
+  border-radius: 14px;
+  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.025);
+}
+
+.mkt-platform-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.04);
+}
+
+.mkt-platform-card__name { font-size: 17px; letter-spacing: -0.3px; }
+
+.mkt-platform-card__tag {
+  margin-bottom: 4px;
+  font-size: 9.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mkt-platform-card__tag::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+  display: inline-block;
+}
+
+/* ── Pricing cards — stronger Pro dominance ──────────────────────────────── */
+
+.mkt-pricing-row { margin-top: 52px; gap: 12px; }
+
+.mkt-pricing-card {
+  border-radius: 16px;
+  padding: 30px 22px;
+}
+
+.mkt-pricing-card--pro {
+  border-color: rgba(79,70,229,0.40);
+  box-shadow: 0 0 0 1px rgba(79,70,229,0.15), 0 8px 32px rgba(79,70,229,0.15);
+  transform: translateY(-4px);
+}
+
+.mkt-pricing-card--pro:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 0 0 1px rgba(79,70,229,0.25), 0 24px 56px rgba(79,70,229,0.25);
+}
+
+.mkt-pricing-card__price {
+  font-size: 34px;
+  letter-spacing: -1.5px;
+  margin: 6px 0 3px;
+}
+
+.mkt-pricing-card__name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+}
+
+.mkt-pricing-card--pro .mkt-pricing-card__name { color: rgba(165,180,252,0.8); }
+.mkt-pricing-card--featured .mkt-pricing-card__name { color: rgba(52,211,153,0.8); }
+.mkt-pricing-card--elite .mkt-pricing-card__name { color: rgba(251,191,36,0.75); }
+
+.mkt-pricing-card__features { gap: 9px; }
+
+.mkt-pricing-card__features li {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.56);
+  line-height: 1.45;
+}
+
+/* ── Final CTA — stronger contrast + sizing ──────────────────────────────── */
+
+.mkt-cta-final {
+  padding: 136px 32px 120px;
+  background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(79,70,229,0.14) 0%, transparent 70%);
+  border-top: 1px solid rgba(79,70,229,0.12);
+  position: relative;
+}
+
+/* Subtle grid pattern */
+.mkt-cta-final::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.mkt-cta-final__inner { position: relative; z-index: 1; }
+
+.mkt-cta-final__h2 {
+  font-size: clamp(36px, 5.5vw, 58px);
+  letter-spacing: -2px;
+  line-height: 1.08;
+  margin-bottom: 20px;
+}
+
+.mkt-cta-final__sub {
+  font-size: 17px;
+  color: rgba(255,255,255,0.44);
+  margin-bottom: 40px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Solution section icon — stronger ─────────────────────────────────────── */
+
+.mkt-solution-row__icon {
+  width: 28px;
+  height: 28px;
+  background: rgba(79,70,229,0.12);
+  border: 1px solid rgba(79,70,229,0.25);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #818cf8;
+}
+
+/* ── Footer — cleaner separation ─────────────────────────────────────────── */
+
+.mkt-footer {
+  padding: 36px 32px;
+  background: rgba(255,255,255,0.01);
+}
