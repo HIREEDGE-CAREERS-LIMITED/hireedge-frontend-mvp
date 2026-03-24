@@ -460,15 +460,12 @@ function VisaUpgradeCTA({ country, currentRole }) {
         </div>
 
         <div className="vi-upgrade-block__ctas">
-          <Link href="/billing?plan=career_pack" className="vi-upgrade-block__cta-primary">
-            Unlock Career Pack -- £6.99 one-time
+          <Link href="/billing?plan=pro" className="vi-upgrade-block__cta-primary">
+            Upgrade to Pro — £14.99/month
           </Link>
           <p className="vi-upgrade-block__cta-note">
-            Includes Resume Optimiser, LinkedIn Optimiser, Interview Prep, and Career Roadmap.
+            Visa Intelligence is available on Pro and Elite plans.
           </p>
-          <Link href="/billing?plan=pro" className="vi-upgrade-block__cta-secondary">
-            Or go Pro for full platform access
-          </Link>
         </div>
       </div>
     </div>
@@ -568,11 +565,11 @@ function VisaPremiumModules({ preview, country, isPaid }) {
 
       {!isPaid && (
         <div className="vi-locked-section__cta-strip">
-          <Link href="/billing?plan=career_pack" className="vi-locked-section__cta">
-            Unlock All 3 Modules -- £6.99 one-time
+          <Link href="/billing?plan=pro" className="vi-locked-section__cta">
+            Upgrade to Pro — £14.99/month
           </Link>
           <span className="vi-locked-section__cta-sub">
-            No subscription. Includes full Career Pack tool suite.
+            No subscription.
           </span>
         </div>
       )}
@@ -792,7 +789,7 @@ export default function VisaIntelligencePage() {
               <span className="tool-upgrade-prompt__icon">+</span>
               <div>
                 <p className="tool-upgrade-prompt__title">Upgrade required</p>
-                <p className="tool-upgrade-prompt__sub">Visa Intelligence requires a paid plan.</p>
+                <p className="tool-upgrade-prompt__sub">Visa Intelligence is available on Pro (£14.99/month) and Elite plans.</p>
               </div>
               <Link href="/billing" className="tool-upgrade-prompt__btn">Upgrade</Link>
             </div>
