@@ -174,9 +174,35 @@ export default function MarketingHome() {
             <p className="mkt-hero__disclaimer">
               No credit card. No setup. Start in seconds.
             </p>
+
+            {/* Intelligence strip — live output preview */}
+            <div className="mkt-intel-strip">
+              <div className="mkt-intel-strip__label">
+                <span className="mkt-intel-strip__dot" />
+                Example EDGEX output
+              </div>
+              <div className="mkt-intel-strip__chips">
+                <div className="mkt-intel-chip mkt-intel-chip--role">
+                  <span className="mkt-intel-chip__key">Target Role</span>
+                  <span className="mkt-intel-chip__val">Account Manager</span>
+                </div>
+                <div className="mkt-intel-chip mkt-intel-chip--salary">
+                  <span className="mkt-intel-chip__key">Salary Range</span>
+                  <span className="mkt-intel-chip__val">£32K – £48K</span>
+                </div>
+                <div className="mkt-intel-chip mkt-intel-chip--gap">
+                  <span className="mkt-intel-chip__key">Missing Skills</span>
+                  <span className="mkt-intel-chip__val">CRM · Stakeholder Mgmt</span>
+                </div>
+                <div className="mkt-intel-chip mkt-intel-chip--action">
+                  <span className="mkt-intel-chip__key">Next Step</span>
+                  <span className="mkt-intel-chip__val">Apply within 14 days</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Demo conversation */}
+          {/* Demo — structured output cards */}
           <div className="mkt-hero__demo">
             <div className="mkt-chat">
               <div className="mkt-chat__bar">
@@ -186,19 +212,35 @@ export default function MarketingHome() {
               <div className="mkt-chat__msg mkt-chat__msg--user">
                 <p>I'm a mid-level software engineer in Birmingham. I want to move into product at a Series B. How realistic is that, and what's my biggest gap?</p>
               </div>
-              <div className="mkt-chat__msg mkt-chat__msg--edgex">
-                <div className="mkt-chat__avatar">
-                  <svg width="10" height="10" viewBox="0 0 32 32" fill="none">
-                    <path d="M 5,3 L 30,16 L 2,29 Z" fill="#0F6E56" />
-                    <path d="M 5,3 L 30,16 L 28.85,18.22 L 3.85,5.22 Z" fill="#4f46e5" />
-                  </svg>
+              {/* Structured output cards — dashboard feel */}
+              <div className="mkt-chat__output">
+                <div className="mkt-out-card mkt-out-card--fit">
+                  <div className="mkt-out-card__label">Role fit score</div>
+                  <div className="mkt-out-card__score-row">
+                    <span className="mkt-out-card__score-val">74%</span>
+                    <div className="mkt-out-card__bar-track">
+                      <div className="mkt-out-card__bar-fill" style={{ width: "74%" }} />
+                    </div>
+                  </div>
+                  <div className="mkt-out-card__note">Achievable — gap is closeable in 60–90 days</div>
                 </div>
-                <div className="mkt-chat__body">
-                  <p>Realistic — with a clear gap plan. Your core gap is product sense: you can build, but you need evidence you can prioritise and ship decisions.</p>
-                  <p className="mkt-chat__item"><span className="mkt-chat__n">1.</span> Series B PMs care about execution speed — your eng background is a differentiator if framed correctly.</p>
-                  <p className="mkt-chat__item"><span className="mkt-chat__n">2.</span> Birmingham has a thin PM market. Remote-first or London-hybrid is your real target pool.</p>
-                  <p className="mkt-chat__item"><span className="mkt-chat__n">3.</span> Salary reality: £55–70k is achievable for a first PM role at your level.</p>
-                  <p className="mkt-chat__cta-line">Want me to build you a 90-day transition plan?</p>
+                <div className="mkt-out-card mkt-out-card--salary">
+                  <div className="mkt-out-card__label">Salary range · Series B PM</div>
+                  <div className="mkt-out-card__salary">£55K – £70K</div>
+                  <div className="mkt-out-card__note">Based on 38 live UK postings</div>
+                </div>
+                <div className="mkt-out-card mkt-out-card--gaps">
+                  <div className="mkt-out-card__label">Skills gap</div>
+                  <div className="mkt-out-card__tags">
+                    <span className="mkt-gap-tag mkt-gap-tag--miss">Product sense</span>
+                    <span className="mkt-gap-tag mkt-gap-tag--miss">Roadmap ownership</span>
+                    <span className="mkt-gap-tag mkt-gap-tag--have">Systems thinking ✓</span>
+                    <span className="mkt-gap-tag mkt-gap-tag--have">Execution speed ✓</span>
+                  </div>
+                </div>
+                <div className="mkt-out-card mkt-out-card--action">
+                  <div className="mkt-out-card__label">Recommended next step</div>
+                  <div className="mkt-out-card__action-text">Build a 90-day PM transition plan →</div>
                 </div>
               </div>
             </div>
@@ -347,6 +389,25 @@ export default function MarketingHome() {
             <p className="mkt-section__sub">
               Every part of HireEdge is useful on its own. Together, they form a complete career intelligence system.
             </p>
+
+            {/* Visual flow diagram */}
+            <div className="mkt-flow">
+              {[
+                { label: "You", sub: "your situation" },
+                { label: "EDGEX", sub: "AI reasoning" },
+                { label: "Intelligence", sub: "UK role data" },
+                { label: "Tools", sub: "real outputs" },
+                { label: "Outcome", sub: "your next role" },
+              ].map((node, i, arr) => (
+                <div key={i} className="mkt-flow__item">
+                  <div className={`mkt-flow__node ${i === 0 ? "mkt-flow__node--you" : i === arr.length - 1 ? "mkt-flow__node--outcome" : "mkt-flow__node--platform"}`}>
+                    <span className="mkt-flow__node-label">{node.label}</span>
+                    <span className="mkt-flow__node-sub">{node.sub}</span>
+                  </div>
+                  {i < arr.length - 1 && <div className="mkt-flow__arrow">→</div>}
+                </div>
+              ))}
+            </div>
             <div className="mkt-platform-grid">
               {PLATFORM_LAYERS.map((l) => (
                 <div key={l.id} className="mkt-platform-card">
@@ -401,7 +462,8 @@ export default function MarketingHome() {
                 </Link>
               </div>
 
-              <div className="mkt-pricing-card">
+              <div className="mkt-pricing-card mkt-pricing-card--pro">
+                <div className="mkt-pricing-card__badge mkt-pricing-card__badge--indigo">Most popular</div>
                 <div className="mkt-pricing-card__name">Pro</div>
                 <div className="mkt-pricing-card__price">£14.99</div>
                 <div className="mkt-pricing-card__note">/month · cancel anytime</div>
@@ -411,7 +473,8 @@ export default function MarketingHome() {
                   <li>Talent Profile</li>
                   <li>Visa Intelligence</li>
                 </ul>
-                <Link href="/billing?plan=pro" className="mkt-btn mkt-btn--ghost mkt-btn--sm">
+                <p className="mkt-pricing-card__nudge">Most users start here.</p>
+                <Link href="/billing?plan=pro" className="mkt-btn mkt-btn--primary mkt-btn--sm">
                   Start Pro
                 </Link>
               </div>
@@ -427,10 +490,10 @@ export default function MarketingHome() {
         <section className="mkt-cta-final">
           <div className="mkt-cta-final__inner">
             <h2 className="mkt-cta-final__h2">
-              Your next role won't find itself.
+              Your next career move<br />should not be a guess.
             </h2>
             <p className="mkt-cta-final__sub">
-              Ask EDGEX your first question — free, no setup. Most people get their gap analysis in under 2 minutes.
+              Know your position. Close your gaps. Move with clarity.
             </p>
             <div className="mkt-cta-final__actions">
               <Link href="/copilot" className="mkt-btn mkt-btn--primary mkt-btn--xl">
