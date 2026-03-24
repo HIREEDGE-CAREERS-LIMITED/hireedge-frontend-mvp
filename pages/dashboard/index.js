@@ -77,7 +77,7 @@ export default function DashboardPage() {
         <div className="dash__onboarding">
           {/* HireEdgeLogo replaces generic ✦ sparkle — platform identity moment.
               animated prop: mark reveals left→right on load, then holds still. */}
-          <div className="dash__onboarding-icon">
+          <div className="dash__onboarding-icon" style={{ display: "flex", justifyContent: "center", width: "100%" }}>
             <HireEdgeLogo size={48} animated />
           </div>
           <h2 className="dash__onboarding-title">Welcome to HireEdge</h2>
