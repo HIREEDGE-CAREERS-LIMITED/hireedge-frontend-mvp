@@ -20,11 +20,18 @@ import Link from "next/link";
 import Head from "next/head";
 
 // ── Scroll reveal ─────────────────────────────────────────────────────────
+// Content is visible by default. JS adds mkt-js-ready to body which
+// activates opacity:0 on .mkt-reveal elements, then fades them in.
+// This ensures content is always visible — motion is progressive enhancement.
 
 function useScrollReveal() {
   useEffect(() => {
+    // Mark body as JS-ready — activates CSS transitions
+    document.body.classList.add("mkt-js-ready");
+
     const els = document.querySelectorAll(".mkt-reveal");
     if (!els.length) return;
+
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -36,8 +43,17 @@ function useScrollReveal() {
       },
       { threshold: 0.07 }
     );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+
+    // Small delay so browser paints visible state before hiding elements
+    const timer = setTimeout(() => {
+      els.forEach((el) => io.observe(el));
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      io.disconnect();
+      document.body.classList.remove("mkt-js-ready");
+    };
   }, []);
 }
 
