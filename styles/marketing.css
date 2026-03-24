@@ -1578,3 +1578,129 @@ body.mkt-js-ready .mkt-reveal--right.mkt-reveal--in {
   padding: 36px 32px;
   background: rgba(255,255,255,0.01);
 }
+
+
+/* ============================================================================
+   FINAL POLISH — v5
+   Microcopy labels, visual dominance, whitespace, demo card sizing.
+   ============================================================================ */
+
+/* ── Flow node sub-labels — title-case, more presence ────────────────────── */
+
+.mkt-flow__node-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.42);
+  letter-spacing: 0.01em;
+}
+
+.mkt-flow__node-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+/* ── Demo card — more visual weight, leads the section ───────────────────── */
+
+.mkt-chat {
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.11);
+  box-shadow:
+    0 0 0 1px rgba(79,70,229,0.08),
+    0 32px 80px rgba(0,0,0,0.65),
+    0 8px 24px rgba(0,0,0,0.3);
+}
+
+.mkt-chat__output {
+  padding: 14px;
+  gap: 9px;
+}
+
+.mkt-out-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.mkt-out-card__score-val {
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.mkt-out-card__salary {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+/* ── Hero demo column — slightly taller presence ─────────────────────────── */
+
+.mkt-hero__demo {
+  padding-top: 12px;
+}
+
+/* ── Reduce paragraph max-width in middle sections ───────────────────────── */
+
+.mkt-edgex-section__body {
+  max-width: 420px;
+  font-size: 14.5px;
+  color: rgba(255,255,255,0.52);
+  line-height: 1.65;
+  margin: 0 0 28px;
+}
+
+.mkt-section__sub {
+  max-width: 480px;
+  font-size: 15.5px;
+  color: rgba(255,255,255,0.44);
+}
+
+/* ── Pain cards — tighter body, slightly more breathing room ─────────────── */
+
+.mkt-pain-card {
+  padding: 34px 32px;
+}
+
+.mkt-pain-card__body {
+  font-size: 13.5px;
+  line-height: 1.62;
+  color: rgba(255,255,255,0.42);
+  max-width: 340px;
+}
+
+/* ── Platform cards — tighter body text ──────────────────────────────────── */
+
+.mkt-platform-card__body {
+  font-size: 13px;
+  line-height: 1.58;
+  color: rgba(255,255,255,0.46);
+}
+
+/* ── Steps — tighter body text ───────────────────────────────────────────── */
+
+.mkt-step__body {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.42);
+  max-width: 280px;
+}
+
+/* ── Flow diagram — stronger container presence ───────────────────────────── */
+
+.mkt-flow {
+  padding: 22px 28px;
+  background: rgba(255,255,255,0.02);
+  border-color: rgba(255,255,255,0.08);
+}
+
+/* ── Section whitespace — product elements breathe more ──────────────────── */
+
+.mkt-pain-grid { margin-top: 56px; }
+.mkt-solution-grid { margin-top: 52px; }
+.mkt-steps { margin-top: 56px; }
+.mkt-pricing-row { margin-top: 56px; }
+.mkt-platform-grid { gap: 14px; }
+
+/* ── CTA final — tighter sub-text width ──────────────────────────────────── */
+
+.mkt-cta-final__sub {
+  max-width: 420px;
+}
