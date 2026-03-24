@@ -66,7 +66,9 @@ const PLANS_CONFIG = {
       "20 EDGEX messages/day",
       "25 tool uses/day",
     ],
-    cta:        "Unlock Career Pack — £6.99",
+    cta:        "Get your plan — £6.99 one-time",
+    ctaTag:     "Best for starters",
+    ctaSub:     "No commitment • Upgrade instantly",
     stripe_key: "career_pack",
   },
   pro: {
@@ -95,6 +97,9 @@ const PLANS_CONFIG = {
       "100 tool uses/day",
     ],
     cta:        "Start Pro — £14.99/month",
+    ctaTag:     null,
+    ctaSub:     "No commitment • Upgrade instantly",
+    ctaNote:    "Most users choose Pro for full access",
     stripe_key: "career_pro",
   },
   elite: {
@@ -119,6 +124,9 @@ const PLANS_CONFIG = {
       "Early access to new features",
     ],
     cta:        "Upgrade to Elite — £29.99/month",
+    ctaTag:     null,
+    ctaSub:     "No commitment • Upgrade instantly",
+    ctaNote:    null,
     stripe_key: "career_elite",
   },
 };
@@ -299,12 +307,23 @@ function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle }) {
             Your Plan
           </button>
         ) : plan.cta ? (
-          <button
-            className={`pricing-card__btn ${plan.popular ? "pricing-card__btn--primary" : "pricing-card__btn--secondary"}`}
-            onClick={() => onSelect?.(plan.id)}
-          >
-            {plan.cta}
-          </button>
+          <>
+            {plan.ctaTag && (
+              <span className="pricing-card__cta-tag">{plan.ctaTag}</span>
+            )}
+            <button
+              className={`pricing-card__btn ${plan.popular ? "pricing-card__btn--primary pricing-card__btn--primary-lg" : "pricing-card__btn--secondary"}`}
+              onClick={() => onSelect?.(plan.id)}
+            >
+              {plan.cta}
+            </button>
+            {plan.ctaNote && (
+              <p className="pricing-card__cta-note">{plan.ctaNote}</p>
+            )}
+            {plan.ctaSub && (
+              <p className="pricing-card__cta-sub">{plan.ctaSub}</p>
+            )}
+          </>
         ) : (
           <button className="pricing-card__btn pricing-card__btn--muted" disabled>
             Current
@@ -340,7 +359,7 @@ function TrustRow() {
       </span>
       <span className="billing-trust__item">
         <span className="billing-trust__tick">✔</span>
-        Instant access after upgrade
+        Instant access after payment
       </span>
     </div>
   );
@@ -355,12 +374,12 @@ function ComparisonNote() {
       <p className="billing-compare__row">
         <span className="billing-compare__label">Career Pack</span>
         <span className="billing-compare__sep">=</span>
-        <span className="billing-compare__desc">One-time plan — pay once, yours to keep</span>
+        <span className="billing-compare__desc">One-time plan (pay once, keep forever)</span>
       </p>
       <p className="billing-compare__row">
         <span className="billing-compare__label">Pro</span>
         <span className="billing-compare__sep">=</span>
-        <span className="billing-compare__desc">Full tools + continuous support</span>
+        <span className="billing-compare__desc">Full tools + continuous career support</span>
       </p>
     </div>
   );
@@ -400,7 +419,7 @@ export default function BillingPage() {
       <div className="billing-page__header">
         <h1 className="billing-page__title">Plans &amp; Pricing</h1>
         <p className="billing-page__subtitle">
-          Choose the plan that fits your career goals. Upgrade or downgrade anytime.
+          Simple pricing. No surprises.
         </p>
       </div>
 
