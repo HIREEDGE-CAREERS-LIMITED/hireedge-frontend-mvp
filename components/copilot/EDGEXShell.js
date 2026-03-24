@@ -223,7 +223,7 @@ function PremiumCTA({ router, hasPro }) {
         className="exs-premium__btn"
         onClick={() => router.push("/billing?plan=career_pack")}
       >
-        Unlock Career Pack -- £6.99
+        Unlock Career Pack — £6.99
       </button>
       <p className="exs-premium__note">One-time. No subscription.</p>
     </div>
