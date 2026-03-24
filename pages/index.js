@@ -133,17 +133,17 @@ const HOW_STEPS = [
   {
     num: "01",
     title: "Tell EDGEX where you are",
-    body: "Share your current role, your target, and what you're uncertain about. EDGEX asks the right follow-up questions to understand your specific situation.",
+    body: "Share your current role, your target, and what you're uncertain about. EDGEX asks the right follow-ups.",
   },
   {
     num: "02",
     title: "Get a structured gap analysis",
-    body: "EDGEX maps your position against real UK role data — skills, salary, transition logic, timeline, and what's actually blocking your next move.",
+    body: "EDGEX maps your position against real UK role data — skills, salary, transition logic, and what's blocking your next move.",
   },
   {
     num: "03",
     title: "Execute with the right tools",
-    body: "Rewrite your CV, rebuild your LinkedIn, prepare for interviews, and plan your transition — all tied to your specific target role.",
+    body: "Rewrite your CV, rebuild your LinkedIn, prep for interviews — all tied to your specific target role.",
   },
 ];
 
@@ -425,23 +425,32 @@ export default function MarketingHome() {
             <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Everything you need to move<br />your career forward.</h2>
             <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">Each part of HireEdge works on its own. Together, they form a complete career intelligence system — from first question to executed move.</p>
 
-            {/* Flow diagram */}
-            <div className="mkt-flow mkt-reveal mkt-reveal--delay-1">
-              {FLOW_NODES.map((node, i) => (
-                <div key={i} className="mkt-flow__item">
-                  <div className={`mkt-flow__node mkt-flow__node--${node.cls}`}>
-                    <span className="mkt-flow__node-label">{node.label}</span>
-                    <span className="mkt-flow__node-sub">{node.sub}</span>
-                  </div>
-                  {i < FLOW_NODES.length - 1 && (
-                    <div className="mkt-flow__arrow">
-                      <svg width="20" height="12" viewBox="0 0 20 12" fill="none" aria-hidden="true">
-                        <path d="M1 6h16M13 1l5 5-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+            {/* ── Signature flow diagram ── */}
+            <div className="mkt-flow-panel mkt-reveal mkt-reveal--delay-1">
+              <div className="mkt-flow-panel__track">
+                {FLOW_NODES.map((node, i) => (
+                  <div key={i} className="mkt-flow-panel__step">
+                    <div className={`mkt-flow-panel__node mkt-flow-panel__node--${node.cls}`}>
+                      <span className="mkt-flow-panel__node-index">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="mkt-flow-panel__node-label">{node.label}</span>
+                      <span className="mkt-flow-panel__node-sub">{node.sub}</span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {i < FLOW_NODES.length - 1 && (
+                      <div className="mkt-flow-panel__connector" aria-hidden="true">
+                        <svg width="32" height="2" viewBox="0 0 32 2" fill="none">
+                          <line x1="0" y1="1" x2="32" y2="1" stroke="url(#conn-grad)" strokeWidth="1.5" strokeDasharray="4 3" />
+                          <defs>
+                            <linearGradient id="conn-grad" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+                              <stop offset="0%" stopColor="rgba(79,70,229,0.5)" />
+                              <stop offset="100%" stopColor="rgba(16,185,129,0.3)" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="mkt-platform-grid">
