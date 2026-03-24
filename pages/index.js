@@ -111,37 +111,85 @@ function Nav() {
 // ── Data ──────────────────────────────────────────────────────────────────
 
 const PAIN_POINTS = [
-  { head: "You're guessing.", body: "Most people decide their next move based on what a friend did, what looks good on LinkedIn, or what feels safe. Not data." },
-  { head: "Advice online is for everyone. Which means it's for no one.", body: "Generic frameworks, US salary benchmarks, recycled playbooks. None of it knows your role, your market, or your gap." },
-  { head: "Recruiters see things you don't.", body: "They know which skills are actually required vs. listed. They know what salary bands are real. You're negotiating blind." },
-  { head: "Your career decisions are fragmented.", body: "Your CV is in one place. Salary research in another. Career advice in a third. No single view of where you actually stand." },
+  {
+    head: "You're making decisions without data.",
+    body: "Most people base their next move on what a friend did, what looks good on LinkedIn, or what feels safe. Not on what's actually true for their role and market.",
+  },
+  {
+    head: "Generic advice doesn't know your situation.",
+    body: "Frameworks built for everyone work for no one. US salary benchmarks, recycled playbooks — none of it knows your role, your seniority, or your specific gap.",
+  },
+  {
+    head: "Recruiters know things you don't.",
+    body: "They know which skills are actually required versus listed. They know what salary bands are real. You're negotiating without the information that matters.",
+  },
+  {
+    head: "Your career picture is fragmented.",
+    body: "CV in one place. Salary research in another. Advice somewhere else. No single view of where you stand, what's missing, or what to do first.",
+  },
 ];
 
 const HOW_STEPS = [
-  { num: "01", title: "Ask EDGEX", body: "Tell EDGEX your current role, your target, and what you're unsure about. It asks the right follow-ups." },
-  { num: "02", title: "Get your gap analysis", body: "EDGEX maps your gap against real UK role data — skills, salary, transition paths, timeline, and what's actually blocking you." },
-  { num: "03", title: "Execute with tools", body: "Use Career Pack or Pro tools to rewrite your CV, rebuild your LinkedIn, prep for interviews, and move." },
+  {
+    num: "01",
+    title: "Tell EDGEX where you are",
+    body: "Share your current role, your target, and what you're uncertain about. EDGEX asks the right follow-up questions to understand your specific situation.",
+  },
+  {
+    num: "02",
+    title: "Get a structured gap analysis",
+    body: "EDGEX maps your position against real UK role data — skills, salary, transition logic, timeline, and what's actually blocking your next move.",
+  },
+  {
+    num: "03",
+    title: "Execute with the right tools",
+    body: "Rewrite your CV, rebuild your LinkedIn, prepare for interviews, and plan your transition — all tied to your specific target role.",
+  },
 ];
 
 const PLATFORM_LAYERS = [
-  { id: "edgex", tag: "AI engine", name: "EDGEX", color: "#4f46e5", href: "/copilot", cta: "Open EDGEX", body: "The intelligence layer. Ask anything about your career — salary, transitions, gaps, visa, negotiation. EDGEX gives structured, specific answers grounded in UK job market data." },
-  { id: "intelligence", tag: "Data layer", name: "Career Intelligence", color: "#0F6E56", href: "/intelligence", cta: "Explore data", body: "1,200+ UK roles with live salary ranges, required skills, transition logic, and market demand signals — all searchable without a subscription." },
-  { id: "tools", tag: "Execution layer", name: "Career Tools", color: "#0F6E56", href: "/tools", cta: "See all tools", body: "Six AI-powered tools that produce real outputs. Not scores, not dashboards — rewritten CVs, rebuilt profiles, structured interview prep, and visa strategy." },
+  {
+    id:    "edgex",
+    tag:   "Intelligence engine",
+    name:  "EDGEX",
+    color: "#4f46e5",
+    href:  "/copilot",
+    cta:   "Open EDGEX",
+    body:  "Ask anything about your career — salary ranges, transition paths, skill gaps, visa options, negotiation strategy. EDGEX responds with specific, structured answers built on UK job market data.",
+  },
+  {
+    id:    "intelligence",
+    tag:   "Data layer",
+    name:  "Career Intelligence",
+    color: "#0F6E56",
+    href:  "/intelligence",
+    cta:   "Explore data",
+    body:  "1,200+ UK roles with live salary ranges, required skills, transition logic, and demand signals — fully searchable without a subscription.",
+  },
+  {
+    id:    "tools",
+    tag:   "Execution layer",
+    name:  "Career Tools",
+    color: "#0F6E56",
+    href:  "/tools",
+    cta:   "See all tools",
+    body:  "Six AI-powered tools that produce real outputs — rewritten CVs, rebuilt profiles, structured interview prep, and visa strategy. Not dashboards. Deliverables.",
+  },
 ];
 
 const TRUST_STATS = [
-  { figure: "1,200+", label: "UK roles mapped" },
-  { figure: "Salary benchmarks", label: "from live UK job data" },
-  { figure: "Real transitions", label: "not generic advice" },
-  { figure: "Built for UK", label: "job market decisions" },
+  { figure: "1,200+",  label: "UK roles mapped" },
+  { figure: "Salary",  label: "benchmarks by role & seniority" },
+  { figure: "Structured", label: "transition logic, not generic advice" },
+  { figure: "Built",   label: "specifically for the UK job market" },
 ];
 
 const FLOW_NODES = [
-  { label: "You", sub: "your situation", cls: "you" },
-  { label: "EDGEX", sub: "AI reasoning", cls: "platform" },
-  { label: "Intelligence", sub: "UK role data", cls: "platform" },
-  { label: "Tools", sub: "real outputs", cls: "platform" },
-  { label: "Outcome", sub: "your next role", cls: "outcome" },
+  { label: "You",          sub: "your situation",   cls: "you" },
+  { label: "EDGEX",        sub: "AI reasoning",     cls: "platform" },
+  { label: "Intelligence", sub: "live UK data",     cls: "platform" },
+  { label: "Tools",        sub: "real outputs",     cls: "platform" },
+  { label: "Outcome",      sub: "your next role",   cls: "outcome" },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────
@@ -165,7 +213,7 @@ export default function MarketingHome() {
           <div className="mkt-hero__inner mkt-reveal">
             <div className="mkt-hero__eyebrow">
               <span className="mkt-dot" />
-              AI Career Intelligence · Built for the UK job market
+              Career intelligence · Built for the UK job market
             </div>
             <h1 className="mkt-hero__h1">
               Know your salary,<br />
@@ -177,7 +225,7 @@ export default function MarketingHome() {
               HireEdge gives you structured career intelligence — role data, transition logic, salary benchmarks, and AI analysis — so you stop guessing and start moving.
             </p>
             <p className="mkt-hero__bridge">
-              Stop second-guessing your next move. Know exactly where you stand — and what to do next.
+              Know exactly where you stand. Know what's missing. Know what to do next.
             </p>
             <div className="mkt-hero__actions">
               <Link href="/copilot" className="mkt-btn mkt-btn--primary mkt-btn--lg">Start with EDGEX — free</Link>
@@ -189,7 +237,7 @@ export default function MarketingHome() {
             <div className="mkt-intel-strip">
               <div className="mkt-intel-strip__label">
                 <span className="mkt-intel-strip__dot" />
-                Example EDGEX output
+                Live output example
               </div>
               <div className="mkt-intel-strip__chips">
                 <div className="mkt-intel-chip mkt-intel-chip--role">
@@ -224,7 +272,7 @@ export default function MarketingHome() {
               </div>
               <div className="mkt-chat__output">
                 <div className="mkt-out-card mkt-out-card--fit">
-                  <div className="mkt-out-card__label">Role fit score</div>
+                  <div className="mkt-out-card__label">Role fit</div>
                   <div className="mkt-out-card__score-row">
                     <span className="mkt-out-card__score-val">74%</span>
                     <div className="mkt-out-card__bar-track">
@@ -234,7 +282,7 @@ export default function MarketingHome() {
                   <div className="mkt-out-card__note">Achievable — gap is closeable in 60–90 days</div>
                 </div>
                 <div className="mkt-out-card mkt-out-card--salary">
-                  <div className="mkt-out-card__label">Salary range · Series B PM</div>
+                  <div className="mkt-out-card__label">Salary · Series B PM · London</div>
                   <div className="mkt-out-card__salary">£55K – £70K</div>
                   <div className="mkt-out-card__note">Based on 38 live UK postings</div>
                 </div>
@@ -248,8 +296,8 @@ export default function MarketingHome() {
                   </div>
                 </div>
                 <div className="mkt-out-card mkt-out-card--action">
-                  <div className="mkt-out-card__label">Recommended next step</div>
-                  <div className="mkt-out-card__action-text">Build a 90-day PM transition plan →</div>
+                  <div className="mkt-out-card__label">Next step</div>
+                  <div className="mkt-out-card__action-text">Build your 90-day PM transition plan →</div>
                 </div>
               </div>
             </div>
@@ -265,12 +313,12 @@ export default function MarketingHome() {
             </div>
           ))}
           <div className="mkt-trust-bar__item">
-            <span className="mkt-trust-bar__tag">UK-focused</span>
+            <span className="mkt-trust-bar__tag">UK-only</span>
             <span className="mkt-trust-bar__label">salary &amp; role data</span>
           </div>
           <div className="mkt-trust-bar__item">
-            <span className="mkt-trust-bar__tag">Structured</span>
-            <span className="mkt-trust-bar__label">transition logic</span>
+            <span className="mkt-trust-bar__tag">No guesswork</span>
+            <span className="mkt-trust-bar__label">structured transition logic</span>
           </div>
         </div>
 
@@ -279,7 +327,7 @@ export default function MarketingHome() {
           <div className="mkt-section__inner">
             <div className="mkt-section__label mkt-reveal">The problem</div>
             <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">
-              Most career decisions<br />are made in the dark.
+              Most career decisions<br />are made without real data.
             </h2>
             <div className="mkt-pain-grid">
               {PAIN_POINTS.map((p, i) => (
@@ -299,7 +347,7 @@ export default function MarketingHome() {
           <div className="mkt-section__inner">
             <div className="mkt-section__label mkt-reveal">The solution</div>
             <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">One platform.<br />Full career clarity.</h2>
-            <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">HireEdge replaces guesswork with structured intelligence at every stage of your career decision.</p>
+            <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">Structured intelligence at every stage of your career decision — not advice, not encouragement. Data and logic.</p>
             <div className="mkt-solution-grid">
               {[
                 { title: "Understand where you actually stand", body: "See how your skills, salary, and experience map against real UK role requirements — not what's listed on LinkedIn." },
@@ -325,7 +373,7 @@ export default function MarketingHome() {
         <section className="mkt-section">
           <div className="mkt-section__inner">
             <div className="mkt-section__label mkt-reveal">How it works</div>
-            <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Three steps to clarity.</h2>
+            <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">From question to clarity<br />in three steps.</h2>
             <div className="mkt-steps">
               {HOW_STEPS.map((s, i) => (
                 <div key={i} className={`mkt-step mkt-reveal mkt-reveal--delay-${i}`} data-num={s.num}>
@@ -348,12 +396,12 @@ export default function MarketingHome() {
             <div className="mkt-edgex-section__text mkt-reveal">
               <div className="mkt-section__label">EDGEX</div>
               <h2 className="mkt-section__h2">Career intelligence<br />you can talk to.</h2>
-              <p className="mkt-edgex-section__body">EDGEX isn't a chatbot. It's a career reasoning engine trained on UK job market structure. Ask it where you stand. Ask it what your gap is. Ask it what salary to negotiate. Ask it what your visa options are.</p>
+              <p className="mkt-edgex-section__body">EDGEX isn't a chatbot. It's a career reasoning engine built on UK job market structure. Ask it where you stand, what your gap is, what salary to negotiate, or what your visa options are.</p>
               <p className="mkt-edgex-section__body">It responds with frameworks, numbers, and specific next steps — not encouragement.</p>
               <Link href="/copilot" className="mkt-btn mkt-btn--primary">Open EDGEX →</Link>
             </div>
             <div className="mkt-edgex-section__prompts mkt-reveal mkt-reveal--right">
-              <div className="mkt-prompt-label">Things people ask EDGEX</div>
+              <div className="mkt-prompt-label">What people ask EDGEX</div>
               {[
                 "What salary should I negotiate for a Senior PM role in London?",
                 "I'm a data analyst. What's the fastest path to data engineering?",
@@ -376,7 +424,7 @@ export default function MarketingHome() {
           <div className="mkt-section__inner">
             <div className="mkt-section__label mkt-reveal">Platform</div>
             <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Everything you need to move<br />your career forward.</h2>
-            <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">Every part of HireEdge is useful on its own. Together, they form a complete career intelligence system.</p>
+            <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">Each part of HireEdge works on its own. Together, they form a complete career intelligence system — from first question to executed move.</p>
 
             {/* Flow diagram */}
             <div className="mkt-flow mkt-reveal mkt-reveal--delay-1">
@@ -422,7 +470,7 @@ export default function MarketingHome() {
               <div className="mkt-pricing-card mkt-reveal">
                 <div className="mkt-pricing-card__name">Free</div>
                 <div className="mkt-pricing-card__price">£0</div>
-                <div className="mkt-pricing-card__note">forever</div>
+                <div className="mkt-pricing-card__note">always free</div>
                 <ul className="mkt-pricing-card__features">
                   <li>EDGEX AI (10 messages/day)</li>
                   <li>Career Intelligence</li>
