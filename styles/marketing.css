@@ -2016,3 +2016,214 @@ body.mkt-js-ready .mkt-reveal--right.mkt-reveal--in {
   background: rgba(79,70,229,0.22);
   transform: scale(1.08);
 }
+
+
+/* ============================================================================
+   BRAND SIGNATURE — v7
+   The platform flow section becomes the definitive HireEdge visual moment.
+   New component: mkt-flow-panel — full-width, numbered, gradient-connected.
+   Also: middle section density tightening, refined motion.
+   ============================================================================ */
+
+/* ── Flow panel — brand signature visual ─────────────────────────────────── */
+
+.mkt-flow-panel {
+  margin: 44px 0 52px;
+  position: relative;
+}
+
+/* Full-width brand bar behind the nodes */
+.mkt-flow-panel::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%; transform: translateY(-50%);
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(79,70,229,0.20) 10%,
+    rgba(79,70,229,0.40) 30%,
+    rgba(99,102,241,0.35) 50%,
+    rgba(16,185,129,0.35) 70%,
+    rgba(16,185,129,0.18) 90%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.mkt-flow-panel__track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: none;
+}
+.mkt-flow-panel__track::-webkit-scrollbar { display: none; }
+
+.mkt-flow-panel__step {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Each node — vertical card with index number */
+.mkt-flow-panel__node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 18px 22px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: #0d0e11;
+  min-width: 110px;
+  text-align: center;
+  cursor: default;
+  position: relative;
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              box-shadow 0.24s ease;
+}
+
+.mkt-flow-panel__node:hover { transform: translateY(-4px); }
+
+/* Node colour variants */
+.mkt-flow-panel__node--you {
+  border-color: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.04);
+}
+.mkt-flow-panel__node--you:hover {
+  border-color: rgba(255,255,255,0.24);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+.mkt-flow-panel__node--platform {
+  border-color: rgba(79,70,229,0.30);
+  background: rgba(79,70,229,0.08);
+}
+.mkt-flow-panel__node--platform:hover {
+  border-color: rgba(79,70,229,0.50);
+  box-shadow: 0 8px 28px rgba(79,70,229,0.20);
+}
+
+.mkt-flow-panel__node--outcome {
+  border-color: rgba(16,185,129,0.36);
+  background: rgba(16,185,129,0.08);
+}
+.mkt-flow-panel__node--outcome:hover {
+  border-color: rgba(16,185,129,0.55);
+  box-shadow: 0 8px 28px rgba(16,185,129,0.20);
+}
+
+/* Index number — small, brand colour */
+.mkt-flow-panel__node-index {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.20);
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.mkt-flow-panel__node--platform .mkt-flow-panel__node-index {
+  color: rgba(129,140,248,0.55);
+}
+
+.mkt-flow-panel__node--outcome .mkt-flow-panel__node-index {
+  color: rgba(52,211,153,0.55);
+}
+
+/* Label — strong */
+.mkt-flow-panel__node-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.92);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+/* Sub — quiet */
+.mkt-flow-panel__node-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.35);
+  white-space: nowrap;
+}
+
+/* Connector — dashed gradient line between nodes */
+.mkt-flow-panel__connector {
+  padding: 0 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+}
+
+@media (max-width: 700px) {
+  .mkt-flow-panel__track { justify-content: flex-start; gap: 0; }
+  .mkt-flow-panel__node { min-width: 90px; padding: 14px 16px 12px; }
+  .mkt-flow-panel__connector { padding: 0 6px; }
+}
+
+/* ── Middle section density — remaining long lines ────────────────────────── */
+
+/* Problem section — reduce body width so it doesn't span the full card */
+.mkt-pain-card__body {
+  font-size: 13px;
+  color: rgba(255,255,255,0.40);
+  line-height: 1.60;
+  max-width: 300px;
+}
+
+/* Step bodies — tighten */
+.mkt-step__body {
+  font-size: 13px;
+  line-height: 1.58;
+  color: rgba(255,255,255,0.40);
+  max-width: 260px;
+}
+
+/* EDGEX section body — quieter, lets the prompts do the work */
+.mkt-edgex-section__body {
+  font-size: 14px;
+  color: rgba(255,255,255,0.48);
+  max-width: 380px;
+  line-height: 1.62;
+}
+
+/* ── Platform section — tighten sub before flow ──────────────────────────── */
+
+.mkt-section__sub {
+  margin-bottom: 0;
+}
+
+/* ── Platform cards — cleaner border on hover ────────────────────────────── */
+
+.mkt-platform-card:hover {
+  border-color: rgba(255,255,255,0.20);
+  background: rgba(255,255,255,0.038);
+  box-shadow: 0 20px 52px rgba(0,0,0,0.38);
+}
+
+/* ── Solution rows — tighter body ────────────────────────────────────────── */
+.mkt-solution-row__body {
+  font-size: 13px;
+  color: rgba(255,255,255,0.40);
+  line-height: 1.58;
+}
+
+/* ── CTA section — stronger brand moment ─────────────────────────────────── */
+.mkt-cta-final__h2 {
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    rgba(255,255,255,0.90) 40%,
+    rgba(165,180,252,0.85) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
