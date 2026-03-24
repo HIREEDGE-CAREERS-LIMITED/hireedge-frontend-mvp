@@ -7,6 +7,7 @@
 // ============================================================================
 
 import AppShell from "../components/layout/AppShell";
+import "../styles/marketing.css";
 import "../styles/globals.css";
 import "../styles/app-shell.css";
 import "../styles/copilot.css";
