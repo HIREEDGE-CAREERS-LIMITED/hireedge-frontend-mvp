@@ -112,20 +112,20 @@ function Nav() {
 
 const PAIN_POINTS = [
   {
-    head: "You're making decisions without data.",
-    body: "Most people base their next move on what a friend did, what looks good on LinkedIn, or what feels safe. Not on what's actually true for their role and market.",
+    head: "You're deciding without data.",
+    body: "Most people base their next move on what a friend did or what feels safe — not what's true for their role and market.",
   },
   {
     head: "Generic advice doesn't know your situation.",
-    body: "Frameworks built for everyone work for no one. US salary benchmarks, recycled playbooks — none of it knows your role, your seniority, or your specific gap.",
+    body: "Frameworks built for everyone work for no one. US benchmarks, recycled playbooks — none of it knows your role, your seniority, or your gap.",
   },
   {
     head: "Recruiters know things you don't.",
-    body: "They know which skills are actually required versus listed. They know what salary bands are real. You're negotiating without the information that matters.",
+    body: "They know which skills are actually required versus listed. They know what salary bands are real. You're negotiating blind.",
   },
   {
     head: "Your career picture is fragmented.",
-    body: "CV in one place. Salary research in another. Advice somewhere else. No single view of where you stand, what's missing, or what to do first.",
+    body: "CV in one place. Salary research in another. Advice elsewhere. No single view of where you stand or what to do first.",
   },
 ];
 
@@ -155,7 +155,7 @@ const PLATFORM_LAYERS = [
     color: "#4f46e5",
     href:  "/copilot",
     cta:   "Open EDGEX",
-    body:  "Ask anything about your career — salary ranges, transition paths, skill gaps, visa options, negotiation strategy. EDGEX responds with specific, structured answers built on UK job market data.",
+    body:  "Ask anything — salary ranges, transition paths, skill gaps, visa options, negotiation strategy. Specific answers, built on UK job market data.",
   },
   {
     id:    "intelligence",
@@ -164,7 +164,7 @@ const PLATFORM_LAYERS = [
     color: "#0F6E56",
     href:  "/intelligence",
     cta:   "Explore data",
-    body:  "1,200+ UK roles with live salary ranges, required skills, transition logic, and demand signals — fully searchable without a subscription.",
+    body:  "1,200+ UK roles with live salary ranges, required skills, and transition logic — fully searchable without a subscription.",
   },
   {
     id:    "tools",
@@ -173,7 +173,7 @@ const PLATFORM_LAYERS = [
     color: "#0F6E56",
     href:  "/tools",
     cta:   "See all tools",
-    body:  "Six AI-powered tools that produce real outputs — rewritten CVs, rebuilt profiles, structured interview prep, and visa strategy. Not dashboards. Deliverables.",
+    body:  "Six AI-powered tools that produce real deliverables — rewritten CVs, rebuilt profiles, interview prep, visa strategy. Not dashboards.",
   },
 ];
 
@@ -185,11 +185,11 @@ const TRUST_STATS = [
 ];
 
 const FLOW_NODES = [
-  { label: "You",          sub: "your situation",   cls: "you" },
-  { label: "EDGEX",        sub: "AI reasoning",     cls: "platform" },
-  { label: "Intelligence", sub: "live UK data",     cls: "platform" },
-  { label: "Tools",        sub: "real outputs",     cls: "platform" },
-  { label: "Outcome",      sub: "your next role",   cls: "outcome" },
+  { label: "You",          sub: "Your position",        cls: "you" },
+  { label: "EDGEX",        sub: "AI reasoning",         cls: "platform" },
+  { label: "Intelligence", sub: "UK role intelligence", cls: "platform" },
+  { label: "Tools",        sub: "Action outputs",       cls: "platform" },
+  { label: "Outcome",      sub: "Your next move",       cls: "outcome" },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────
@@ -396,8 +396,7 @@ export default function MarketingHome() {
             <div className="mkt-edgex-section__text mkt-reveal">
               <div className="mkt-section__label">EDGEX</div>
               <h2 className="mkt-section__h2">Career intelligence<br />you can talk to.</h2>
-              <p className="mkt-edgex-section__body">EDGEX isn't a chatbot. It's a career reasoning engine built on UK job market structure. Ask it where you stand, what your gap is, what salary to negotiate, or what your visa options are.</p>
-              <p className="mkt-edgex-section__body">It responds with frameworks, numbers, and specific next steps — not encouragement.</p>
+              <p className="mkt-edgex-section__body">EDGEX isn't a chatbot. It's a career reasoning engine built on UK job market structure — salary negotiation, transition paths, skill gaps, visa options. Specific answers, not encouragement.</p>
               <Link href="/copilot" className="mkt-btn mkt-btn--primary">Open EDGEX →</Link>
             </div>
             <div className="mkt-edgex-section__prompts mkt-reveal mkt-reveal--right">
