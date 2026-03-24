@@ -18,6 +18,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Head from "next/head";
+import FlowPanelClean from "../components/FlowPanelClean";
 
 // ── Scroll reveal ─────────────────────────────────────────────────────────
 // Content is visible by default. JS adds mkt-js-ready to body which
@@ -425,35 +426,8 @@ export default function MarketingHome() {
             <h2 className="mkt-section__h2 mkt-reveal mkt-reveal--delay-1">Everything you need to move<br />your career forward.</h2>
             <p className="mkt-section__sub mkt-reveal mkt-reveal--delay-2">Each part of HireEdge works on its own. Together, they form a complete career intelligence system — from first question to executed move.</p>
 
-            {/* ── Signature flow diagram ── */}
-            <div className="mkt-flow-panel mkt-reveal mkt-reveal--delay-1">
-              <div className="mkt-flow-panel__track">
-                {FLOW_NODES.map((node, i) => (
-                  <div key={i} className="mkt-flow-panel__step">
-                    <div className="mkt-flow-panel__station">
-                      <span className={`mkt-flow-panel__node-index mkt-flow-panel__node-index--${node.cls}`}>{String(i + 1).padStart(2, "0")}</span>
-                      <div className={`mkt-flow-panel__node mkt-flow-panel__node--${node.cls}`}>
-                        <span className="mkt-flow-panel__node-label">{node.label}</span>
-                      </div>
-                      <span className="mkt-flow-panel__node-sub">{node.sub}</span>
-                    </div>
-                    {i < FLOW_NODES.length - 1 && (
-                      <div className="mkt-flow-panel__connector" aria-hidden="true">
-                        <svg width="32" height="2" viewBox="0 0 32 2" fill="none">
-                          <line x1="0" y1="1" x2="32" y2="1" stroke="url(#conn-grad)" strokeWidth="1.5" strokeDasharray="4 3" />
-                          <defs>
-                            <linearGradient id="conn-grad" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
-                              <stop offset="0%" stopColor="rgba(79,70,229,0.5)" />
-                              <stop offset="100%" stopColor="rgba(16,185,129,0.3)" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* ── Flow diagram ── */}
+            <FlowPanelClean />
 
             <div className="mkt-platform-grid">
               {PLATFORM_LAYERS.map((l, i) => (
