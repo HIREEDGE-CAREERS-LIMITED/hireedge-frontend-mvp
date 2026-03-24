@@ -2469,3 +2469,125 @@ body.mkt-js-ready .mkt-reveal--right.mkt-reveal--in {
   .mkt-flow-panel__node { min-width: 86px; padding: 12px 14px; }
   .mkt-flow-panel__connector { padding: 0 6px; }
 }
+
+
+/* ============================================================================
+   FLOW PANEL — AUTHORITATIVE RESET v10
+   Previous appended blocks created cascading conflicts.
+   This block uses !important selectively to win against all prior rules
+   and establish the definitive three-layer station layout.
+
+   Structure enforced:
+   .mkt-flow-panel__step        — row: [station] [connector] [station] ...
+   .mkt-flow-panel__station     — column: [index] [node-card] [sub]
+   .mkt-flow-panel__node        — single-label card, no sub inside
+   ============================================================================ */
+
+/* Step row — station + connector side by side */
+.mkt-flow-panel__step {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex-shrink: 0;
+  padding-bottom: 0 !important;
+  gap: 0;
+}
+
+/* Station — the three layers stacked vertically */
+.mkt-flow-panel__station {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0 !important;
+}
+
+/* Index — sits above the card */
+.mkt-flow-panel__node-index {
+  display: block;
+  font-size: 9px !important;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255,255,255,0.18) !important;
+  line-height: 1;
+  margin-bottom: 10px !important;
+  margin-top: 0;
+}
+
+.mkt-flow-panel__node-index--platform { color: rgba(129,140,248,0.50) !important; }
+.mkt-flow-panel__node-index--outcome  { color: rgba(52,211,153,0.50)  !important; }
+
+/* Node card — clean rectangle, label only, no column flex-direction */
+.mkt-flow-panel__node {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 13px 20px !important;
+  border-radius: 12px !important;
+  min-width: 104px !important;
+  gap: 0 !important;
+  margin-bottom: 10px !important;
+  text-align: center;
+  position: relative;
+  cursor: default;
+  transition: transform 0.24s cubic-bezier(0.16,1,0.3,1),
+              border-color 0.22s ease,
+              box-shadow 0.24s ease;
+}
+
+/* Node label — only child inside card */
+.mkt-flow-panel__node-label {
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  color: rgba(255,255,255,0.95) !important;
+  letter-spacing: -0.4px;
+  line-height: 1;
+  white-space: nowrap;
+  margin-bottom: 0 !important;
+}
+
+/* Sub — sits below the card, plain metadata */
+.mkt-flow-panel__node-sub {
+  display: block !important;
+  font-size: 10px !important;
+  font-weight: 500;
+  color: rgba(255,255,255,0.28) !important;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  line-height: 1;
+  /* Reset all conflicting border/padding from earlier blocks */
+  border-top: none !important;
+  padding-top: 0 !important;
+  width: auto !important;
+  text-align: center;
+  margin-top: 0;
+}
+
+/* Sub tints by nth-child on step */
+.mkt-flow-panel__step:nth-child(2) .mkt-flow-panel__node-sub,
+.mkt-flow-panel__step:nth-child(3) .mkt-flow-panel__node-sub,
+.mkt-flow-panel__step:nth-child(4) .mkt-flow-panel__node-sub {
+  color: rgba(165,180,252,0.42) !important;
+}
+
+.mkt-flow-panel__step:nth-child(5) .mkt-flow-panel__node-sub {
+  color: rgba(52,211,153,0.48) !important;
+}
+
+/* Connector — vertically centred with the card, no offset needed */
+.mkt-flow-panel__connector {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 10px !important;
+  margin-bottom: 20px !important; /* keeps it aligned with card mid-height (index 10px + card ~40px / 2 = ~20) */
+  flex-shrink: 0;
+  opacity: 0.60;
+  align-self: center;
+}
+
+/* Node hover — colour-matched glow */
+.mkt-flow-panel__node--you:hover     { box-shadow: 0 8px 28px rgba(0,0,0,0.35) !important; }
+.mkt-flow-panel__node--platform:hover { box-shadow: 0 8px 28px rgba(79,70,229,0.22) !important; }
+.mkt-flow-panel__node--outcome:hover  { box-shadow: 0 8px 28px rgba(16,185,129,0.22) !important; }
