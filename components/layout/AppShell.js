@@ -7,6 +7,7 @@
 //   - Added protected route logic + redirect
 //   - Passes user, plan, and onSignOut to Sidebar
 //   - Passes plan to Topbar
+//   - Added /auth/callback, /forgot-password, /reset-password to NO_SHELL_ROUTES
 // ============================================================================
 
 import { useState, useEffect } from "react";
@@ -15,10 +16,15 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useAuth } from "../../contexts/AuthContext";
 
-// Routes that render without the app shell
-const NO_SHELL_ROUTES = ["/", "/login", "/signup"];
+const NO_SHELL_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/callback",
+];
 
-// Routes that require a session
 const PROTECTED_ROUTES = [
   "/copilot",
   "/dashboard",
@@ -41,14 +47,12 @@ export default function AppShell({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Close mobile sidebar on route change
   useEffect(() => {
     const handleRouteChange = () => setMobileOpen(false);
     router.events.on("routeChangeComplete", handleRouteChange);
     return () => router.events.off("routeChangeComplete", handleRouteChange);
   }, [router]);
 
-  // Load sidebar preference from localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("hireedge_sidebar_collapsed");
@@ -70,17 +74,14 @@ export default function AppShell({ children }) {
     router.replace("/login");
   }
 
-  // No shell for marketing + auth pages
   if (NO_SHELL_ROUTES.includes(router.pathname)) {
     return <>{children}</>;
   }
 
-  // Suppress render while auth resolves on protected routes
   if (loading && isProtected(router.pathname)) {
     return null;
   }
 
-  // Redirect unauthenticated users away from protected routes
   if (!loading && !user && isProtected(router.pathname)) {
     if (typeof window !== "undefined") {
       router.replace("/login");
@@ -105,8 +106,8 @@ export default function AppShell({ children }) {
           plan={plan}
         />
         <main
-          className={`app-shell__content ${
-            router.pathname === "/copilot" ? "app-shell__content--copilot" : ""
+          className={`app-shell__content${
+            router.pathname === "/copilot" ? " app-shell__content--copilot" : ""
           }`}
         >
           {children}
