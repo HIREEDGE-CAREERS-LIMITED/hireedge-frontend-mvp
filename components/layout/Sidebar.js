@@ -10,6 +10,13 @@ import { NAV_SECTIONS, ACCOUNT_NAV } from "../../config/navigation";
 import EDGEXIcon from "../brand/EDGEXIcon";
 import HireEdgeLogo from "../brand/HireEdgeLogo";
 
+const PLAN_LABELS = {
+  free: "Free",
+  career_pack: "Career Pack",
+  pro: "Pro",
+  elite: "Elite",
+};
+
 const ICONS = {
   spark: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -53,9 +60,10 @@ const ICONS = {
       <path d="M6 4l5 5-5 5"/>
     </svg>
   ),
-  menu: (
-    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <path d="M3 5h12M3 9h12M3 13h12"/>
+  logout: (
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.5 9h9M12 5.5l3.5 3.5L12 12.5"/>
+      <path d="M10 3H3.5A1.5 1.5 0 002 4.5v9A1.5 1.5 0 003.5 15H10"/>
     </svg>
   ),
 };
@@ -64,7 +72,6 @@ function getIcon(name) {
   return ICONS[name] || ICONS.grid;
 }
 
-// Canonical EDGEX icon — wraps EDGEXIcon to match sidebar icon dimensions
 function EDGEXNavIcon() {
   return (
     <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 18, height: 18 }}>
@@ -73,9 +80,22 @@ function EDGEXNavIcon() {
   );
 }
 
-export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
+export default function Sidebar({
+  collapsed,
+  onToggle,
+  mobileOpen,
+  onMobileClose,
+  user,
+  plan,
+  onSignOut,
+}) {
   const router = useRouter();
   const [expandedSections, setExpandedSections] = useState({});
+
+  const rawName = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
+  const displayName = rawName;
+  const avatarLetter = rawName?.[0]?.toUpperCase() || "U";
+  const planLabel = PLAN_LABELS[plan] || "Free";
 
   const isActive = (href) => router.pathname === href || router.asPath === href;
   const isParentActive = (section) => {
@@ -87,7 +107,6 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Render correct icon: EDGEXIcon for EDGEX nav item, generic icons for everything else
   const renderNavIcon = (section) => {
     if (section.id === "edgex") {
       return <EDGEXNavIcon />;
@@ -103,22 +122,15 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
   return (
     <>
-      {/* Mobile overlay */}
       <div
         className={`sidebar-overlay ${mobileOpen ? "sidebar-overlay--visible" : ""}`}
         onClick={onMobileClose}
       />
 
       <aside className={sidebarClass}>
-        {/* Header / Logo
-            HireEdgeLogo interactive: nudges forward on hover — subtle, not distracting.
-            Collapsed: 24px. Expanded: 28px. No animation on load (static context). */}
         <div className="sidebar__header">
           <Link href="/copilot" className="sidebar__logo">
-            <HireEdgeLogo
-              size={collapsed ? 24 : 28}
-              interactive
-            />
+            <HireEdgeLogo size={collapsed ? 24 : 28} interactive />
             {!collapsed && <span>HireEdge</span>}
           </Link>
           {!collapsed && (
@@ -133,7 +145,6 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           )}
         </div>
 
-        {/* Main navigation */}
         <nav className="sidebar__nav">
           {NAV_SECTIONS.map((section) => (
             <div key={section.id} className="sidebar__section">
@@ -154,15 +165,21 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 {!collapsed && section.children && (
                   <button
                     className="sidebar__toggle"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSection(section.id); }}
-                    style={{ transform: expandedSections[section.id] ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms" }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleSection(section.id);
+                    }}
+                    style={{
+                      transform: expandedSections[section.id] ? "rotate(90deg)" : "rotate(0deg)",
+                      transition: "transform 150ms",
+                    }}
                   >
                     <span className="sidebar__icon">{getIcon("chevron")}</span>
                   </button>
                 )}
               </Link>
 
-              {/* Children */}
               {!collapsed && section.children && (isParentActive(section) || expandedSections[section.id]) && (
                 <div className="sidebar__children">
                   {section.children.map((child) => (
@@ -185,10 +202,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </div>
           ))}
 
-          {/* Divider */}
           {!collapsed && <div style={{ borderTop: "1px solid var(--border-subtle)", margin: "var(--space-3) 0" }} />}
 
-          {/* Account links */}
           {ACCOUNT_NAV.map((item) => (
             <Link
               key={item.id}
@@ -205,16 +220,29 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           ))}
         </nav>
 
-        {/* Footer — User info */}
         {!collapsed && (
           <div className="sidebar__footer">
             <div className="sidebar__user">
-              <div className="sidebar__avatar">U</div>
+              <div className="sidebar__avatar">{avatarLetter}</div>
               <div className="sidebar__user-info">
-                <div className="sidebar__user-name">User</div>
-                <div className="sidebar__user-plan">Free plan</div>
+                <div className="sidebar__user-name">{displayName}</div>
+                <div className="sidebar__user-plan">{planLabel} plan</div>
               </div>
             </div>
+            <button
+              onClick={() => onSignOut?.()}
+              title="Log out"
+              className="sidebar__link"
+              style={{
+                width: "100%",
+                marginTop: "var(--space-1)",
+                opacity: 0.6,
+                fontSize: "var(--text-xs)",
+              }}
+            >
+              <span className="sidebar__icon">{getIcon("logout")}</span>
+              <span>Log out</span>
+            </button>
           </div>
         )}
       </aside>
