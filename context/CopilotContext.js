@@ -1,22 +1,15 @@
 // ============================================================================
-// context/CopilotContext.js  (v4)
+// context/CopilotContext.js  (v5)
 //
-// BREAKING CHANGE from v3:
-//   - Removed: messages, loading, send, inputDraft, setDraft
-//   - Kept:    context (role/target/etc), updateContext, clear
-//
-// WHY: ChatWindow-v4 owns all message state locally.
-//      Context only stores the resolved career profile so the sidebar
-//      (EDGEXShell) can read role/target/lastIntent without coupling
-//      to the message list.
-//
-// EDGEXShell reads context.role, context.target, context.lastIntent.
-// ChatWindow calls updateContext() after each API response.
+// CHANGES from v4:
+//   - Added conversationId state
+//   - Added setConversationId to context value
+//   - All existing role/target/country/yearsExp/lastIntent logic unchanged
 // ============================================================================
 
 import { createContext, useContext, useState, useCallback } from "react";
 
-//  Storage helpers 
+// ── Storage helpers — unchanged ───────────────────────────────────────────────
 
 const CTX_KEY = "hireedge_edgex_context";
 
@@ -38,16 +31,17 @@ function clearStoredContext() {
   try { localStorage.removeItem(CTX_KEY); } catch {}
 }
 
-//  Context 
+// ── Context ───────────────────────────────────────────────────────────────────
 
 const CopilotContext = createContext(null);
 
-//  Provider 
+// ── Provider ──────────────────────────────────────────────────────────────────
 
 export function CopilotProvider({ children }) {
-  const [context, setContext] = useState(() => loadContext());
+  const [context,        setContext]        = useState(() => loadContext());
+  const [conversationId, setConversationId] = useState(null); // ← ADDED
 
-  // Merge new fields into context and persist
+  // Merge new fields into context and persist — unchanged
   const updateContext = useCallback((partial) => {
     if (!partial || typeof partial !== "object") return;
     setContext(prev => {
@@ -63,13 +57,20 @@ export function CopilotProvider({ children }) {
     });
   }, []);
 
-  // Clear context + localStorage
+  // Clear context + localStorage — unchanged
   const clear = useCallback(() => {
     setContext({});
     clearStoredContext();
+    setConversationId(null); // ← ADDED: reset active conversation on new chat
   }, []);
 
-  const value = { context, updateContext, clear };
+  const value = {
+    context,
+    updateContext,
+    clear,
+    conversationId,        // ← ADDED
+    setConversationId,     // ← ADDED
+  };
 
   return (
     <CopilotContext.Provider value={value}>
@@ -78,19 +79,21 @@ export function CopilotProvider({ children }) {
   );
 }
 
-//  Hooks 
+// ── Hooks — unchanged ─────────────────────────────────────────────────────────
 
 export function useEDGEXContext() {
   const ctx = useContext(CopilotContext);
   if (!ctx) {
     return {
-      context:       {},
-      updateContext: () => {},
-      clear:         () => {},
+      context:           {},
+      updateContext:     () => {},
+      clear:             () => {},
+      conversationId:    null,      // ← ADDED to fallback
+      setConversationId: () => {},  // ← ADDED to fallback
     };
   }
   return ctx;
 }
 
-// Legacy alias -- keeps any component that still calls useCopilot() working
+// Legacy alias — keeps any component that still calls useCopilot() working
 export function useCopilot() { return useEDGEXContext(); }
