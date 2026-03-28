@@ -1,20 +1,35 @@
-// ============================================================================
+I have the real Sidebar.js from this session. Generating the update now.
+File path: components/layout/Sidebar.js — UPDATE
+js// ============================================================================
 // components/layout/Sidebar.js
 // HireEdge Frontend — Sidebar navigation
+//
+// CHANGES — Phase 3C Step 5:
+//   - Added useAuth and useEDGEXContext imports
+//   - Added listConversations import
+//   - Added chat history section below the EDGEX nav item
+//   - Fetch conversations on mount when user is logged in
+//   - Clicking a conversation sets conversationId and navigates to /copilot
+//   - New chat button clears conversationId and navigates to /copilot
+//   - Active conversation highlighted
+//   - All existing nav behavior unchanged
 // ============================================================================
 
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NAV_SECTIONS, ACCOUNT_NAV } from "../../config/navigation";
 import EDGEXIcon from "../brand/EDGEXIcon";
 import HireEdgeLogo from "../brand/HireEdgeLogo";
+import { useAuth } from "../../contexts/AuthContext";                    // ← ADDED
+import { useEDGEXContext } from "../../context/CopilotContext";          // ← ADDED
+import { listConversations } from "../../lib/conversations";             // ← ADDED
 
 const PLAN_LABELS = {
-  free: "Free",
+  free:        "Free",
   career_pack: "Career Pack",
-  pro: "Pro",
-  elite: "Elite",
+  pro:         "Pro",
+  elite:       "Elite",
 };
 
 const ICONS = {
@@ -66,6 +81,16 @@ const ICONS = {
       <path d="M10 3H3.5A1.5 1.5 0 002 4.5v9A1.5 1.5 0 003.5 15H10"/>
     </svg>
   ),
+  plus: (                                                                 // ← ADDED
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M9 3v12M3 9h12"/>
+    </svg>
+  ),
+  chat: (                                                                 // ← ADDED
+    <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15.5 11a6.5 6.5 0 01-9 2.5L2 14.5l1-4.5a6.5 6.5 0 1112.5 1z"/>
+    </svg>
+  ),
 };
 
 function getIcon(name) {
@@ -80,6 +105,127 @@ function EDGEXNavIcon() {
   );
 }
 
+// ── Chat history section — ADDED ──────────────────────────────────────────────
+
+function ChatHistory({ collapsed, currentConversationId, onSelectConversation, onNewChat, userId }) {
+  const [conversations, setConversations] = useState([]);
+
+  useEffect(() => {
+    if (!userId) return;
+    listConversations(userId).then(({ data }) => {
+      setConversations(data || []);
+    });
+  }, [userId, currentConversationId]); // refetch when active conversation changes
+
+  // Don't render history section when sidebar is collapsed
+  if (collapsed) return null;
+  // Don't render if no user
+  if (!userId) return null;
+
+  return (
+    <div style={{ marginBottom: "var(--space-2)" }}>
+      {/* Section label */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 var(--space-3)",
+        marginBottom: "var(--space-1)",
+      }}>
+        <span style={{
+          fontSize: "10px",
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          color: "var(--text-muted)",
+          textTransform: "uppercase",
+        }}>
+          Recent chats
+        </span>
+        {/* New chat button */}
+        <button
+          onClick={onNewChat}
+          title="New chat"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 20,
+            height: 20,
+            background: "none",
+            border: "none",
+            color: "var(--text-tertiary)",
+            cursor: "pointer",
+            borderRadius: "var(--radius-sm)",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ width: 14, height: 14, display: "flex" }}>
+            {getIcon("plus")}
+          </span>
+        </button>
+      </div>
+
+      {/* Conversation list */}
+      {conversations.length === 0 ? (
+        <p style={{
+          fontSize: "12px",
+          color: "var(--text-muted)",
+          padding: "0 var(--space-3)",
+          margin: "var(--space-1) 0 var(--space-3)",
+        }}>
+          No conversations yet.
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {conversations.slice(0, 10).map((conv) => {
+            const isActive = conv.id === currentConversationId;
+            return (
+              <button
+                key={conv.id}
+                onClick={() => onSelectConversation(conv.id)}
+                title={conv.title}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                  width: "100%",
+                  padding: "6px var(--space-3)",
+                  background: isActive ? "var(--bg-tertiary)" : "none",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  color: isActive ? "var(--text-primary)" : "var(--text-tertiary)",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                <span style={{ width: 14, height: 14, display: "flex", flexShrink: 0, opacity: 0.5 }}>
+                  {getIcon("chat")}
+                </span>
+                <span style={{
+                  fontSize: "12px",
+                  fontWeight: isActive ? 500 : 400,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                }}>
+                  {conv.title || "New conversation"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Divider */}
+      <div style={{ borderTop: "1px solid var(--border-subtle)", margin: "var(--space-3) 0 var(--space-2)" }} />
+    </div>
+  );
+}
+
+// ── Main Sidebar — surgical changes marked ────────────────────────────────────
+
 export default function Sidebar({
   collapsed,
   onToggle,
@@ -90,12 +236,14 @@ export default function Sidebar({
   onSignOut,
 }) {
   const router = useRouter();
+  const { user: authUser } = useAuth();                                   // ← ADDED
+  const { conversationId, setConversationId, clear } = useEDGEXContext(); // ← ADDED
   const [expandedSections, setExpandedSections] = useState({});
 
-  const rawName = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
+  const rawName     = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
   const displayName = rawName;
   const avatarLetter = rawName?.[0]?.toUpperCase() || "U";
-  const planLabel = PLAN_LABELS[plan] || "Free";
+  const planLabel   = PLAN_LABELS[plan] || "Free";
 
   const isActive = (href) => router.pathname === href || router.asPath === href;
   const isParentActive = (section) => {
@@ -108,11 +256,21 @@ export default function Sidebar({
   };
 
   const renderNavIcon = (section) => {
-    if (section.id === "edgex") {
-      return <EDGEXNavIcon />;
-    }
+    if (section.id === "edgex") return <EDGEXNavIcon />;
     return <span className="sidebar__icon">{getIcon(section.icon)}</span>;
   };
+
+  // ── ADDED: conversation handlers ──────────────────────────────────────────
+  function handleSelectConversation(id) {
+    setConversationId(id);
+    router.push("/copilot");
+  }
+
+  function handleNewChat() {
+    clear(); // resets conversationId + context
+    router.push("/copilot");
+  }
+  // ── END ADDED ─────────────────────────────────────────────────────────────
 
   const sidebarClass = [
     "sidebar",
@@ -128,6 +286,7 @@ export default function Sidebar({
       />
 
       <aside className={sidebarClass}>
+        {/* Header — unchanged */}
         <div className="sidebar__header">
           <Link href="/copilot" className="sidebar__logo">
             <HireEdgeLogo size={collapsed ? 24 : 28} interactive />
@@ -145,6 +304,16 @@ export default function Sidebar({
           )}
         </div>
 
+        {/* ── ADDED: Chat history — sits above main nav ── */}
+        <ChatHistory
+          collapsed={collapsed}
+          currentConversationId={conversationId}
+          onSelectConversation={handleSelectConversation}
+          onNewChat={handleNewChat}
+          userId={authUser?.id}
+        />
+
+        {/* Main navigation — unchanged */}
         <nav className="sidebar__nav">
           {NAV_SECTIONS.map((section) => (
             <div key={section.id} className="sidebar__section">
@@ -220,6 +389,7 @@ export default function Sidebar({
           ))}
         </nav>
 
+        {/* Footer — unchanged */}
         {!collapsed && (
           <div className="sidebar__footer">
             <div className="sidebar__user">
@@ -249,3 +419,6 @@ export default function Sidebar({
     </>
   );
 }
+
+Action: In GitHub, navigate to components/layout/Sidebar.js, click the pencil icon, replace full content, commit with message Phase 3C: add chat history section to sidebar.
+When done, say "Phase 3C Step 5 done" and I'll check the Vercel build logs and give you the full Phase 3C test flow.
