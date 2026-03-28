@@ -2,11 +2,10 @@
 // pages/account.js
 // HireEdge Frontend — Account settings page
 //
-// CHANGES from previous version:
-//   1. Removed billingService import — replaced with useAuth
-//   2. Real email and display name derived from auth user
-//   3. Real plan from AuthContext
-//   4. Added Security section with change password form
+// CHANGES — Phase 3A:
+//   Removed placeholder rows: Saved Roles, Conversation Context,
+//   Sidebar, Notifications, fake role/skills/experience fields.
+//   Kept only real/functional rows.
 // ============================================================================
 
 import { useState } from "react";
@@ -62,9 +61,6 @@ export default function AccountPage() {
       <AccountSection title="Profile" icon="👤">
         <AccountRow label="Name" value={displayName} />
         <AccountRow label="Email" value={email} />
-        <AccountRow label="Current Role" value="—" hint="Used by Copilot and tools" />
-        <AccountRow label="Skills" value="—" hint="Comma-separated list" />
-        <AccountRow label="Years of Experience" value="—" />
       </AccountSection>
 
       <AccountSection title="Plan" icon="✦">
@@ -108,15 +104,11 @@ export default function AccountPage() {
       </AccountSection>
 
       <AccountSection title="Preferences" icon="⚙️">
-        <AccountRow label="Theme" value="Dark" hint="Only dark mode available in MVP" />
-        <AccountRow label="Sidebar" value="Expanded" hint="Toggle via sidebar chevron" />
-        <AccountRow label="Notifications" value="Off" hint="Coming soon" />
+        <AccountRow label="Theme" value="Dark" />
       </AccountSection>
 
       <AccountSection title="Data" icon="📦">
-        <AccountRow label="Saved Roles" value={_getSavedCount()} />
-        <AccountRow label="Conversation Context" value="Stored in session" />
-        <div style={{ marginTop: "var(--space-4)" }}>
+        <div style={{ marginTop: "var(--space-2)" }}>
           <button
             onClick={() => {
               if (typeof window !== "undefined" && confirm("Clear all local data? This cannot be undone.")) {
@@ -235,13 +227,7 @@ function ChangePasswordForm() {
       }}
     >
       {success ? (
-        <p
-          style={{
-            fontSize: "var(--text-sm)",
-            color: "#34d399",
-            margin: 0,
-          }}
-        >
+        <p style={{ fontSize: "var(--text-sm)", color: "#34d399", margin: 0 }}>
           ✓ Password updated successfully.
         </p>
       ) : (
@@ -383,7 +369,9 @@ function AccountSection({ title, icon, children }) {
         <span>{icon}</span>
         <span>{title}</span>
       </h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>{children}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-1)" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -425,14 +413,4 @@ function AccountRow({ label, value, hint, accent }) {
       </span>
     </div>
   );
-}
-
-function _getSavedCount() {
-  if (typeof window === "undefined") return "0";
-  try {
-    const raw = localStorage.getItem("hireedge_saved_roles");
-    return raw ? String(JSON.parse(raw).length) : "0";
-  } catch {
-    return "0";
-  }
 }
