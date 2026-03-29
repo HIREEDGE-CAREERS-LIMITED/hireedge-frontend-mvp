@@ -1032,7 +1032,7 @@ export default function ChatWindow() {
 
   const newChat = () => {
     setMessages([]); setInput(""); setUploadedFile(null); setDocumentText(null); setIntelligenceMode(null);
-    clear(); loadedConv.current = null; titleSet.current = false;
+    clear(); setConversationId(null); loadedConv.current = null; titleSet.current = false;
   };
 
   const editContext = () => {
@@ -1043,7 +1043,7 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="ex-chat">
+    <div className="ex-chat" style={{ position: "relative" }}>
 
       <ToolsPanel   open={toolsOpen}  onClose={() => setToolsOpen(false)}  isMobile={isMobile} router={router} onNeedUpgrade={t => setUpgradeTool(t)} />
       <IntelPanel   open={intelOpen}  onClose={() => setIntelOpen(false)}  isMobile={isMobile} activeMode={intelligenceMode} onSelect={setIntelligenceMode} />
