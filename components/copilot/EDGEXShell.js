@@ -1,15 +1,15 @@
 // ============================================================================
 // components/copilot/EDGEXShell.js
 //
-// Layout wrapper for the EDGEX experience:
-//   [ Chat column (flex:1) ] [ Right sidebar (300px) ]
+// THE ONLY header in the EDGEX experience.
+// ChatWindow no longer has its own <header> — this file owns it.
 //
-// Changes from original:
-//   • Reads messageCount from CopilotContext (not raw.messages which was always [])
-//   • Derives recommended tools from context.lastIntent instead of scanning
-//     message text (which required raw messages array — not available here)
-//   • Imports TOOLS from lib/edgexOrchestrator — single source of truth
-//   • All other sidebar logic (MemoryBlock, PremiumCTA) unchanged
+// Layout:
+//   exs-shell
+//     exs-header  (single top bar — desktop + mobile, always visible)
+//     exs-layout
+//       exs-chat-col  -> ChatWindow (no header inside)
+//       exs-sidebar   -> memory, tools, premium CTA
 // ============================================================================
 
 import { useState } from "react";
@@ -18,11 +18,6 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 import { TOOLS } from "../../lib/edgexOrchestrator";
 import EDGEXIcon from "../brand/EDGEXIcon";
 import ChatWindow from "./ChatWindow";
-
-// ─── Tool recommendation logic ─────────────────────────────────────────────────
-// Derives 3 recommended tools from context.lastIntent rather than scanning
-// message text. This is reliable because ChatWindow always updates lastIntent
-// via updateContext when the API responds.
 
 const INTENT_TOOL_MAP = {
   career_transition: ["gap", "roadmap", "resume"],
@@ -41,18 +36,14 @@ function deriveRecommendedTools(context) {
   return keys.map(k => TOOLS.find(t => t.key === k)).filter(Boolean);
 }
 
-// ─── Memory block ──────────────────────────────────────────────────────────────
-
 function MemoryBlock({ context, messageCount }) {
   const hasData = context?.role || context?.target || context?.country;
-
   return (
     <div className="exs-block">
       <div className="exs-block__header">
         <span className="exs-block__label">Session Context</span>
         <span className="exs-block__count">{messageCount} msg</span>
       </div>
-
       {hasData ? (
         <div className="exs-memory">
           {context.role && (
@@ -97,8 +88,6 @@ function MemoryBlock({ context, messageCount }) {
   );
 }
 
-// ─── Tool recommendation cards ─────────────────────────────────────────────────
-
 function ToolRecommendations({ tools, router }) {
   return (
     <div className="exs-block">
@@ -132,8 +121,6 @@ function ToolRecommendations({ tools, router }) {
   );
 }
 
-// ─── Premium CTA ───────────────────────────────────────────────────────────────
-
 function PremiumCTA({ router, hasPro }) {
   if (hasPro) return null;
   return (
@@ -144,10 +131,7 @@ function PremiumCTA({ router, hasPro }) {
       <p className="exs-premium__body">
         One unified report: positioning, gap analysis, pathway, visa strategy, 30/60/90 execution, CV + LinkedIn + interview activation.
       </p>
-      <button
-        className="exs-premium__btn"
-        onClick={() => router.push("/billing?plan=career_pack")}
-      >
+      <button className="exs-premium__btn" onClick={() => router.push("/billing?plan=career_pack")}>
         Unlock Career Pack — £6.99
       </button>
       <p className="exs-premium__note">One-time. No subscription.</p>
@@ -155,15 +139,11 @@ function PremiumCTA({ router, hasPro }) {
   );
 }
 
-// ─── Sidebar ────────────────────────────────────────────────────────────────────
-
 function EDGEXSidebar({ context, messageCount, router }) {
   const isPaid = typeof window !== "undefined"
     ? ["career_pack", "pro", "elite"].includes(localStorage.getItem("hireedge_plan") || "free")
     : false;
-
   const recommendedTools = deriveRecommendedTools(context);
-
   return (
     <aside className="exs-sidebar">
       <MemoryBlock context={context} messageCount={messageCount} />
@@ -173,52 +153,46 @@ function EDGEXSidebar({ context, messageCount, router }) {
   );
 }
 
-// ─── Mobile bar toggle ─────────────────────────────────────────────────────────
-
-function SidebarToggle({ open, onToggle }) {
-  return (
-    <button className="exs-toggle" onClick={onToggle} title="Toggle sidebar">
-      <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-        {open
-          ? <path d="M4 4l10 10M4 14L14 4" />
-          : <><path d="M2 5h14" /><path d="M2 9h14" /><path d="M2 13h14" /></>
-        }
-      </svg>
-    </button>
-  );
-}
-
-// ─── Main shell ────────────────────────────────────────────────────────────────
-
 export default function EDGEXShell() {
-  const { context, messageCount } = useEDGEXContext();
+  const { context, messageCount, triggerNewChat } = useEDGEXContext();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <div className="exs-shell">
 
-      {/* Mobile top bar */}
-      <div className="exs-mobile-bar">
-        <div className="exs-mobile-bar__title">
-          <EDGEXIcon size={16} state="header" color="#0F6E56" />
-          <span>EDGEX</span>
+      {/* Single header — replaces both exs-mobile-bar AND ChatWindow's ex-header */}
+      <header className="exs-header">
+        <div className="exs-header__brand">
+          <EDGEXIcon size={17} state="header" color="#0F6E56" />
+          <span className="exs-header__name">EDGEX</span>
+          <span className="exs-header__sep" />
+          <span className="exs-header__sub">Career Intelligence</span>
         </div>
-        <SidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(v => !v)} />
-      </div>
+        <div className="exs-header__actions">
+          <button className="exs-header__new" onClick={triggerNewChat}>
+            New chat
+          </button>
+          <button
+            className="exs-header__sidebar-toggle"
+            onClick={() => setSidebarOpen(v => !v)}
+            title="Toggle sidebar"
+            aria-label="Toggle sidebar"
+          >
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M2 5h14" /><path d="M2 9h14" /><path d="M2 13h14" />
+            </svg>
+          </button>
+        </div>
+      </header>
 
-      {/* Main layout */}
+      {/* Body */}
       <div className="exs-layout">
         <div className="exs-chat-col">
           <ChatWindow />
         </div>
-
         {sidebarOpen && (
-          <EDGEXSidebar
-            context={context}
-            messageCount={messageCount}
-            router={router}
-          />
+          <EDGEXSidebar context={context} messageCount={messageCount} router={router} />
         )}
       </div>
 
