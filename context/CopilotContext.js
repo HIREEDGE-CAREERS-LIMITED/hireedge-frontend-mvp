@@ -1,5 +1,13 @@
 // ============================================================================
-// context/CopilotContext.js  (FINAL)
+// context/CopilotContext.js
+//
+// Shared state for the EDGEX chat experience.
+// Exposes: context, updateContext, clear, conversationId, setConversationId,
+//          messageCount, incrementMessageCount
+//
+// messageCount is a session-only integer incremented by ChatWindow each time
+// an assistant reply lands. EDGEXShell reads it for sidebar display.
+// The messages array itself lives in ChatWindow — only the count is shared.
 // ============================================================================
 
 import { createContext, useContext, useState, useCallback } from "react";
@@ -11,45 +19,33 @@ function loadContext() {
   try {
     const raw = localStorage.getItem(CTX_KEY);
     return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+  } catch { return {}; }
 }
 
 function saveContext(ctx) {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(CTX_KEY, JSON.stringify(ctx));
-  } catch {}
+  try { localStorage.setItem(CTX_KEY, JSON.stringify(ctx)); } catch {}
 }
 
 function clearStoredContext() {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(CTX_KEY);
-  } catch {}
+  try { localStorage.removeItem(CTX_KEY); } catch {}
 }
 
 const CopilotContext = createContext(null);
 
 export function CopilotProvider({ children }) {
-  const [context, setContext] = useState(() => loadContext());
+  const [context,        setContext]        = useState(() => loadContext());
   const [conversationId, setConversationId] = useState(null);
-  const [isStartingFresh, setIsStartingFresh] = useState(false);
+  const [messageCount,   setMessageCount]   = useState(0);
 
   const updateContext = useCallback((partial) => {
     if (!partial || typeof partial !== "object") return;
-
-    setContext((prev) => {
+    setContext(prev => {
       const next = { ...prev };
-      const keys = ["role", "target", "yearsExp", "country", "lastIntent"];
-
-      for (const k of keys) {
-        if (partial[k] !== undefined && partial[k] !== null) {
-          next[k] = partial[k];
-        }
+      for (const k of ["role", "target", "yearsExp", "country", "lastIntent"]) {
+        if (partial[k] !== undefined && partial[k] !== null) next[k] = partial[k];
       }
-
       saveContext(next);
       return next;
     });
@@ -59,7 +55,11 @@ export function CopilotProvider({ children }) {
     setContext({});
     clearStoredContext();
     setConversationId(null);
-    setIsStartingFresh(true);
+    setMessageCount(0);
+  }, []);
+
+  const incrementMessageCount = useCallback(() => {
+    setMessageCount(n => n + 1);
   }, []);
 
   const value = {
@@ -68,8 +68,8 @@ export function CopilotProvider({ children }) {
     clear,
     conversationId,
     setConversationId,
-    isStartingFresh,
-    setIsStartingFresh,
+    messageCount,
+    incrementMessageCount,
   };
 
   return (
@@ -81,22 +81,19 @@ export function CopilotProvider({ children }) {
 
 export function useEDGEXContext() {
   const ctx = useContext(CopilotContext);
-
   if (!ctx) {
     return {
-      context: {},
-      updateContext: () => {},
-      clear: () => {},
-      conversationId: null,
-      setConversationId: () => {},
-      isStartingFresh: false,
-      setIsStartingFresh: () => {},
+      context:              {},
+      updateContext:        () => {},
+      clear:                () => {},
+      conversationId:       null,
+      setConversationId:    () => {},
+      messageCount:         0,
+      incrementMessageCount:() => {},
     };
   }
-
   return ctx;
 }
 
-export function useCopilot() {
-  return useEDGEXContext();
-}
+// Legacy alias — keeps any component using useCopilot() working
+export function useCopilot() { return useEDGEXContext(); }
