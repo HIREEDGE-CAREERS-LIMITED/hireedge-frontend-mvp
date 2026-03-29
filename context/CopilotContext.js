@@ -1,32 +1,18 @@
 // ============================================================================
 // context/CopilotContext.js
-//
-// Shared state for the EDGEX chat experience.
-// Exposes: context, updateContext, clear, conversationId, setConversationId,
-//          messageCount, incrementMessageCount
-//
-// messageCount is a session-only integer incremented by ChatWindow each time
-// an assistant reply lands. EDGEXShell reads it for sidebar display.
-// The messages array itself lives in ChatWindow — only the count is shared.
 // ============================================================================
-
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useRef } from "react";
 
 const CTX_KEY = "hireedge_edgex_context";
 
 function loadContext() {
   if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(CTX_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(CTX_KEY) || "{}"); } catch { return {}; }
 }
-
 function saveContext(ctx) {
   if (typeof window === "undefined") return;
   try { localStorage.setItem(CTX_KEY, JSON.stringify(ctx)); } catch {}
 }
-
 function clearStoredContext() {
   if (typeof window === "undefined") return;
   try { localStorage.removeItem(CTX_KEY); } catch {}
@@ -38,6 +24,7 @@ export function CopilotProvider({ children }) {
   const [context,        setContext]        = useState(() => loadContext());
   const [conversationId, setConversationId] = useState(null);
   const [messageCount,   setMessageCount]   = useState(0);
+  const newChatRef = useRef(null);
 
   const updateContext = useCallback((partial) => {
     if (!partial || typeof partial !== "object") return;
@@ -62,38 +49,35 @@ export function CopilotProvider({ children }) {
     setMessageCount(n => n + 1);
   }, []);
 
+  // ChatWindow registers its newChat handler here on mount
+  const registerNewChat = useCallback((fn) => {
+    newChatRef.current = fn;
+  }, []);
+
+  // EDGEXShell calls this when "New chat" is clicked
+  const triggerNewChat = useCallback(() => {
+    if (newChatRef.current) newChatRef.current();
+  }, []);
+
   const value = {
-    context,
-    updateContext,
-    clear,
-    conversationId,
-    setConversationId,
-    messageCount,
-    incrementMessageCount,
+    context, updateContext, clear,
+    conversationId, setConversationId,
+    messageCount, incrementMessageCount,
+    registerNewChat, triggerNewChat,
   };
 
-  return (
-    <CopilotContext.Provider value={value}>
-      {children}
-    </CopilotContext.Provider>
-  );
+  return <CopilotContext.Provider value={value}>{children}</CopilotContext.Provider>;
 }
 
 export function useEDGEXContext() {
   const ctx = useContext(CopilotContext);
-  if (!ctx) {
-    return {
-      context:              {},
-      updateContext:        () => {},
-      clear:                () => {},
-      conversationId:       null,
-      setConversationId:    () => {},
-      messageCount:         0,
-      incrementMessageCount:() => {},
-    };
-  }
+  if (!ctx) return {
+    context: {}, updateContext: () => {}, clear: () => {},
+    conversationId: null, setConversationId: () => {},
+    messageCount: 0, incrementMessageCount: () => {},
+    registerNewChat: () => {}, triggerNewChat: () => {},
+  };
   return ctx;
 }
 
-// Legacy alias — keeps any component using useCopilot() working
 export function useCopilot() { return useEDGEXContext(); }
