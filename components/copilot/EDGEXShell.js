@@ -12,7 +12,7 @@
 //       exs-sidebar   -> memory, tools, premium CTA
 // ============================================================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useEDGEXContext } from "../../context/CopilotContext";
 import { TOOLS } from "../../lib/edgexOrchestrator";
@@ -139,13 +139,13 @@ function PremiumCTA({ router, hasPro }) {
   );
 }
 
-function EDGEXSidebar({ context, messageCount, router }) {
+function EDGEXSidebar({ context, messageCount, router, open }) {
   const isPaid = typeof window !== "undefined"
     ? ["career_pack", "pro", "elite"].includes(localStorage.getItem("hireedge_plan") || "free")
     : false;
   const recommendedTools = deriveRecommendedTools(context);
   return (
-    <aside className="exs-sidebar">
+    <aside className={"exs-sidebar" + (open ? " exs-sidebar--open" : "")}>
       <MemoryBlock context={context} messageCount={messageCount} />
       <ToolRecommendations tools={recommendedTools} router={router} />
       <PremiumCTA router={router} hasPro={isPaid} />
@@ -156,7 +156,12 @@ function EDGEXSidebar({ context, messageCount, router }) {
 export default function EDGEXShell() {
   const { context, messageCount, triggerNewChat } = useEDGEXContext();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Open sidebar by default on desktop, closed on mobile
+  useEffect(() => {
+    setSidebarOpen(window.innerWidth >= 900);
+  }, []);
 
   return (
     <div className="exs-shell">
@@ -191,9 +196,7 @@ export default function EDGEXShell() {
         <div className="exs-chat-col">
           <ChatWindow />
         </div>
-        {sidebarOpen && (
-          <EDGEXSidebar context={context} messageCount={messageCount} router={router} />
-        )}
+        <EDGEXSidebar context={context} messageCount={messageCount} router={router} open={sidebarOpen} />
       </div>
 
     </div>
