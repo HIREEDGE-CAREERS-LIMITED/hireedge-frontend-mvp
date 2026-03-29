@@ -1,4 +1,5 @@
-
+// ============================================================================
+// components/copilot/ChatWindow.js  —  EDGEX Final Production
 //
 // Owns all chat state. Renders:
 //   • EDGEX header
