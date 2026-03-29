@@ -868,7 +868,7 @@ function PowerBar({ input, setInput, loading, onSend, uploadedFile, onClearFile,
 
 export default function ChatWindow() {
   const router   = useRouter();
-  const { context, updateContext, clear, conversationId, setConversationId, incrementMessageCount } = useEDGEXContext();
+  const { context, updateContext, clear, conversationId, setConversationId, incrementMessageCount, registerNewChat } = useEDGEXContext();
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
@@ -887,6 +887,10 @@ export default function ChatWindow() {
   const bottomRef  = useRef(null);
   const titleSet   = useRef(false);
   const loadedConv = useRef(null);
+
+  // Register newChat with context so EDGEXShell "New chat" button can call it
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { registerNewChat(newChat); }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1049,16 +1053,6 @@ export default function ChatWindow() {
       <IntelPanel   open={intelOpen}  onClose={() => setIntelOpen(false)}  isMobile={isMobile} activeMode={intelligenceMode} onSelect={setIntelligenceMode} />
       <UploadPanel  open={uploadOpen} onClose={() => setUploadOpen(false)} isMobile={isMobile} onFile={handleFile} />
       {upgradeTool && <UpgradeModal tool={upgradeTool} onClose={() => setUpgradeTool(null)} router={router} />}
-
-      <header className="ex-header">
-        <div className="ex-header__brand">
-          <EDGEXIcon size={17} state="header" color="#0F6E56" />
-          <span className="ex-header__name">EDGEX</span>
-          <span className="ex-header__sep" />
-          <span className="ex-header__sub">Career Intelligence</span>
-        </div>
-        <button className="ex-header__new" onClick={newChat}>New chat</button>
-      </header>
 
       <PersonalizationBar context={context} onEdit={editContext} />
 
