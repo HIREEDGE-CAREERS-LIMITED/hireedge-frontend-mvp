@@ -518,3 +518,17 @@
   .exs-chat-col { border-right:none; flex:1; }
   .exs-sidebar { width:100%; max-height:260px; }
 }
+
+/* ─── Hide AppShell topbar on EDGEX pages (exs-shell handles its own header) ─ */
+/* This hides .topbar when it's a sibling/ancestor of .exs-shell               */
+/* Works because AppShell renders: .app-shell__main > .topbar + main > exs-shell */
+.app-shell__main:has(.exs-shell) .topbar { display: none !important; }
+.app-shell__main:has(.exs-shell) { padding-top: 0 !important; }
+
+/* Sidebar: hidden unless --open class present on mobile                       */
+.exs-sidebar { display: flex; }
+
+@media (max-width: 900px) {
+  .exs-sidebar { display: none; flex-direction: column; }
+  .exs-sidebar.exs-sidebar--open { display: flex; width: 100%; max-height: 280px; overflow-y: auto; }
+}
