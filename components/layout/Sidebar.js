@@ -2,11 +2,10 @@
 // components/layout/Sidebar.js
 // HireEdge Frontend — Sidebar navigation
 //
-// CHANGES — Phase 3C reposition:
-//   - ChatHistory moved from top (after header) to bottom (after ACCOUNT_NAV)
-//   - ChatHistory now receives mobileOpen prop
-//   - ChatHistory is collapsible on mobile (historyOpen toggle)
-//   - Max 5 chats on mobile, max 10 on desktop
+// FINAL:
+//   - Recent chats below Account + Billing
+//   - Mobile collapsible recent chats
+//   - New Chat sets shared fresh-chat state
 // ============================================================================
 
 import { useRouter } from "next/router";
@@ -20,69 +19,73 @@ import { useEDGEXContext } from "../../context/CopilotContext";
 import { listConversations } from "../../lib/conversations";
 
 const PLAN_LABELS = {
-  free:        "Free",
+  free: "Free",
   career_pack: "Career Pack",
-  pro:         "Pro",
-  elite:       "Elite",
+  pro: "Pro",
+  elite: "Elite",
 };
 
 const ICONS = {
   spark: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 1v4M9 13v4M1 9h4M13 9h4M3.5 3.5l2.8 2.8M11.7 11.7l2.8 2.8M3.5 14.5l2.8-2.8M11.7 6.3l2.8-2.8"/>
+      <path d="M9 1v4M9 13v4M1 9h4M13 9h4M3.5 3.5l2.8 2.8M11.7 11.7l2.8 2.8M3.5 14.5l2.8-2.8M11.7 6.3l2.8-2.8" />
     </svg>
   ),
   grid: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1.5" y="1.5" width="6" height="6" rx="1.5"/><rect x="10.5" y="1.5" width="6" height="6" rx="1.5"/>
-      <rect x="1.5" y="10.5" width="6" height="6" rx="1.5"/><rect x="10.5" y="10.5" width="6" height="6" rx="1.5"/>
+      <rect x="1.5" y="1.5" width="6" height="6" rx="1.5" />
+      <rect x="10.5" y="1.5" width="6" height="6" rx="1.5" />
+      <rect x="1.5" y="10.5" width="6" height="6" rx="1.5" />
+      <rect x="10.5" y="10.5" width="6" height="6" rx="1.5" />
     </svg>
   ),
   brain: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 16V9M9 9C9 6 7 4.5 5 4.5S1.5 6 1.5 8c0 1.5 1 2.8 2.5 3.2M9 9c0-3 2-4.5 4-4.5s3.5 1.5 3.5 3.5c0 1.5-1 2.8-2.5 3.2"/>
-      <path d="M5 4.5C5 3 6 1.5 7.5 1.5S9 2 9 3M13 4.5c0-1.5-1-3-2.5-3S9 2 9 3"/>
+      <path d="M9 16V9M9 9C9 6 7 4.5 5 4.5S1.5 6 1.5 8c0 1.5 1 2.8 2.5 3.2M9 9c0-3 2-4.5 4-4.5s3.5 1.5 3.5 3.5c0 1.5-1 2.8-2.5 3.2" />
+      <path d="M5 4.5C5 3 6 1.5 7.5 1.5S9 2 9 3M13 4.5c0-1.5-1-3-2.5-3S9 2 9 3" />
     </svg>
   ),
   wrench: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11.7 1.5a4.5 4.5 0 00-3.7 7l-5.5 5.5 1.5 1.5L9.5 10a4.5 4.5 0 007-3.7l-2.6 2.6-2.1-.7-.7-2.1z"/>
+      <path d="M11.7 1.5a4.5 4.5 0 00-3.7 7l-5.5 5.5 1.5 1.5L9.5 10a4.5 4.5 0 007-3.7l-2.6 2.6-2.1-.7-.7-2.1z" />
     </svg>
   ),
   package: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 5.5L9 2l7 3.5M2 5.5v7L9 16l7-3.5v-7M2 5.5L9 9m0 7V9m0 0l7-3.5"/>
+      <path d="M2 5.5L9 2l7 3.5M2 5.5v7L9 16l7-3.5v-7M2 5.5L9 9m0 7V9m0 0l7-3.5" />
     </svg>
   ),
   user: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="6" r="3.5"/><path d="M2.5 16c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/>
+      <circle cx="9" cy="6" r="3.5" />
+      <path d="M2.5 16c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" />
     </svg>
   ),
   "credit-card": (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1.5" y="3.5" width="15" height="11" rx="2"/><path d="M1.5 7.5h15"/>
+      <rect x="1.5" y="3.5" width="15" height="11" rx="2" />
+      <path d="M1.5 7.5h15" />
     </svg>
   ),
   chevron: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 4l5 5-5 5"/>
+      <path d="M6 4l5 5-5 5" />
     </svg>
   ),
   logout: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6.5 9h9M12 5.5l3.5 3.5L12 12.5"/>
-      <path d="M10 3H3.5A1.5 1.5 0 002 4.5v9A1.5 1.5 0 003.5 15H10"/>
+      <path d="M6.5 9h9M12 5.5l3.5 3.5L12 12.5" />
+      <path d="M10 3H3.5A1.5 1.5 0 002 4.5v9A1.5 1.5 0 003.5 15H10" />
     </svg>
   ),
   plus: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <path d="M9 3v12M3 9h12"/>
+      <path d="M9 3v12M3 9h12" />
     </svg>
   ),
   chat: (
     <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15.5 11a6.5 6.5 0 01-9 2.5L2 14.5l1-4.5a6.5 6.5 0 1112.5 1z"/>
+      <path d="M15.5 11a6.5 6.5 0 01-9 2.5L2 14.5l1-4.5a6.5 6.5 0 1112.5 1z" />
     </svg>
   ),
 };
@@ -99,44 +102,53 @@ function EDGEXNavIcon() {
   );
 }
 
-// ── Chat history section ──────────────────────────────────────────────────────
-// CHANGED: added mobileOpen prop, collapse toggle on mobile, limit by device
-
-function ChatHistory({ collapsed, mobileOpen, currentConversationId, onSelectConversation, onNewChat, userId }) {
+function ChatHistory({
+  collapsed,
+  mobileOpen,
+  currentConversationId,
+  onSelectConversation,
+  onNewChat,
+  userId,
+}) {
   const [conversations, setConversations] = useState([]);
-  const [historyOpen,   setHistoryOpen]   = useState(false); // ← ADDED: mobile collapse state
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
-    listConversations(userId).then(({ data }) => {
+
+    async function loadHistory() {
+      const { data } = await listConversations(userId);
       setConversations(data || []);
-    });
+    }
+
+    loadHistory();
   }, [userId, currentConversationId]);
 
   if (collapsed) return null;
-  if (!userId)   return null;
+  if (!userId) return null;
 
-  // ← ADDED: show max 5 on mobile, max 10 on desktop
-  const limit        = mobileOpen ? 5 : 10;
+  const limit = mobileOpen ? 5 : 10;
   const visibleChats = conversations.slice(0, limit);
 
   return (
-    <div style={{
-      borderTop: "1px solid var(--border-subtle)",
-      marginTop: "var(--space-2)",
-      paddingTop: "var(--space-3)",
-    }}>
-      {/* Section header with collapse toggle on mobile */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 var(--space-3)",
-        marginBottom: "var(--space-1)",
-      }}>
-        {/* ← ADDED: collapsible on mobile, always visible on desktop */}
+    <div
+      style={{
+        borderTop: "1px solid var(--border-subtle)",
+        marginTop: "var(--space-2)",
+        paddingTop: "var(--space-3)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 var(--space-3)",
+          marginBottom: "var(--space-1)",
+        }}
+      >
         <button
-          onClick={() => mobileOpen && setHistoryOpen(v => !v)}
+          onClick={() => mobileOpen && setHistoryOpen((v) => !v)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -148,30 +160,33 @@ function ChatHistory({ collapsed, mobileOpen, currentConversationId, onSelectCon
             color: "var(--text-muted)",
           }}
         >
-          <span style={{
-            fontSize: "10px",
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-          }}>
+          <span
+            style={{
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
             Recent chats
           </span>
-          {/* Chevron only on mobile */}
+
           {mobileOpen && (
-            <span style={{
-              width: 12,
-              height: 12,
-              display: "flex",
-              transition: "transform 150ms",
-              transform: historyOpen ? "rotate(90deg)" : "rotate(0deg)",
-              opacity: 0.4,
-            }}>
+            <span
+              style={{
+                width: 12,
+                height: 12,
+                display: "flex",
+                transition: "transform 150ms",
+                transform: historyOpen ? "rotate(90deg)" : "rotate(0deg)",
+                opacity: 0.4,
+              }}
+            >
               {getIcon("chevron")}
             </span>
           )}
         </button>
 
-        {/* New chat button — always visible */}
         <button
           onClick={onNewChat}
           title="New chat"
@@ -195,22 +210,24 @@ function ChatHistory({ collapsed, mobileOpen, currentConversationId, onSelectCon
         </button>
       </div>
 
-      {/* ← ADDED: on mobile only show list when expanded; on desktop always show */}
       {(!mobileOpen || historyOpen) && (
         <>
           {visibleChats.length === 0 ? (
-            <p style={{
-              fontSize: "12px",
-              color: "var(--text-muted)",
-              padding: "0 var(--space-3)",
-              margin: "var(--space-1) 0 var(--space-2)",
-            }}>
+            <p
+              style={{
+                fontSize: "12px",
+                color: "var(--text-muted)",
+                padding: "0 var(--space-3)",
+                margin: "var(--space-1) 0 var(--space-2)",
+              }}
+            >
               No conversations yet.
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {visibleChats.map((conv) => {
                 const isActive = conv.id === currentConversationId;
+
                 return (
                   <button
                     key={conv.id}
@@ -231,17 +248,28 @@ function ChatHistory({ collapsed, mobileOpen, currentConversationId, onSelectCon
                       transition: "background 0.15s, color 0.15s",
                     }}
                   >
-                    <span style={{ width: 14, height: 14, display: "flex", flexShrink: 0, opacity: 0.5 }}>
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        display: "flex",
+                        flexShrink: 0,
+                        opacity: 0.5,
+                      }}
+                    >
                       {getIcon("chat")}
                     </span>
-                    <span style={{
-                      fontSize: "12px",
-                      fontWeight: isActive ? 500 : 400,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      flex: 1,
-                    }}>
+
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: isActive ? 500 : 400,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1,
+                      }}
+                    >
                       {conv.title || "New conversation"}
                     </span>
                   </button>
@@ -255,8 +283,6 @@ function ChatHistory({ collapsed, mobileOpen, currentConversationId, onSelectCon
   );
 }
 
-// ── Main Sidebar ──────────────────────────────────────────────────────────────
-
 export default function Sidebar({
   collapsed,
   onToggle,
@@ -267,16 +293,17 @@ export default function Sidebar({
   onSignOut,
 }) {
   const router = useRouter();
-  const { user: authUser }                                 = useAuth();
-  const { conversationId, setConversationId, clear }       = useEDGEXContext();
-  const [expandedSections, setExpandedSections]            = useState({});
+  const { user: authUser } = useAuth();
+  const { conversationId, setConversationId, clear } = useEDGEXContext();
+  const [expandedSections, setExpandedSections] = useState({});
 
-  const rawName      = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
-  const displayName  = rawName;
+  const rawName = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
+  const displayName = rawName;
   const avatarLetter = rawName?.[0]?.toUpperCase() || "U";
-  const planLabel    = PLAN_LABELS[plan] || "Free";
+  const planLabel = PLAN_LABELS[plan] || "Free";
 
   const isActive = (href) => router.pathname === href || router.asPath === href;
+
   const isParentActive = (section) => {
     if (isActive(section.href)) return true;
     return section.children?.some((c) => isActive(c.href));
@@ -305,7 +332,9 @@ export default function Sidebar({
     "sidebar",
     collapsed && "sidebar--collapsed",
     mobileOpen && "sidebar--open",
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <>
@@ -315,25 +344,27 @@ export default function Sidebar({
       />
 
       <aside className={sidebarClass}>
-        {/* Header — unchanged */}
         <div className="sidebar__header">
           <Link href="/copilot" className="sidebar__logo">
             <HireEdgeLogo size={collapsed ? 24 : 28} interactive />
             {!collapsed && <span>HireEdge</span>}
           </Link>
+
           {!collapsed && (
             <button className="sidebar__toggle" onClick={onToggle} aria-label="Collapse sidebar">
               <span className="sidebar__icon">{getIcon("chevron")}</span>
             </button>
           )}
+
           {collapsed && (
             <button className="sidebar__toggle" onClick={onToggle} aria-label="Expand sidebar" style={{ marginLeft: 0 }}>
-              <span className="sidebar__icon" style={{ transform: "rotate(180deg)" }}>{getIcon("chevron")}</span>
+              <span className="sidebar__icon" style={{ transform: "rotate(180deg)" }}>
+                {getIcon("chevron")}
+              </span>
             </button>
           )}
         </div>
 
-        {/* Main navigation — unchanged */}
         <nav className="sidebar__nav">
           {NAV_SECTIONS.map((section) => (
             <div key={section.id} className="sidebar__section">
@@ -343,14 +374,15 @@ export default function Sidebar({
                   "sidebar__link",
                   section.primary && "sidebar__link--primary",
                   isParentActive(section) && !section.primary && "sidebar__link--active",
-                ].filter(Boolean).join(" ")}
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 title={collapsed ? section.label : undefined}
               >
                 {renderNavIcon(section)}
                 {!collapsed && <span>{section.label}</span>}
-                {!collapsed && section.badge && (
-                  <span className="sidebar__badge">{section.badge}</span>
-                )}
+                {!collapsed && section.badge && <span className="sidebar__badge">{section.badge}</span>}
+
                 {!collapsed && section.children && (
                   <button
                     className="sidebar__toggle"
@@ -369,25 +401,27 @@ export default function Sidebar({
                 )}
               </Link>
 
-              {!collapsed && section.children && (isParentActive(section) || expandedSections[section.id]) && (
-                <div className="sidebar__children">
-                  {section.children.map((child) => (
-                    <Link
-                      key={child.id}
-                      href={child.href}
-                      className={[
-                        "sidebar__child-link",
-                        isActive(child.href) && "sidebar__child-link--active",
-                      ].filter(Boolean).join(" ")}
-                    >
-                      <span>{child.label}</span>
-                      {child.plan === "pro" && (
-                        <span className="sidebar__badge">PRO</span>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              )}
+              {!collapsed &&
+                section.children &&
+                (isParentActive(section) || expandedSections[section.id]) && (
+                  <div className="sidebar__children">
+                    {section.children.map((child) => (
+                      <Link
+                        key={child.id}
+                        href={child.href}
+                        className={[
+                          "sidebar__child-link",
+                          isActive(child.href) && "sidebar__child-link--active",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        <span>{child.label}</span>
+                        {child.plan === "pro" && <span className="sidebar__badge">PRO</span>}
+                      </Link>
+                    ))}
+                  </div>
+                )}
             </div>
           ))}
 
@@ -395,7 +429,6 @@ export default function Sidebar({
             <div style={{ borderTop: "1px solid var(--border-subtle)", margin: "var(--space-3) 0" }} />
           )}
 
-          {/* Account nav — unchanged */}
           {ACCOUNT_NAV.map((item) => (
             <Link
               key={item.id}
@@ -403,7 +436,9 @@ export default function Sidebar({
               className={[
                 "sidebar__link",
                 isActive(item.href) && "sidebar__link--active",
-              ].filter(Boolean).join(" ")}
+              ]
+                .filter(Boolean)
+                .join(" ")}
               title={collapsed ? item.label : undefined}
             >
               <span className="sidebar__icon">{getIcon(item.icon)}</span>
@@ -411,7 +446,6 @@ export default function Sidebar({
             </Link>
           ))}
 
-          {/* ← MOVED HERE: Chat history now sits below Account + Billing */}
           <ChatHistory
             collapsed={collapsed}
             mobileOpen={mobileOpen}
@@ -422,7 +456,6 @@ export default function Sidebar({
           />
         </nav>
 
-        {/* Footer — unchanged */}
         {!collapsed && (
           <div className="sidebar__footer">
             <div className="sidebar__user">
@@ -432,6 +465,7 @@ export default function Sidebar({
                 <div className="sidebar__user-plan">{planLabel} plan</div>
               </div>
             </div>
+
             <button
               onClick={() => onSignOut?.()}
               title="Log out"
