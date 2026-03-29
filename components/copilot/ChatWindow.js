@@ -1,14 +1,12 @@
 // ============================================================================
-// components/copilot/ChatWindow.js  (v6)
+// components/copilot/ChatWindow.js  (FINAL FIXED)
 // EDGEX Premium AI Career Intelligence Experience
 //
-// CHANGES from v5:
-//   - Added useAuth to get logged-in user
-//   - On mount: load most recent conversation from Supabase, restore messages
-//   - On send: create conversation if none exists, save user + assistant messages
-//   - After first user message: update conversation title from first 60 chars
-//   - handleNewChat: resets conversationId in context
-//   - All existing chat API logic, UI, and component tree unchanged
+// FIXES:
+// - New Chat stays blank
+// - Sidebar-selected chat loads correctly after New Chat
+// - Shared isStartingFresh state used properly
+// - Previous chat is cleared before loading selected chat
 // ============================================================================
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -134,13 +132,16 @@ function parseReplyIntoSections(text) {
 
   for (const line of lines) {
     const trimmed = line.trim();
+
     if (!trimmed) {
       if (current) current.lines.push("");
       continue;
     }
+
     const isHeader = SECTION_MAP.find((s) =>
       s.patterns.some((p) => p.test(trimmed.replace(/\*\*/g, "")))
     );
+
     if (isHeader) {
       if (current) sections.push(current);
       current = {
@@ -170,13 +171,18 @@ function parseReplyIntoSections(text) {
   if (current) sections.push(current);
 
   if (sections.length === 0 || (sections.length === 1 && sections[0].key === "intro")) {
-    return [{
-      key: "plain",
-      title: "",
-      icon: "",
-      color: "#0F6E56",
-      lines: text.split("\n").map((l) => l.replace(/\*\*/g, "").trim()).filter(Boolean),
-    }];
+    return [
+      {
+        key: "plain",
+        title: "",
+        icon: "",
+        color: "#0F6E56",
+        lines: text
+          .split("\n")
+          .map((l) => l.replace(/\*\*/g, "").trim())
+          .filter(Boolean),
+      },
+    ];
   }
 
   return sections;
@@ -216,6 +222,7 @@ function ThinkingState() {
     "Calculating transition metrics...",
     "Building your intelligence report...",
   ];
+
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
@@ -261,6 +268,7 @@ function PersonalizationBar({ context, onEdit }) {
           <span className="ex-pbar__value">{context.role}</span>
         </div>
       )}
+
       {context.target && (
         <>
           <span className="ex-pbar__arrow">-&gt;</span>
@@ -270,12 +278,14 @@ function PersonalizationBar({ context, onEdit }) {
           </div>
         </>
       )}
+
       {cfg && (
         <div className="ex-pbar__badge" style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.color + "30" }}>
           <span className="ex-pbar__badge-dot" style={{ background: cfg.color }} />
           {cfg.label}{confidence ? " * " + confidence + "%" : ""}
         </div>
       )}
+
       <button className="ex-pbar__edit" onClick={onEdit}>
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
           <path d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -297,6 +307,7 @@ function ClarificationMessage({ content, missingFields, actions, onSend }) {
           <span className="ex-clarify__icon">!</span>
           <span className="ex-clarify__text">{content}</span>
         </div>
+
         {missingFields && missingFields.length > 0 && (
           <div className="ex-missing">
             {missingFields.map((f) => (
@@ -306,6 +317,7 @@ function ClarificationMessage({ content, missingFields, actions, onSend }) {
             ))}
           </div>
         )}
+
         {actions && actions.length > 0 && (
           <div className="ex-actions">
             {actions.map((a, i) => (
@@ -334,18 +346,21 @@ function AssistantMessage({ content, nextActions, intent, confidence, onSend, ro
         <div className={hasCards ? "ex-cards" : "ex-prose"}>
           {sections.map((s, i) => <ResponseCard key={i} section={s} />)}
         </div>
+
         {nextActions && nextActions.length > 0 && (
           <div className="ex-actions">
             {nextActions.map((action, i) => {
               if (action.type === "tool") {
                 const route = ENDPOINT_TO_ROUTE[action.endpoint];
                 if (!route) return null;
+
                 return (
                   <button key={i} className="ex-action ex-action--tool" onClick={() => router.push(route)}>
                     {action.label}
                   </button>
                 );
               }
+
               return (
                 <button key={i} className="ex-action ex-action--q" onClick={() => onSend(action.prompt)}>
                   {action.label}
@@ -371,18 +386,7 @@ function ErrorMessage({ content }) {
   return (
     <div className="ex-msg ex-msg--assistant">
       <div className="ex-msg__avatar" style={{ background: "transparent" }}>
-        <div
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: "50%",
-            border: "1.5px solid rgba(248,113,113,0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
+        <div style={{ width: 22, height: 22, borderRadius: "50%", border: "1.5px solid rgba(248,113,113,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
             <path d="M2 2l6 6M8 2l-6 6" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
@@ -490,9 +494,7 @@ function EmptyState({ onSend, context }) {
   const suggestions = getSmartSuggestions(context);
   const hasContext = !!(context?.role || context?.target);
   const secondary = suggestions.filter((s) => s.category !== "Setup").slice(0, 4);
-
-  const handleCTA = () =>
-    onSend("Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities.");
+  const handleCTA = () => onSend("Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities.");
 
   return (
     <div className="ex-empty">
@@ -501,12 +503,9 @@ function EmptyState({ onSend, context }) {
         <div className="ex-empty__logo">
           <EDGEXIcon size={56} state="hero" color="#0F6E56" />
         </div>
-        <h1 className="ex-empty__title">
-          {hasContext ? "What do you want to know?" : "Your AI Career Intelligence Engine"}
-        </h1>
-        <p className="ex-empty__sub">
-          Real career data. Market intelligence. Not generic advice.
-        </p>
+        <h1 className="ex-empty__title">{hasContext ? "What do you want to know?" : "Your AI Career Intelligence Engine"}</h1>
+        <p className="ex-empty__sub">Real career data. Market intelligence. Not generic advice.</p>
+
         <button className="ex-empty__cta" onClick={handleCTA}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
             <line x1="4.5" y1="4.5" x2="10.2" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
@@ -516,6 +515,7 @@ function EmptyState({ onSend, context }) {
           </svg>
           Start my career analysis
         </button>
+
         <div className="ex-empty__cards">
           {secondary.map((s, i) => (
             <button
@@ -538,52 +538,86 @@ function EmptyState({ onSend, context }) {
 
 export default function ChatWindow() {
   const router = useRouter();
-  const { context, updateContext, clear, conversationId, setConversationId } = useEDGEXContext();
+
+  const {
+    context,
+    updateContext,
+    clear,
+    conversationId,
+    setConversationId,
+    isStartingFresh,
+    setIsStartingFresh,
+  } = useEDGEXContext();
+
   const { user } = useAuth();
+
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const titleSetRef = useRef(false);
-  const loadedConversationRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   useEffect(() => {
-    if (!user || conversationId) return;
+    if (!isStartingFresh) return;
+    setMessages([]);
+    setInput("");
+    titleSetRef.current = false;
+  }, [isStartingFresh]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (isStartingFresh) return;
 
     async function loadRecent() {
       const { data: convos } = await listConversations(user.id);
       if (!convos || convos.length === 0) return;
-      if (conversationId) return;
-      setConversationId(convos[0].id);
+
+      const latest = convos[0];
+      const { data: rows } = await loadConversation(latest.id, user.id);
+      if (!rows || rows.length === 0) return;
+
+      setConversationId(latest.id);
+      setMessages(rows.map(dbRowToMessage));
+      titleSetRef.current = true;
     }
 
     loadRecent();
-  }, [user, conversationId, setConversationId]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // FINAL FIXED EFFECT
   useEffect(() => {
-    if (!user || !conversationId) return;
-    if (loadedConversationRef.current === conversationId) return;
+    if (!user) return;
+    if (!conversationId) return;
 
-    async function loadSelectedConversation() {
+    async function loadSelected() {
+      setMessages([]);
+
       const { data: rows } = await loadConversation(conversationId, user.id);
-      setMessages((rows || []).map(dbRowToMessage));
-      loadedConversationRef.current = conversationId;
-      titleSetRef.current = (rows || []).some((row) => row.role === "user");
+      if (!rows || rows.length === 0) return;
+
+      setMessages(rows.map(dbRowToMessage));
+      titleSetRef.current = true;
+      setIsStartingFresh(false);
     }
 
-    loadSelectedConversation();
-  }, [user, conversationId]);
+    loadSelected();
+  }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = useCallback(async (text) => {
     const trimmed = (text || "").trim();
     if (!trimmed || loading) return;
 
-    const userMsg = { role: "user", content: trimmed };
+    const userMsg = {
+      role: "user",
+      content: trimmed,
+    };
+
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
@@ -595,8 +629,8 @@ export default function ChatWindow() {
       if (newConv) {
         activeConvId = newConv.id;
         setConversationId(newConv.id);
-        loadedConversationRef.current = newConv.id;
         titleSetRef.current = false;
+        setIsStartingFresh(false);
       }
     }
 
@@ -610,8 +644,7 @@ export default function ChatWindow() {
       });
 
       if (!titleSetRef.current) {
-        const title = trimmed.slice(0, 60);
-        await updateConversationTitle(activeConvId, user.id, title);
+        await updateConversationTitle(activeConvId, user.id, trimmed.slice(0, 60));
         titleSetRef.current = true;
       }
     }
@@ -642,6 +675,7 @@ export default function ChatWindow() {
           type: "error",
           content: json?.error || "Something went wrong.",
         };
+
         setMessages((prev) => [...prev, errMsg]);
 
         if (activeConvId && user) {
@@ -669,6 +703,7 @@ export default function ChatWindow() {
         };
 
         setMessages((prev) => [...prev, clarMsg]);
+
         if (data.context) updateContext(safeContext(data.context));
 
         if (activeConvId && user) {
@@ -697,6 +732,7 @@ export default function ChatWindow() {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+
       if (data.context) updateContext(safeContext(data.context));
 
       if (activeConvId && user) {
@@ -713,28 +749,20 @@ export default function ChatWindow() {
           },
         });
       }
-    } catch (err) {
-      const errMsg = {
-        role: "assistant",
-        type: "error",
-        content: "Connection error. Please try again.",
-      };
-      setMessages((prev) => [...prev, errMsg]);
-
-      if (activeConvId && user) {
-        await saveMessage({
-          conversationId: activeConvId,
-          userId: user.id,
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
           role: "assistant",
-          content: errMsg.content,
-          meta: { type: "error" },
-        });
-      }
+          type: "error",
+          content: "Connection error. Please try again.",
+        },
+      ]);
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [context, loading, updateContext, conversationId, setConversationId, user]);
+  }, [context, loading, updateContext, conversationId, setConversationId, user, setIsStartingFresh]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -744,17 +772,14 @@ export default function ChatWindow() {
   };
 
   const handleNewChat = () => {
-    setMessages([]);
-    setInput("");
     clear();
-    loadedConversationRef.current = null;
-    titleSetRef.current = false;
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   const handleEditContext = () => {
     const role = window.prompt("Current role:", context?.role || "");
     const target = window.prompt("Target role:", context?.target || "");
+
     if (role !== null || target !== null) {
       updateContext({
         role: role || context?.role,
@@ -766,16 +791,23 @@ export default function ChatWindow() {
   return (
     <div className="ex-chat">
       <div className="ex-header">
-        <button className="ex-header__new" onClick={handleNewChat}>New chat</button>
+        <button className="ex-header__new" onClick={handleNewChat}>
+          New chat
+        </button>
       </div>
 
       <PersonalizationBar context={context} onEdit={handleEditContext} />
 
       <div className="ex-messages">
-        {messages.length === 0 && !loading && <EmptyState onSend={send} context={context} />}
+        {messages.length === 0 && !loading && (
+          <EmptyState onSend={send} context={context} />
+        )}
 
         {messages.map((msg, i) => {
-          if (msg.role === "user") return <UserMessage key={i} content={msg.content} />;
+          if (msg.role === "user") {
+            return <UserMessage key={i} content={msg.content} />;
+          }
+
           if (msg.type === "clarification") {
             return (
               <ClarificationMessage
@@ -787,7 +819,10 @@ export default function ChatWindow() {
               />
             );
           }
-          if (msg.type === "error") return <ErrorMessage key={i} content={msg.content} />;
+
+          if (msg.type === "error") {
+            return <ErrorMessage key={i} content={msg.content} />;
+          }
 
           return (
             <AssistantMessage
@@ -829,7 +864,10 @@ export default function ChatWindow() {
             </svg>
           </button>
         </div>
-        <p className="ex-input-hint"><kbd>Enter</kbd> to send &nbsp; <kbd>Shift+Enter</kbd> for new line</p>
+
+        <p className="ex-input-hint">
+          <kbd>Enter</kbd> to send &nbsp; <kbd>Shift+Enter</kbd> for new line
+        </p>
       </div>
     </div>
   );
