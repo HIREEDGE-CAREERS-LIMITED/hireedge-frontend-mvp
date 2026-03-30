@@ -1,5 +1,5 @@
 // ============================================================================
-// components/copilot/ChatWindow.js  —  EDGEX Final Production (fixed)
+// components/copilot/ChatWindow.js  —  EDGEX Final Production (corrected)
 // ============================================================================
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -556,9 +556,7 @@ function IntelPreview({ onSend }) {
           </div>
           <button
             className="ex-preview__cta"
-            onClick={() =>
-              onSend("I am a sales manager and want to become a product manager. Run a full transition analysis.")
-            }
+            onClick={() => onSend("I am a sales manager and want to become a product manager. Run a full transition analysis.")}
           >
             Run this analysis for my profile
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 5 }}>
@@ -600,9 +598,7 @@ function EmptyState({ onSend, context }) {
         <button
           className="ex-empty__cta"
           onClick={() =>
-            onSend(
-              "Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities."
-            )
+            onSend("Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities.")
           }
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
@@ -634,14 +630,16 @@ function EmptyState({ onSend, context }) {
   );
 }
 
-function Panel({ open, onClose, isMobile, children }) {
+function Panel({ open, onClose, isMobile, className = "", children }) {
   const ref = useRef(null);
 
   useEffect(() => {
     if (!open || isMobile) return;
+
     const fn = (e) => {
       if (ref.current && !ref.current.contains(e.target)) onClose();
     };
+
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
   }, [open, isMobile, onClose]);
@@ -661,7 +659,7 @@ function Panel({ open, onClose, isMobile, children }) {
   }
 
   return (
-    <div className="ex-pop" ref={ref} role="dialog">
+    <div className={"ex-pop " + className} ref={ref} role="dialog">
       {children}
     </div>
   );
@@ -681,13 +679,11 @@ function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
   };
 
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile}>
+    <Panel open={open} onClose={onClose} isMobile={isMobile} className="ex-pop--tools">
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Career Tools</span>
-          <button className="ex-panel__x" onClick={onClose}>
-            ✕
-          </button>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
         </div>
         <ul className="ex-panel__list">
           {TOOLS.map((t) => (
@@ -712,14 +708,12 @@ function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
 
 function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile}>
+    <Panel open={open} onClose={onClose} isMobile={isMobile} className="ex-pop--intel">
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Intelligence Mode</span>
           <span className="ex-panel__free">Free</span>
-          <button className="ex-panel__x" onClick={onClose}>
-            ✕
-          </button>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
         </div>
         <p className="ex-panel__sub">Select a mode for deeper structured analysis in chat</p>
         <div className="ex-imode-grid">
@@ -769,13 +763,11 @@ function UploadPanel({ open, onClose, isMobile, onFile }) {
   ];
 
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile}>
+    <Panel open={open} onClose={onClose} isMobile={isMobile} className="ex-pop--upload">
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Upload Document</span>
-          <button className="ex-panel__x" onClick={onClose}>
-            ✕
-          </button>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
         </div>
         <p className="ex-panel__sub">EDGEX will analyse your document in the context of your career goals</p>
         <ul className="ex-upload-list">
@@ -856,9 +848,7 @@ function UpgradeModal({ tool, onClose, router }) {
               Unlock with Pro — £14.99/mo
             </button>
           </div>
-          <button className="ex-upgrade__dismiss" onClick={onClose}>
-            Not now
-          </button>
+          <button className="ex-upgrade__dismiss" onClick={onClose}>Not now</button>
         </div>
       </div>
     </>
@@ -887,6 +877,7 @@ function PowerBar({
   }, [input]);
 
   const activeMode = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
+
   const submit = () => onSend(input);
 
   const keyDown = (e) => {
@@ -906,9 +897,7 @@ function PowerBar({
           <span className="ex-mode-pill__name" style={{ color: activeMode.color }}>
             {activeMode.label} active
           </span>
-          <button className="ex-mode-pill__clear" onClick={() => onOpenIntel()} title="Change or clear mode">
-            ✕
-          </button>
+          <button className="ex-mode-pill__clear" onClick={onOpenIntel} title="Change or clear mode">✕</button>
         </div>
       )}
 
@@ -919,9 +908,7 @@ function PowerBar({
             <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           <span className="ex-fchip__name">{uploadedFile.name}</span>
-          <button className="ex-fchip__rm" onClick={onClearFile}>
-            ✕
-          </button>
+          <button className="ex-fchip__rm" onClick={onClearFile}>✕</button>
         </div>
       )}
 
@@ -948,7 +935,11 @@ function PowerBar({
             <span className="ex-ctrl__free">Free</span>
           </button>
 
-          <button className={"ex-ctrl ex-ctrl--upload" + (uploadedFile ? " ex-ctrl--on" : "")} onClick={onOpenUpload} type="button">
+          <button
+            className={"ex-ctrl ex-ctrl--upload" + (uploadedFile ? " ex-ctrl--on" : "")}
+            onClick={onOpenUpload}
+            type="button"
+          >
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 10V3M4 6l3-3 3 3" />
               <path d="M2 12h10" />
@@ -1018,23 +1009,63 @@ export default function ChatWindow() {
   const loadedConv = useRef(null);
   const isNewChatRef = useRef(false);
 
-  useEffect(() => {
-    registerNewChat(newChat);
-  }, [registerNewChat]);
+  const closeAll = useCallback(() => {
+    setToolsOpen(false);
+    setIntelOpen(false);
+    setUploadOpen(false);
+  }, []);
+
+  const newChat = useCallback(() => {
+    isNewChatRef.current = true;
+
+    closeAll();
+    setMessages([]);
+    setInput("");
+    setUploadedFile(null);
+    setDocumentText(null);
+    setIntelligenceMode(null);
+    setThinkMode(null);
+    setLoading(false);
+
+    clear();
+    setConversationId(null);
+    loadedConv.current = null;
+    titleSet.current = false;
+
+    const basePath = router.pathname === "/edgex" ? "/edgex" : "/copilot";
+
+    if (router.asPath !== basePath) {
+      router.replace(basePath, undefined, { shallow: true });
+    } else if (router.query?.conv) {
+      router.replace(basePath, undefined, { shallow: true });
+    }
+
+    requestAnimationFrame(() => {
+      isNewChatRef.current = false;
+    });
+  }, [clear, closeAll, router, setConversationId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    registerNewChat(newChat);
+  }, [registerNewChat, newChat]);
+
+  useEffect(() => {
+    const scroller = bottomRef.current;
+    if (!scroller) return;
+    scroller.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, loading]);
 
   useEffect(() => {
     if (!router.isReady || !user) return;
 
     const conv = router.query?.conv;
     if (typeof conv === "string" && conv && conv !== conversationId) {
+      closeAll();
       setConversationId(conv);
       loadedConv.current = null;
+      titleSet.current = false;
     }
-  }, [router.isReady, router.query?.conv, user, conversationId, setConversationId]);
+  }, [router.isReady, router.query?.conv, user, conversationId, setConversationId, closeAll]);
 
   useEffect(() => {
     if (!user || conversationId || isNewChatRef.current) return;
@@ -1098,16 +1129,12 @@ export default function ChatWindow() {
     [context]
   );
 
-  const closeAll = () => {
-    setToolsOpen(false);
-    setIntelOpen(false);
-    setUploadOpen(false);
-  };
-
   const send = useCallback(
     async (text) => {
       const trimmed = (text || "").trim();
       if (!trimmed || loading) return;
+
+      closeAll();
 
       const intent = classifyIntent(trimmed, context);
       const useMode = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
@@ -1138,7 +1165,7 @@ export default function ChatWindow() {
           userId: user.id,
           role: "user",
           content: trimmed,
-          meta: { type: "user" },
+          meta: { type: "user", fileName: fileSnap?.name || null },
         });
 
         if (!titleSet.current) {
@@ -1168,6 +1195,7 @@ export default function ChatWindow() {
         if (!res.ok || !json.ok) {
           const e = { role: "assistant", type: "error", content: json?.error || "Something went wrong." };
           setMessages((p) => [...p, e]);
+
           if (convId && user) {
             await saveMessage({
               conversationId: convId,
@@ -1260,6 +1288,7 @@ export default function ChatWindow() {
       }
     },
     [
+      closeAll,
       context,
       loading,
       updateContext,
@@ -1272,32 +1301,6 @@ export default function ChatWindow() {
       incrementMessageCount,
     ]
   );
-
-  function newChat() {
-    isNewChatRef.current = true;
-
-    setMessages([]);
-    setInput("");
-    setUploadedFile(null);
-    setDocumentText(null);
-    setIntelligenceMode(null);
-    setThinkMode(null);
-
-    clear();
-    setConversationId(null);
-    loadedConv.current = null;
-    titleSet.current = false;
-
-    if (router.asPath !== "/copilot" && router.asPath !== "/edgex") {
-      router.push("/copilot");
-    } else if (router.query?.conv) {
-      router.replace("/copilot", undefined, { shallow: true });
-    }
-
-    setTimeout(() => {
-      isNewChatRef.current = false;
-    }, 0);
-  }
 
   const editContext = () => {
     const role = window.prompt("Current role:", context?.role || "");
@@ -1312,9 +1315,29 @@ export default function ChatWindow() {
 
   return (
     <div className="ex-chat">
-      <ToolsPanel open={toolsOpen} onClose={() => setToolsOpen(false)} isMobile={isMobile} router={router} onNeedUpgrade={(t) => setUpgradeTool(t)} />
-      <IntelPanel open={intelOpen} onClose={() => setIntelOpen(false)} isMobile={isMobile} activeMode={intelligenceMode} onSelect={setIntelligenceMode} />
-      <UploadPanel open={uploadOpen} onClose={() => setUploadOpen(false)} isMobile={isMobile} onFile={handleFile} />
+      <ToolsPanel
+        open={toolsOpen}
+        onClose={() => setToolsOpen(false)}
+        isMobile={isMobile}
+        router={router}
+        onNeedUpgrade={(t) => setUpgradeTool(t)}
+      />
+
+      <IntelPanel
+        open={intelOpen}
+        onClose={() => setIntelOpen(false)}
+        isMobile={isMobile}
+        activeMode={intelligenceMode}
+        onSelect={setIntelligenceMode}
+      />
+
+      <UploadPanel
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        isMobile={isMobile}
+        onFile={handleFile}
+      />
+
       {upgradeTool && <UpgradeModal tool={upgradeTool} onClose={() => setUpgradeTool(null)} router={router} />}
 
       <PersonalizationBar context={context} onEdit={editContext} />
@@ -1388,15 +1411,18 @@ export default function ChatWindow() {
         }}
         intelligenceMode={intelligenceMode}
         onOpenTools={() => {
-          closeAll();
+          setIntelOpen(false);
+          setUploadOpen(false);
           setToolsOpen((v) => !v);
         }}
         onOpenIntel={() => {
-          closeAll();
+          setToolsOpen(false);
+          setUploadOpen(false);
           setIntelOpen((v) => !v);
         }}
         onOpenUpload={() => {
-          closeAll();
+          setToolsOpen(false);
+          setIntelOpen(false);
           setUploadOpen((v) => !v);
         }}
       />
