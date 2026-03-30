@@ -1,5 +1,6 @@
 // ============================================================================
 // components/layout/Sidebar.js
+// HireEdge Frontend — Sidebar navigation (fixed)
 // ============================================================================
 
 import { useRouter } from "next/router";
@@ -153,6 +154,7 @@ function ChatHistory({
             cursor: mobileOpen ? "pointer" : "default",
             color: "var(--text-muted)",
           }}
+          type="button"
         >
           <span
             style={{
@@ -184,6 +186,7 @@ function ChatHistory({
         <button
           onClick={onNewChat}
           title="New chat"
+          type="button"
           style={{
             display: "flex",
             alignItems: "center",
@@ -227,6 +230,7 @@ function ChatHistory({
                     key={conv.id}
                     onClick={() => onSelectConversation(conv.id)}
                     title={conv.title}
+                    type="button"
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -345,13 +349,19 @@ export default function Sidebar({
           </Link>
 
           {!collapsed && (
-            <button className="sidebar__toggle" onClick={onToggle} aria-label="Collapse sidebar">
+            <button className="sidebar__toggle" onClick={onToggle} aria-label="Collapse sidebar" type="button">
               <span className="sidebar__icon">{getIcon("chevron")}</span>
             </button>
           )}
 
           {collapsed && (
-            <button className="sidebar__toggle" onClick={onToggle} aria-label="Expand sidebar" style={{ marginLeft: 0 }}>
+            <button
+              className="sidebar__toggle"
+              onClick={onToggle}
+              aria-label="Expand sidebar"
+              type="button"
+              style={{ marginLeft: 0 }}
+            >
               <span className="sidebar__icon" style={{ transform: "rotate(180deg)" }}>
                 {getIcon("chevron")}
               </span>
@@ -368,7 +378,9 @@ export default function Sidebar({
                   "sidebar__link",
                   section.primary && "sidebar__link--primary",
                   isParentActive(section) && !section.primary && "sidebar__link--active",
-                ].filter(Boolean).join(" ")}
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 title={collapsed ? section.label : undefined}
               >
                 {renderNavIcon(section)}
@@ -378,6 +390,7 @@ export default function Sidebar({
                 {!collapsed && section.children && (
                   <button
                     className="sidebar__toggle"
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -404,7 +417,9 @@ export default function Sidebar({
                         className={[
                           "sidebar__child-link",
                           isActive(child.href) && "sidebar__child-link--active",
-                        ].filter(Boolean).join(" ")}
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                       >
                         <span>{child.label}</span>
                         {child.plan === "pro" && <span className="sidebar__badge">PRO</span>}
@@ -426,7 +441,9 @@ export default function Sidebar({
               className={[
                 "sidebar__link",
                 isActive(item.href) && "sidebar__link--active",
-              ].filter(Boolean).join(" ")}
+              ]
+                .filter(Boolean)
+                .join(" ")}
               title={collapsed ? item.label : undefined}
             >
               <span className="sidebar__icon">{getIcon(item.icon)}</span>
@@ -457,6 +474,7 @@ export default function Sidebar({
             <button
               onClick={() => onSignOut?.()}
               title="Log out"
+              type="button"
               className="sidebar__link"
               style={{
                 width: "100%",
