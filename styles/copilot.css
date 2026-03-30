@@ -569,8 +569,8 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-send { width:42px; height:42px; }
   .ex-bar { padding:6px 6px 6px 12px; }
   .ex-powerbar { padding:8px 12px env(safe-area-inset-bottom, 12px); }
-  /* Top padding clears the orbit ring (inset:-18px = needs 24px+) from clip boundary */
-  .ex-empty { padding:24px 16px 120px; }
+  /* Padding-bottom clears the powerbar; justify-content centers content vertically */
+  .ex-empty { padding:20px 16px 90px; }
   .ex-hint { display:none; }
 }
 
