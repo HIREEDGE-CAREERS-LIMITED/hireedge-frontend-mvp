@@ -284,8 +284,8 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 
 @media (max-width: 680px) {
   /* Scale the hero down slightly on mobile */
-  .ex-empty__icon-glow { width:48px; height:48px; border-radius:14px; }
-  .ex-empty__h1     { font-size:17px; margin-bottom:6px; }
+  .ex-empty__icon-glow { width:40px; height:40px; border-radius:11px; }
+  .ex-empty__h1     { font-size:17px; margin-bottom:8px; }
   .ex-empty__sub    { font-size:12px; margin-bottom:10px; }
   .ex-preview        { margin-bottom:10px; padding:10px 13px; }
   .ex-empty__cta     { margin-bottom:10px; }
@@ -571,8 +571,8 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-send { width:42px; height:42px; }
   .ex-bar { padding:6px 6px 6px 12px; }
   .ex-powerbar { padding:8px 12px env(safe-area-inset-bottom, 12px); }
-  /* Padding-top must clear box-shadow (extends 16px out) + breathing room */
-  .ex-empty { padding:36px 16px 90px; }
+  /* Padding-top clears glow shadow; bottom just prevents powerbar overlap */
+  .ex-empty { padding:36px 16px 16px; }
   .ex-hint { display:none; }
 }
 
