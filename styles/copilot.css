@@ -800,3 +800,65 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 .exs-drawer__dot:nth-child(1) { animation-delay:0s; }
 .exs-drawer__dot:nth-child(2) { animation-delay:0.18s; }
 .exs-drawer__dot:nth-child(3) { animation-delay:0.36s; }
+
+/* ─── Mobile Bottom Navigation ──────────────────────────────────────────────── */
+.exs-bottom-nav {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 900px) {
+  .exs-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    background: rgba(10,10,12,0.96);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .exs-bottom-nav__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 4px 10px;
+    text-decoration: none;
+    color: rgba(255,255,255,0.32);
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .exs-bottom-nav__item--active {
+    color: #0F6E56;
+  }
+
+  .exs-bottom-nav__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+  }
+
+  .exs-bottom-nav__label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* Lift powerbar above bottom nav */
+  .ex-powerbar {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px) !important;
+  }
+
+  /* Adjust messages bottom padding for bottom nav */
+  .ex-messages { padding-bottom: 160px; }
+}
