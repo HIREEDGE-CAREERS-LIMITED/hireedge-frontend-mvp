@@ -672,3 +672,52 @@ html, body, #__next {
 body {
   overflow: hidden;
 }
+
+/* ============================================================================
+   EDGEX polish — wider content + cleaner right side spacing
+   ============================================================================ */
+
+.ex-msg,
+.ex-thinking,
+.ex-empty {
+  width: 100%;
+  max-width: 980px;
+}
+
+.ex-messages {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.ex-powerbar {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.ex-pbar {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .ex-msg,
+  .ex-thinking,
+  .ex-empty,
+  .ex-powerbar,
+  .ex-pbar {
+    max-width: 900px;
+  }
+}
+
+@media (max-width: 900px) {
+  .ex-msg,
+  .ex-thinking,
+  .ex-empty,
+  .ex-powerbar,
+  .ex-pbar {
+    max-width: 100%;
+  }
+}
