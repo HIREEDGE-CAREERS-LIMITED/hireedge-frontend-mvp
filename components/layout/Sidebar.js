@@ -1,11 +1,5 @@
 // ============================================================================
 // components/layout/Sidebar.js
-// HireEdge Frontend — Sidebar navigation
-//
-// FINAL:
-//   - Recent chats below Account + Billing
-//   - Mobile collapsible recent chats
-//   - New Chat sets shared fresh-chat state
 // ============================================================================
 
 import { useRouter } from "next/router";
@@ -294,7 +288,7 @@ export default function Sidebar({
 }) {
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const { conversationId, setConversationId, clear } = useEDGEXContext();
+  const { conversationId, setConversationId, triggerNewChat } = useEDGEXContext();
   const [expandedSections, setExpandedSections] = useState({});
 
   const rawName = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
@@ -320,11 +314,11 @@ export default function Sidebar({
 
   function handleSelectConversation(id) {
     setConversationId(id);
-    router.push("/copilot");
+    router.push(`/copilot?conv=${id}`);
   }
 
   function handleNewChat() {
-    clear();
+    triggerNewChat();
     router.push("/copilot");
   }
 
@@ -374,9 +368,7 @@ export default function Sidebar({
                   "sidebar__link",
                   section.primary && "sidebar__link--primary",
                   isParentActive(section) && !section.primary && "sidebar__link--active",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+                ].filter(Boolean).join(" ")}
                 title={collapsed ? section.label : undefined}
               >
                 {renderNavIcon(section)}
@@ -412,9 +404,7 @@ export default function Sidebar({
                         className={[
                           "sidebar__child-link",
                           isActive(child.href) && "sidebar__child-link--active",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
+                        ].filter(Boolean).join(" ")}
                       >
                         <span>{child.label}</span>
                         {child.plan === "pro" && <span className="sidebar__badge">PRO</span>}
@@ -436,9 +426,7 @@ export default function Sidebar({
               className={[
                 "sidebar__link",
                 isActive(item.href) && "sidebar__link--active",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+              ].filter(Boolean).join(" ")}
               title={collapsed ? item.label : undefined}
             >
               <span className="sidebar__icon">{getIcon(item.icon)}</span>
