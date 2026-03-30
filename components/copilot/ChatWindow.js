@@ -187,14 +187,9 @@ function IntentBadge({ intent, confidence, intelligenceMode }) {
   );
 }
 
-// ─── Personalization bar ───────────────────────────────────────────────────────
-
-
 // ─── Session Header ────────────────────────────────────────────────────────────
-// Replaces the soft personalization bar with a strong workspace-feel session header.
-// Shows: Current → Target | Focus | Stage
+
 function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
-  // Always render — workspace must feel structured even before context is set
   const hasConversation = messages && messages.some(m => m.role === "user");
   const stage = hasConversation ? "In Progress" : "Ready";
   const stageColor = hasConversation ? "#0F6E56" : "rgba(255,255,255,0.28)";
@@ -207,7 +202,6 @@ function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
   return (
     <div className="ex-session-header">
       <div className="ex-session-header__main">
-        {/* Career goal — shows placeholder when not set */}
         <div className="ex-session-header__goal">
           <div className="ex-session-header__role">
             <span className="ex-session-header__role-lbl">CURRENT</span>
@@ -226,10 +220,8 @@ function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="ex-session-header__divider" />
 
-        {/* Focus + Stage */}
         <div className="ex-session-header__meta">
           <div className="ex-session-header__tag" style={modeInfo ? { color: modeInfo.color, background: modeInfo.color + "14", borderColor: modeInfo.color + "28" } : {}}>
             <span style={{ width: 5, height: 5, borderRadius: "50%", background: modeInfo ? modeInfo.color : "rgba(255,255,255,0.20)", display: "inline-block", flexShrink: 0 }} />
@@ -253,12 +245,11 @@ function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
 }
 
 function PersonalizationBar({ context, onEdit }) {
-  // Always render — shows setup prompt when no context, career goal when context exists
   const hasContext = context?.role || context?.target;
   const intent = context?.lastIntent;
   const cfg = intent ? (INTENT_CONFIG[intent] || INTENT_CONFIG.general_career) : null;
 
-  if (!hasContext) return null; // hide until context set — empty state handles onboarding
+  if (!hasContext) return null;
 
   return (
     <div className="ex-ctx">
@@ -329,7 +320,6 @@ function RCard({ section }) {
 
   if (!lines.length) return null;
 
-  // Prose — no card chrome
   if (isPlain) return (
     <div className="ex-prose">
       {(section.lines || []).map((item, i) => {
@@ -339,11 +329,8 @@ function RCard({ section }) {
     </div>
   );
 
-  // Action / Next Step cards — the deliverable. Visually prominent.
   const isAction    = section.key === "next_step" || section.key === "action";
-  // Diagnosis cards — Summary / Insight. Strong left accent treatment.
   const isDiagnosis = section.key === "summary"   || section.key === "insight";
-
   const extraClass = isAction ? " ex-rcard--action" : isDiagnosis ? " ex-rcard--diagnosis" : "";
 
   return (
@@ -378,11 +365,8 @@ function UserMsg({ content, fileName }) {
   );
 }
 
-
 // ─── Decision Card ─────────────────────────────────────────────────────────────
-// Diagnosis header for every AssistantMsg — makes each response feel like
-// a career intelligence output, not a chat reply.
-// Uses real context (role, target) for outcome-specific copy.
+
 function DecisionCard({ intent, confidence, intelligenceMode, nextActions, context }) {
   const intentCfg = intent ? (INTENT_CONFIG[intent] || INTENT_CONFIG.general_career) : null;
   const modeCfg = intelligenceMode ? INTELLIGENCE_MODES.find(m => m.key === intelligenceMode) : null;
@@ -393,9 +377,6 @@ function DecisionCard({ intent, confidence, intelligenceMode, nextActions, conte
   const role   = context?.role   || null;
   const target = context?.target || null;
 
-  // ── Pattern-specific STATUS copy — context-aware, not generic ──────────────
-  // Each maps to one of the 4 response patterns:
-  // Role Discovery | Transition Analysis | Career Improvement | Career Planning
   const STATUS_MAP = {
     career_transition: target && role
       ? `${role} → ${target} transition assessed`
@@ -425,13 +406,10 @@ function DecisionCard({ intent, confidence, intelligenceMode, nextActions, conte
   };
   const status = STATUS_MAP[intent] || (activeCfg.label + " analysis run");
 
-  // ── Best next step — outcome-driven, not generic button label ──────────────
-  // Prefer tool actions (concrete deliverable) over prompt suggestions
   const toolAction   = nextActions?.find(a => a.type === "tool");
   const promptAction = nextActions?.find(a => a.type !== "tool");
   const primaryAction = toolAction || promptAction || null;
 
-  // Derive outcome-driven next step copy from intent + context
   const NEXT_STEP_MAP = {
     career_transition: target
       ? `Build your step-by-step path to ${target}`
@@ -485,21 +463,8 @@ function DecisionCard({ intent, confidence, intelligenceMode, nextActions, conte
   );
 }
 
-// ─── Response pattern routing ─────────────────────────────────────────────────
-// Maps intent → one of 4 career operating system patterns.
-// Controls visual emphasis, action priority, and section ordering.
 // ─── Response pattern definitions ─────────────────────────────────────────────
-// 6 distinct patterns — each has its own visual accent and CTA priority logic.
-// These are career-native, not generic "type" buckets.
-//
-// Pattern         Intent(s)                         User state
-// ─────────────── ───────────────────────────────── ────────────────────────────
-// role_discovery  general_career, unclear           Exploring / unknown position
-// transition      career_transition, skill_gap      Evaluating a specific move
-// market_intel    salary_benchmark                  Benchmarking / negotiating
-// application     resume_optimise, linkedin_optimise Preparing to apply
-// execution       interview_prep                    In the interview process
-// eligibility     visa_eligibility                  Checking a viability gate
+
 const RESPONSE_PATTERNS = {
   general_career:    { pattern: "role_discovery", accentColor: "#0F6E56" },
   unclear:           { pattern: "role_discovery", accentColor: "#0F6E56" },
@@ -512,17 +477,6 @@ const RESPONSE_PATTERNS = {
   visa_eligibility:  { pattern: "eligibility",    accentColor: "#3b82f6" },
 };
 
-// ─── Intent-driven primary CTA selection ───────────────────────────────────────
-// The primary CTA should reflect the highest-value next action for the user's goal.
-// Not "first tool action wins" — the tool type must match the intent.
-//
-// Priority order per intent:
-//   transition/skill_gap  → roadmap > gap-explainer > salary > prompt
-//   market_intel          → salary tool > role comparison prompt > benchmark prompt
-//   application           → resume tool > linkedin tool > prompt
-//   execution             → interview tool > prompt
-//   eligibility           → visa tool > prompt
-//   role_discovery        → best-fit analysis prompt > any tool
 const CTA_TOOL_PRIORITY = {
   career_transition: ["career-roadmap", "career-gap-explainer", "talent-profile"],
   skill_gap:         ["career-gap-explainer", "career-roadmap", "talent-profile"],
@@ -537,30 +491,21 @@ const CTA_TOOL_PRIORITY = {
 
 function selectPrimaryAction(nextActions, intent) {
   if (!nextActions?.length) return null;
-
   const toolActions   = nextActions.filter(a => a.type === "tool");
   const promptActions = nextActions.filter(a => a.type !== "tool");
-
-  // For intents with explicit tool priority, find the highest-priority matching tool
   const priorityList = CTA_TOOL_PRIORITY[intent];
   if (priorityList && toolActions.length) {
     for (const toolKey of priorityList) {
-      const match = toolActions.find(a =>
-        a.endpoint && a.endpoint.includes(toolKey)
-      );
+      const match = toolActions.find(a => a.endpoint && a.endpoint.includes(toolKey));
       if (match) return match;
     }
   }
-
-  // Fallback: first tool > first prompt
   return toolActions[0] || promptActions[0] || null;
 }
 
 function selectSecondaryActions(nextActions, primaryAction) {
   if (!nextActions?.length) return [];
-  return nextActions
-    .filter(a => a !== primaryAction)
-    .slice(0, 3);
+  return nextActions.filter(a => a !== primaryAction).slice(0, 3);
 }
 
 function ActionButton({ action, router, onSend, className }) {
@@ -587,18 +532,12 @@ function ActionButton({ action, router, onSend, className }) {
 function AssistantMsg({ content, nextActions, intent, confidence, intelligenceMode, onSend, router, context }) {
   const sections = parseReplyIntoSections(content || "");
   const hasCards = sections.some(s => !["plain", "intro"].includes(s.key));
-
-  // Response pattern — controls action hierarchy
   const patternCfg = RESPONSE_PATTERNS[intent] || RESPONSE_PATTERNS.general_career;
-
-  // Intent-driven CTA selection — not "first tool wins".
-  // selectPrimaryAction picks the highest-value tool for this intent type.
   const primaryAction    = selectPrimaryAction(nextActions, intent);
   const secondaryActions = selectSecondaryActions(nextActions, primaryAction);
 
   return (
     <div className={"ex-analysis ex-analysis--" + patternCfg.pattern}>
-      {/* Diagnosis header — makes every response feel like an analysis output */}
       <DecisionCard
         intent={intent}
         confidence={confidence}
@@ -606,13 +545,9 @@ function AssistantMsg({ content, nextActions, intent, confidence, intelligenceMo
         nextActions={nextActions}
         context={context || {}}
       />
-
-      {/* Content — full-width structured cards or prose */}
       <div className={hasCards ? "ex-analysis__cards" : "ex-analysis__prose"}>
         {sections.map((s, i) => <RCard key={i} section={s} />)}
       </div>
-
-      {/* Action zone — primary CTA always dominates */}
       {(primaryAction || secondaryActions.length > 0) && (
         <div className="ex-analysis__actions">
           {primaryAction && (
@@ -632,8 +567,6 @@ function AssistantMsg({ content, nextActions, intent, confidence, intelligenceMo
 }
 
 function ClarifyMsg({ content, missingFields, actions, onSend }) {
-  // Replace generic chatbot "!" clarification with a structured diagnosis prompt.
-  // EDGEX needs specific inputs to run real analysis — not asking for the sake of it.
   const missingRole   = missingFields?.includes("current_role");
   const missingTarget = missingFields?.includes("target_role");
 
@@ -643,7 +576,7 @@ function ClarifyMsg({ content, missingFields, actions, onSend }) {
     ? "EDGEX needs your current role to benchmark your position and identify the right path forward."
     : missingTarget
     ? "To analyse the transition gap and salary uplift, specify the role you are targeting."
-    : content; // fallback to backend content if no missing fields
+    : content;
 
   return (
     <div className="ex-analysis ex-analysis--clarify">
@@ -1100,7 +1033,6 @@ function PowerBar({ input, setInput, loading, onSend, uploadedFile, onClearFile,
   return (
     <div className="ex-powerbar">
 
-      {/* Panels rendered here so they anchor correctly to position:relative powerbar */}
       {panelContent}
 
       {activeMode && (
@@ -1190,10 +1122,8 @@ function PowerBar({ input, setInput, loading, onSend, uploadedFile, onClearFile,
   );
 }
 
-
 // ─── Career Context Rail ────────────────────────────────────────────────────────
-// Desktop-only sticky right rail showing live career context + next best action.
-// Derived from existing context + last assistant message.
+
 function CareerContextRail({ context, messages, intelligenceMode, onSend, router }) {
   const lastAssistant = [...messages].reverse().find(m => m.role === "assistant" && m.type === "assistant");
   const primaryAction = lastAssistant?.nextActions?.[0] || null;
@@ -1208,7 +1138,6 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
 
   return (
     <aside className="ex-rail">
-      {/* Career Context Card */}
       <div className="ex-rail__card">
         <div className="ex-rail__card-label">Career Context</div>
         {context?.role ? (
@@ -1249,7 +1178,6 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
         )}
       </div>
 
-      {/* Next Best Action */}
       {primaryAction && (
         <div className="ex-rail__card ex-rail__card--action">
           <div className="ex-rail__card-label">Next Best Action</div>
@@ -1274,7 +1202,6 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
         </div>
       )}
 
-      {/* Quick Actions */}
       <div className="ex-rail__card">
         <div className="ex-rail__card-label">Quick Analysis</div>
         <div className="ex-rail__quick-actions">
@@ -1294,8 +1221,6 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
 export default function ChatWindow() {
   const router   = useRouter();
   const { context, updateContext, clear, conversationId, setConversationId, incrementMessageCount, registerNewChat } = useEDGEXContext();
-  // Load conversation from URL query param (e.g. /copilot?conv=abc123)
-  // This enables AppShell sidebar "recent chat" links to work correctly
   const handledQueryConv = useRef(false);
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -1315,9 +1240,8 @@ export default function ChatWindow() {
   const bottomRef    = useRef(null);
   const titleSet     = useRef(false);
   const loadedConv   = useRef(null);
-  const isNewChatRef = useRef(false); // blocks auto-load after newChat
+  const isNewChatRef = useRef(false);
 
-  // Register newChat with context so EDGEXShell "New chat" button can call it
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { registerNewChat(newChat); }, []);
 
@@ -1325,26 +1249,22 @@ export default function ChatWindow() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Handle ?conv=ID query param from AppShell recent chat links
+  // Handle ?conv=ID query param from AppShell recent chat links.
+  // This is the ONLY way a conversation loads on mount.
+  // Fresh /copilot visits (no ?conv=) always open as a blank new chat.
   useEffect(() => {
     const convId = router.query?.conv;
     if (convId && !handledQueryConv.current && convId !== conversationId) {
       handledQueryConv.current = true;
       isNewChatRef.current = false;
       setConversationId(convId);
-      // Clean URL without reload
-      // Clean URL using current pathname — works for both /copilot and /edgex
       router.replace(router.pathname, undefined, { shallow: true });
     }
   }, [router.query?.conv]);
 
-  useEffect(() => {
-    if (!user || conversationId) return;
-    if (isNewChatRef.current) { isNewChatRef.current = false; return; } // blocked after newChat
-    listConversations(user.id).then(({ data }) => {
-      if (data?.length && !conversationId && !isNewChatRef.current) setConversationId(data[0].id);
-    });
-  }, [user, conversationId, setConversationId]);
+  // NOTE: Auto-load of most-recent conversation intentionally removed.
+  // /copilot always opens as a fresh new chat.
+  // Conversations are only loaded via ?conv=ID query param (sidebar recent chats).
 
   useEffect(() => {
     if (!user || !conversationId || loadedConv.current === conversationId) return;
@@ -1478,7 +1398,7 @@ export default function ChatWindow() {
   }, [context, loading, updateContext, conversationId, setConversationId, user, uploadedFile, intelligenceMode, documentText, incrementMessageCount]);
 
   const newChat = () => {
-    isNewChatRef.current = true; // prevent auto-load effect from restoring old conversation
+    isNewChatRef.current = true;
     setMessages([]); setInput(""); setUploadedFile(null); setDocumentText(null); setIntelligenceMode(null);
     clear(); setConversationId(null); loadedConv.current = null; titleSet.current = false;
   };
@@ -1493,7 +1413,6 @@ export default function ChatWindow() {
   return (
     <div className="ex-chat" style={{ position: "relative" }}>
 
-      {/* Session Header — strong workspace-feel top bar */}
       <SessionHeader
         context={context}
         messages={messages}
@@ -1501,7 +1420,6 @@ export default function ChatWindow() {
         onEdit={editContext}
       />
 
-      {/* Workspace: main chat column + right context rail */}
       <div className="ex-workspace">
         <div className="ex-workspace__main">
           <div className="ex-messages">
@@ -1538,7 +1456,6 @@ export default function ChatWindow() {
           />
         </div>
 
-        {/* Right context rail — desktop only, hidden on mobile */}
         <CareerContextRail
           context={context}
           messages={messages}
