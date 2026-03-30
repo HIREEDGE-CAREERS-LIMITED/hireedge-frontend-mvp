@@ -259,7 +259,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 /* ex-thinking defined above */
 
 /* ─── Empty state ──────────────────────────────────────────────────────────── */
-.ex-empty         { flex:1; display:flex; flex-direction:column; align-items:center; padding:16px 20px 10px; overflow-y:auto; position:relative; justify-content:flex-start; }
+.ex-empty         { flex:1; display:flex; flex-direction:column; align-items:center; padding:16px 20px 10px; overflow-y:auto; position:relative; justify-content:center; }
 .ex-empty__bg-glow{ position:absolute; width:500px; height:300px; border-radius:50%; background:radial-gradient(ellipse at center, rgba(15,110,86,0.10) 0%, transparent 70%); top:30%; left:50%; transform:translate(-50%,-50%); pointer-events:none; animation:ex-glow-drift 8s ease-in-out infinite; z-index:0; }
 .ex-empty__flow   { display:flex; flex-direction:column; align-items:center; width:100%; max-width:500px; position:relative; z-index:1; }
 
@@ -562,7 +562,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-bar { padding:6px 6px 6px 12px; }
   .ex-powerbar { padding:8px 12px env(safe-area-inset-bottom, 12px); }
   /* Tighter top — session header already provides separation */
-  .ex-empty { padding:16px 16px 16px; }
+  .ex-empty { padding:16px; justify-content:center; }
   .ex-hint { display:none; }
 }
 
