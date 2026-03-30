@@ -1,5 +1,22 @@
 // ============================================================================
-// components/copilot/ChatWindow.js  —  EDGEX Final Production (corrected)
+// components/copilot/ChatWindow.js  —  EDGEX Final Production
+//
+// Owns all chat state. Renders:
+//   • EDGEX header
+//   • Personalization bar (context-aware)
+//   • Message stream (user, assistant, upload, clarification, error)
+//   • Power input bar (Tools | Intelligence | Upload | textarea | Send)
+//   • Overlay panels (Tools, Intelligence, Upload, Upgrade)
+//     — Desktop: upward popovers
+//     — Mobile <680px: bottom sheets
+//
+// Features:
+//   • Client-side document extraction via lib/documentExtractor
+//   • documentText sent with API payload when extraction succeeds
+//   • Intelligence modes: Salary, Transition, Skills Gap, Career Path (all free)
+//   • Free/paid tool gating — paid tools trigger UpgradeModal
+//   • Supabase conversation persistence (unchanged from v6)
+//   • messageCount incremented in shared context for sidebar display
 // ============================================================================
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -31,26 +48,28 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 
 const ENDPOINT_TO_ROUTE = {
   "/api/tools/career-gap-explainer": "/tools/career-gap-explainer",
-  "/api/tools/career-roadmap": "/tools/career-roadmap",
-  "/api/tools/visa-intelligence": "/tools/visa-intelligence",
-  "/api/tools/interview-prep": "/tools/interview-prep",
-  "/api/tools/resume-optimiser": "/tools/resume-optimiser",
-  "/api/tools/linkedin-optimiser": "/tools/linkedin-optimiser",
-  "/api/tools/salary-benchmark": "/tools/salary-benchmark",
-  "/api/tools/career-pack": "/career-pack",
+  "/api/tools/career-roadmap":       "/tools/career-roadmap",
+  "/api/tools/visa-intelligence":    "/tools/visa-intelligence",
+  "/api/tools/interview-prep":       "/tools/interview-prep",
+  "/api/tools/resume-optimiser":     "/tools/resume-optimiser",
+  "/api/tools/linkedin-optimiser":   "/tools/linkedin-optimiser",
+  "/api/tools/salary-benchmark":     "/tools/salary-benchmark",
+  "/api/tools/career-pack":          "/career-pack",
 };
 
 const INTENT_CONFIG = {
   career_transition: { label: "Career Transition", color: "#6366f1", bg: "rgba(99,102,241,0.12)" },
-  skill_gap: { label: "Skill Gap", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
-  salary_benchmark: { label: "Salary Benchmark", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
-  visa_eligibility: { label: "Visa Eligibility", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
-  resume_optimise: { label: "CV Optimisation", color: "#ec4899", bg: "rgba(236,72,153,0.12)" },
-  linkedin_optimise: { label: "LinkedIn", color: "#0ea5e9", bg: "rgba(14,165,233,0.12)" },
-  interview_prep: { label: "Interview Prep", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
-  general_career: { label: "Career Intelligence", color: "#0F6E56", bg: "rgba(15,110,86,0.12)" },
-  unclear: { label: "Exploring", color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
+  skill_gap:         { label: "Skill Gap",         color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+  salary_benchmark:  { label: "Salary Benchmark",  color: "#10b981", bg: "rgba(16,185,129,0.12)" },
+  visa_eligibility:  { label: "Visa Eligibility",  color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
+  resume_optimise:   { label: "CV Optimisation",   color: "#ec4899", bg: "rgba(236,72,153,0.12)" },
+  linkedin_optimise: { label: "LinkedIn",          color: "#0ea5e9", bg: "rgba(14,165,233,0.12)" },
+  interview_prep:    { label: "Interview Prep",    color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
+  general_career:    { label: "Career Intelligence",color: "#0F6E56",bg: "rgba(15,110,86,0.12)"  },
+  unclear:           { label: "Exploring",         color: "#6b7280", bg: "rgba(107,114,128,0.12)"},
 };
+
+// ─── Utilities ─────────────────────────────────────────────────────────────────
 
 function _safe(ctx) {
   if (!ctx || typeof ctx !== "object") return {};
@@ -64,175 +83,212 @@ function _safe(ctx) {
 function dbRowToMsg(row) {
   const m = row.meta || {};
   return {
-    role: row.role,
-    content: row.content,
-    type: m.type || (row.role === "user" ? "user" : "assistant"),
-    intent: m.intent || null,
-    confidence: m.confidence || null,
-    nextActions: m.nextActions || [],
-    missingFields: m.missingFields || [],
-    actions: m.actions || [],
+    role:             row.role,
+    content:          row.content,
+    type:             m.type || (row.role === "user" ? "user" : "assistant"),
+    intent:           m.intent           || null,
+    confidence:       m.confidence       || null,
+    nextActions:      m.nextActions      || [],
+    missingFields:    m.missingFields    || [],
+    actions:          m.actions          || [],
     intelligenceMode: m.intelligenceMode || null,
-    fileName: m.fileName || null,
+    fileName:         m.fileName         || null,
   };
 }
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
-
   useEffect(() => {
+    // 900px: ensures tablets also get bottom sheets (better touch experience)
     const check = () => setMobile(window.innerWidth < 900);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
-
   return mobile;
 }
 
 function smartSuggestions(ctx) {
-  const role = ctx?.role || "";
+  const role   = ctx?.role   || "";
   const target = ctx?.target || "";
 
-  if (!role && !target) {
-    return [
-      { label: "Find my skill gaps", prompt: "I want to discover exactly which skills I am missing for my target role.", cat: "Skills" },
-      { label: "Check my salary potential", prompt: "What salary could I earn if I transitioned to a higher role in the UK?", cat: "Salary" },
-      { label: "Plan my career transition", prompt: "I want a step-by-step transition plan to move into a new career.", cat: "Plan" },
-      { label: "Explore UK visa options", prompt: "What UK work visa routes are available for skilled workers wanting to relocate?", cat: "Visa" },
-    ];
-  }
+  if (!role && !target) return [
+    { label: "Diagnose my skill gaps",     prompt: "Tell me what skills I am missing for the next step in my career. Start with my current role.",  cat: "Skills"     },
+    { label: "Benchmark my salary",        prompt: "What is the UK market rate for my role, and how do I move into the top salary band?",           cat: "Salary"     },
+    { label: "Map my transition path",     prompt: "I want to change careers. Help me identify the best move and what it will take to get there.",  cat: "Plan"       },
+    { label: "Check UK visa eligibility",  prompt: "I am a skilled professional. What UK visa routes am I eligible for and what is the fastest path?", cat: "Visa"     },
+  ];
 
-  if (role && !target) {
-    return [
-      { label: "Map my transition path", prompt: "What is the best career transition path from " + role + "?", cat: "Transition" },
-      { label: "Salary potential", prompt: "What salary should a " + role + " target in the UK?", cat: "Salary" },
-      { label: "Identify my skill gaps", prompt: "What skills am I missing to advance beyond " + role + "?", cat: "Skills" },
-      { label: "Build a career roadmap", prompt: "Build me a phased roadmap from my " + role + " role", cat: "Plan" },
-    ];
-  }
+  if (role && !target) return [
+    { label: "Best transition from " + role,  prompt: "I am a " + role + ". What is the highest-value career transition I can make and how long will it take?",  cat: "Transition" },
+    { label: "My salary ceiling",             prompt: "What is the top-of-band salary for a " + role + " in the UK, and what is the fastest path to reach it?", cat: "Salary"     },
+    { label: "Skills holding me back",        prompt: "As a " + role + ", what are the exact skills I am missing that are blocking my next career step?",        cat: "Skills"     },
+    { label: "6-month action plan",           prompt: "Build me a 6-month career action plan starting from my current role as a " + role,                        cat: "Plan"       },
+  ];
 
   const short = target.split(" ").slice(0, 2).join(" ");
   return [
-    { label: "Reveal skill gaps", prompt: "What skills am I missing to become a " + target + "?", cat: "Skills" },
-    { label: "Salary jump breakdown", prompt: "What salary does a " + target + " earn vs " + role + " in the UK?", cat: "Salary" },
-    { label: "Full transition plan", prompt: "Build me a step-by-step transition plan from " + role + " to " + target, cat: "Plan" },
-    { label: "Interview prep for " + short, prompt: "Help me prepare for a " + target + " interview with role-specific questions.", cat: "Interview" },
+    { label: "Exact gaps to " + short,    prompt: "What are the exact skills I am missing to move from " + role + " to " + target + "? Give me a prioritised list.",                          cat: "Skills"     },
+    { label: "Salary jump",               prompt: "What is the salary difference between " + role + " and " + target + " in the UK? What is the top quartile for " + target + "?",            cat: "Salary"     },
+    { label: "90-day transition plan",    prompt: "Build a 90-day action plan to move me from " + role + " to " + target + ". Focus on the highest-leverage moves first.",                     cat: "Plan"       },
+    { label: short + " interview prep",   prompt: "I am a " + role + " interviewing for " + target + " roles. Give me the 5 hardest interview questions and how to answer each one.",         cat: "Interview"  },
   ];
 }
 
-const CAT_COLOR = {
-  Skills: "#f59e0b",
-  Salary: "#10b981",
-  Plan: "#0F6E56",
-  Visa: "#3b82f6",
-  Transition: "#6366f1",
-  Interview: "#8b5cf6",
-  CV: "#ec4899",
-};
+const CAT_COLOR = { Skills:"#f59e0b", Salary:"#10b981", Plan:"#0F6E56", Visa:"#3b82f6", Transition:"#6366f1", Interview:"#8b5cf6", CV:"#ec4899" };
+const CAT_ICON  = { Skills:"G", Salary:"£", Plan:"P", Visa:"V", Transition:"T", Interview:"I", CV:"C" };
 
-const CAT_ICON = {
-  Skills: "G",
-  Salary: "£",
-  Plan: "P",
-  Visa: "V",
-  Transition: "T",
-  Interview: "I",
-  CV: "C",
-};
+// ─── Thinking state ────────────────────────────────────────────────────────────
 
 function ThinkingState({ mode }) {
   const MSGS_BY_MODE = {
-    salary: ["Querying UK salary data...", "Benchmarking your role...", "Checking market rates...", "Crunching compensation data..."],
-    transition: ["Scoring transition difficulty...", "Checking demand signals...", "Mapping your move...", "Calculating success factors..."],
-    skills: ["Mapping skill requirements...", "Comparing role profiles...", "Identifying gaps...", "Scoring your readiness..."],
-    path: ["Charting career routes...", "Finding stepping-stone roles...", "Mapping alternatives...", "Calculating best path..."],
+    salary:     ["Querying UK salary data...",     "Benchmarking your role...",      "Checking market rates...",    "Crunching compensation data..."  ],
+    transition: ["Scoring transition difficulty..","Checking demand signals...",     "Mapping your move...",         "Calculating success factors..."  ],
+    skills:     ["Mapping skill requirements...",  "Comparing role profiles...",     "Identifying gaps...",          "Scoring your readiness..."       ],
+    path:       ["Charting career routes...",      "Finding stepping-stone roles...", "Mapping alternatives...",     "Calculating best path..."        ],
   };
-
-  const msgs =
-    MSGS_BY_MODE[mode] || [
-      "Analysing your career path...",
-      "Checking 1,200+ UK roles...",
-      "Calculating transition metrics...",
-      "Building your intelligence report...",
-    ];
-
+  const msgs = MSGS_BY_MODE[mode] || ["Running career analysis...", "Cross-referencing 1,228 UK roles...", "Calculating transition metrics...", "Generating intelligence report..."];
   const [i, setI] = useState(0);
-
   useEffect(() => {
-    const t = setInterval(() => setI((n) => (n + 1) % msgs.length), 1900);
+    const t = setInterval(() => setI(n => (n + 1) % msgs.length), 1900);
     return () => clearInterval(t);
   }, [msgs.length]);
-
   return (
     <div className="ex-thinking">
       <div className="ex-thinking__icon">
         <EDGEXIcon size={20} state="thinking" color="#0F6E56" />
         <div className="ex-thinking__pulse" />
       </div>
-      <span className="ex-thinking__text">{msgs[i]}</span>
+      <div className="ex-thinking__content">
+        <span className="ex-thinking__text">{msgs[i]}</span>
+        <span className="ex-thinking__sub">Cross-referencing 1,228 UK roles · salary data · transition signals</span>
+      </div>
     </div>
   );
 }
 
+// ─── Intent / mode badge ───────────────────────────────────────────────────────
+
 function IntentBadge({ intent, confidence, intelligenceMode }) {
   if (intelligenceMode) {
-    const m = INTELLIGENCE_MODES.find((x) => x.key === intelligenceMode);
-    if (m) {
-      return (
-        <span className="ex-badge" style={{ background: m.color + "18", color: m.color, borderColor: m.color + "28" }}>
-          <span className="ex-badge__icon">{m.icon}</span>
-          {m.label}
-        </span>
-      );
-    }
+    const m = INTELLIGENCE_MODES.find(x => x.key === intelligenceMode);
+    if (m) return (
+      <span className="ex-badge" style={{ background: m.color + "18", color: m.color, borderColor: m.color + "28" }}>
+        <span className="ex-badge__icon">{m.icon}</span>{m.label}
+      </span>
+    );
   }
-
   if (!intent) return null;
-
   const cfg = INTENT_CONFIG[intent] || INTENT_CONFIG.general_career;
   return (
     <span className="ex-badge" style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.color + "28" }}>
       {cfg.label}
-      {confidence ? " · " + Math.round(confidence * 100) + "%" : ""}
     </span>
   );
 }
 
-function PersonalizationBar({ context, onEdit }) {
-  if (!context?.role && !context?.target) return null;
+// ─── Personalization bar ───────────────────────────────────────────────────────
 
-  const intent = context?.lastIntent;
-  const cfg = intent ? INTENT_CONFIG[intent] || INTENT_CONFIG.general_career : null;
+
+// ─── Session Header ────────────────────────────────────────────────────────────
+// Replaces the soft personalization bar with a strong workspace-feel session header.
+// Shows: Current → Target | Focus | Stage
+function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
+  // Always render — workspace must feel structured even before context is set
+  const hasConversation = messages && messages.some(m => m.role === "user");
+  const stage = hasConversation ? "In Progress" : "Ready";
+  const stageColor = hasConversation ? "#0F6E56" : "rgba(255,255,255,0.28)";
+  const modeInfo = intelligenceMode ? INTELLIGENCE_MODES.find(m => m.key === intelligenceMode) : null;
+
+  const currentRole = context?.role || null;
+  const targetRole  = context?.target || null;
+  const hasContext  = currentRole || targetRole;
 
   return (
-    <div className="ex-pbar">
-      {context.role && (
-        <div className="ex-pbar__item">
-          <span className="ex-pbar__label">CURRENT</span>
-          <span className="ex-pbar__value">{context.role}</span>
-        </div>
-      )}
-
-      {context.target && (
-        <>
-          <span className="ex-pbar__sep">→</span>
-          <div className="ex-pbar__item">
-            <span className="ex-pbar__label">TARGET</span>
-            <span className="ex-pbar__value ex-pbar__value--teal">{context.target}</span>
+    <div className="ex-session-header">
+      <div className="ex-session-header__main">
+        {/* Career goal — shows placeholder when not set */}
+        <div className="ex-session-header__goal">
+          <div className="ex-session-header__role">
+            <span className="ex-session-header__role-lbl">CURRENT</span>
+            <span className={currentRole ? "ex-session-header__role-val" : "ex-session-header__role-val ex-session-header__role-val--unset"}>
+              {currentRole || "Not set"}
+            </span>
           </div>
-        </>
-      )}
+          <svg className="ex-session-header__arrow" width="16" height="10" viewBox="0 0 16 10" fill="none">
+            <path d="M0 5h14M10 1l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div className="ex-session-header__role">
+            <span className="ex-session-header__role-lbl">TARGET</span>
+            <span className={targetRole ? "ex-session-header__role-val ex-session-header__role-val--accent" : "ex-session-header__role-val ex-session-header__role-val--unset"}>
+              {targetRole || "Not set"}
+            </span>
+          </div>
+        </div>
 
-      {cfg && (
-        <span className="ex-pbar__mode" style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.color + "28" }}>
-          <span className="ex-pbar__mode-dot" style={{ background: cfg.color }} />
-          {cfg.label}
-        </span>
-      )}
+        {/* Divider */}
+        <div className="ex-session-header__divider" />
 
-      <button className="ex-pbar__edit" onClick={onEdit} title="Edit context">
+        {/* Focus + Stage */}
+        <div className="ex-session-header__meta">
+          <div className="ex-session-header__tag" style={modeInfo ? { color: modeInfo.color, background: modeInfo.color + "14", borderColor: modeInfo.color + "28" } : {}}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: modeInfo ? modeInfo.color : "rgba(255,255,255,0.20)", display: "inline-block", flexShrink: 0 }} />
+            {modeInfo ? modeInfo.label : "Career Intelligence"}
+          </div>
+          <div className="ex-session-header__tag ex-session-header__tag--stage" style={{ color: stageColor }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: stageColor, display: "inline-block", flexShrink: 0, animation: hasConversation ? "ex-blink 2s ease-in-out infinite" : "none" }} />
+            {stage}
+          </div>
+        </div>
+      </div>
+
+      <button className="ex-session-header__edit" onClick={onEdit} title={hasContext ? "Edit career context" : "Set your career context"}>
         <svg width="10" height="10" viewBox="0 0 11 11" fill="none">
+          <path d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        {hasContext ? "Edit" : "Set context"}
+      </button>
+    </div>
+  );
+}
+
+function PersonalizationBar({ context, onEdit }) {
+  // Always render — shows setup prompt when no context, career goal when context exists
+  const hasContext = context?.role || context?.target;
+  const intent = context?.lastIntent;
+  const cfg = intent ? (INTENT_CONFIG[intent] || INTENT_CONFIG.general_career) : null;
+
+  if (!hasContext) return null; // hide until context set — empty state handles onboarding
+
+  return (
+    <div className="ex-ctx">
+      <div className="ex-ctx__goal">
+        {context.role && (
+          <div className="ex-ctx__role">
+            <span className="ex-ctx__role-label">CURRENT</span>
+            <span className="ex-ctx__role-value">{context.role}</span>
+          </div>
+        )}
+        {context.role && context.target && (
+          <svg className="ex-ctx__arrow" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+        {context.target && (
+          <div className="ex-ctx__role">
+            <span className="ex-ctx__role-label">TARGET</span>
+            <span className="ex-ctx__role-value ex-ctx__role-value--accent">{context.target}</span>
+          </div>
+        )}
+        {cfg && (
+          <span className="ex-ctx__mode" style={{ color: cfg.color, background: cfg.bg, borderColor: cfg.color + "28" }}>
+            <span className="ex-ctx__mode-dot" style={{ background: cfg.color }} />
+            {cfg.label}
+          </span>
+        )}
+      </div>
+      <button className="ex-ctx__edit" onClick={onEdit} title="Edit career context">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
           <path d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         Edit
@@ -241,67 +297,69 @@ function PersonalizationBar({ context, onEdit }) {
   );
 }
 
+// ─── Response rendering ────────────────────────────────────────────────────────
+
 const SECTION_DISPLAY = {
-  summary: { display: "Summary" },
-  insight: { display: "Key Insight" },
-  gap: { display: "Gap / Opportunity" },
-  next_step: { display: "Next Step" },
-  snapshot: { display: "Snapshot" },
-  skills: { display: "Skills" },
-  market: { display: "Market" },
-  position: { display: "Positioning" },
-  action: { display: "Action" },
+  summary:  { display: "Summary"          },
+  insight:  { display: "Key Insight"      },
+  gap:      { display: "Gap / Opportunity"},
+  next_step:{ display: "Next Step"        },
+  snapshot: { display: "Snapshot"         },
+  skills:   { display: "Skills"           },
+  market:   { display: "Market"           },
+  position: { display: "Positioning"      },
+  action:   { display: "Action"           },
 };
 
 function RLine({ item }) {
   if (!item || item.type === "gap") return null;
-  if (item.type === "bullet") {
-    return (
-      <div className="ex-rline ex-rline--bullet">
-        <span className="ex-rline__dot" />
-        <span>{item.text}</span>
-      </div>
-    );
-  }
+  if (item.type === "bullet") return (
+    <div className="ex-rline ex-rline--bullet">
+      <span className="ex-rline__dot" />
+      <span>{item.text}</span>
+    </div>
+  );
   return <p className="ex-rline">{item.text}</p>;
 }
 
 function RCard({ section }) {
-  const lines = (section.lines || []).filter((l) => l && l.type !== "gap");
+  const lines   = (section.lines || []).filter(l => l && l.type !== "gap");
   const isPlain = section.key === "plain" || section.key === "intro";
-  const meta = SECTION_DISPLAY[section.key];
+  const meta    = SECTION_DISPLAY[section.key];
 
   if (!lines.length) return null;
 
-  if (isPlain) {
-    return (
-      <div className="ex-prose">
-        {(section.lines || []).map((item, i) => {
-          if (!item || item.type === "gap") return <div key={i} style={{ height: 5 }} />;
-          return <RLine key={i} item={item} />;
-        })}
-      </div>
-    );
-  }
+  // Prose — no card chrome
+  if (isPlain) return (
+    <div className="ex-prose">
+      {(section.lines || []).map((item, i) => {
+        if (!item || item.type === "gap") return <div key={i} style={{ height: 5 }} />;
+        return <RLine key={i} item={item} />;
+      })}
+    </div>
+  );
+
+  // Action / Next Step cards — the deliverable. Visually prominent.
+  const isAction    = section.key === "next_step" || section.key === "action";
+  // Diagnosis cards — Summary / Insight. Strong left accent treatment.
+  const isDiagnosis = section.key === "summary"   || section.key === "insight";
+
+  const extraClass = isAction ? " ex-rcard--action" : isDiagnosis ? " ex-rcard--diagnosis" : "";
 
   return (
-    <div className={"ex-rcard ex-rcard--" + section.key} style={{ "--rc": section.color }}>
+    <div className={"ex-rcard ex-rcard--" + section.key + extraClass} style={{ "--rc": section.color }}>
       <div className="ex-rcard__hd">
-        <span className="ex-rcard__icon" style={{ background: section.color + "18", color: section.color }}>
-          {section.icon}
-        </span>
-        <span className="ex-rcard__title" style={{ color: section.color }}>
-          {meta?.display || section.title}
-        </span>
+        <span className="ex-rcard__icon" style={{ background: section.color + "18", color: section.color }}>{section.icon}</span>
+        <span className="ex-rcard__title" style={{ color: section.color }}>{meta?.display || section.title}</span>
       </div>
       <div className="ex-rcard__body">
-        {(section.lines || []).map((item, i) => (
-          <RLine key={i} item={item} />
-        ))}
+        {(section.lines || []).map((item, i) => <RLine key={i} item={item} />)}
       </div>
     </div>
   );
 }
+
+// ─── Message types ─────────────────────────────────────────────────────────────
 
 function UserMsg({ content, fileName }) {
   return (
@@ -310,7 +368,7 @@ function UserMsg({ content, fileName }) {
         <div className="ex-fchip ex-fchip--msg">
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
             <path d="M3 1h5l2 2v8H3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <path d="M7 1v3h3"           stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           {fileName}
         </div>
@@ -320,77 +378,297 @@ function UserMsg({ content, fileName }) {
   );
 }
 
-function AssistantMsg({ content, nextActions, intent, confidence, intelligenceMode, onSend, router }) {
-  const sections = parseReplyIntoSections(content || "");
-  const hasCards = sections.some((s) => !["plain", "intro"].includes(s.key));
+
+// ─── Decision Card ─────────────────────────────────────────────────────────────
+// Diagnosis header for every AssistantMsg — makes each response feel like
+// a career intelligence output, not a chat reply.
+// Uses real context (role, target) for outcome-specific copy.
+function DecisionCard({ intent, confidence, intelligenceMode, nextActions, context }) {
+  const intentCfg = intent ? (INTENT_CONFIG[intent] || INTENT_CONFIG.general_career) : null;
+  const modeCfg = intelligenceMode ? INTELLIGENCE_MODES.find(m => m.key === intelligenceMode) : null;
+  const activeCfg = modeCfg || intentCfg;
+  if (!activeCfg) return null;
+
+  const pct = confidence ? Math.round(confidence * 100) : null;
+  const role   = context?.role   || null;
+  const target = context?.target || null;
+
+  // ── Pattern-specific STATUS copy — context-aware, not generic ──────────────
+  // Each maps to one of the 4 response patterns:
+  // Role Discovery | Transition Analysis | Career Improvement | Career Planning
+  const STATUS_MAP = {
+    career_transition: target && role
+      ? `${role} → ${target} transition assessed`
+      : target ? `Path to ${target} assessed` : "Transition complexity assessed",
+    skill_gap: target
+      ? `Gap to ${target} identified`
+      : role ? `Gaps beyond ${role} identified` : "Skill gap diagnosed",
+    salary_benchmark: role
+      ? `${role} market rate benchmarked`
+      : "UK salary benchmarked",
+    visa_eligibility: role
+      ? `${role} visa eligibility assessed`
+      : "Visa route assessed",
+    resume_optimise: target
+      ? `CV aligned to ${target}`
+      : "CV gaps identified",
+    linkedin_optimise: target
+      ? `Profile positioned for ${target}`
+      : "LinkedIn gaps identified",
+    interview_prep: target
+      ? `${target} interview strategy built`
+      : "Interview strategy built",
+    general_career: role && target
+      ? `${role} → ${target} career position assessed`
+      : role ? `${role} career position assessed` : "Career position assessed",
+    unclear: "Insufficient context — add role and target for full diagnosis",
+  };
+  const status = STATUS_MAP[intent] || (activeCfg.label + " analysis run");
+
+  // ── Best next step — outcome-driven, not generic button label ──────────────
+  // Prefer tool actions (concrete deliverable) over prompt suggestions
+  const toolAction   = nextActions?.find(a => a.type === "tool");
+  const promptAction = nextActions?.find(a => a.type !== "tool");
+  const primaryAction = toolAction || promptAction || null;
+
+  // Derive outcome-driven next step copy from intent + context
+  const NEXT_STEP_MAP = {
+    career_transition: target
+      ? `Build your step-by-step path to ${target}`
+      : "Build your career transition roadmap",
+    skill_gap: target
+      ? `Close the gaps blocking your move to ${target}`
+      : "Close your highest-impact skill gaps",
+    salary_benchmark: role
+      ? `Negotiate from the right position for a ${role}`
+      : "Use this benchmark in your next negotiation",
+    visa_eligibility: "Prepare your Skilled Worker visa application",
+    resume_optimise: target
+      ? `Rewrite your CV to land ${target} interviews`
+      : "Rewrite your CV for ATS and recruiter fit",
+    linkedin_optimise: target
+      ? `Reposition your profile to attract ${target} recruiters`
+      : "Reposition your profile for recruiter visibility",
+    interview_prep: target
+      ? `Walk into your ${target} interview ready to perform`
+      : "Walk into your next interview prepared",
+    general_career: target && role
+      ? `Execute your move from ${role} to ${target}`
+      : "Take the highest-impact action on your career",
+    unclear: "Specify current role and target role to run full career analysis",
+  };
+  const nextStepCopy = NEXT_STEP_MAP[intent] || primaryAction?.label || "Take the next action";
 
   return (
-    <div className="ex-msg ex-msg--ai">
-      <div className="ex-msg__av">
-        <EDGEXIcon size={20} state="idle" color="#0F6E56" />
-      </div>
-      <div className="ex-msg__body">
-        <IntentBadge intent={intent} confidence={confidence} intelligenceMode={intelligenceMode} />
-        <div className={hasCards ? "ex-rcards" : "ex-prose-wrap"}>
-          {sections.map((s, i) => (
-            <RCard key={i} section={s} />
-          ))}
+    <div className="ex-decision-card" style={{ "--dc": activeCfg.color || "#0F6E56" }}>
+      <div className="ex-decision-card__row">
+        <div className="ex-decision-card__cell">
+          <span className="ex-decision-card__cell-label">ANALYSIS</span>
+          <span className="ex-decision-card__cell-value" style={{ color: activeCfg.color }}>{activeCfg.label}</span>
         </div>
-        {nextActions?.length > 0 && (
-          <div className="ex-actions">
-            {nextActions.map((a, i) => {
-              if (a.type === "tool") {
-                const route = ENDPOINT_TO_ROUTE[a.endpoint];
-                if (!route) return null;
-                return (
-                  <button key={i} className="ex-act ex-act--tool" onClick={() => router.push(route)}>
-                    {a.label}
-                  </button>
-                );
-              }
-              return (
-                <button key={i} className="ex-act ex-act--q" onClick={() => onSend(a.prompt)}>
-                  {a.label}
-                </button>
-              );
-            })}
+        {pct !== null && (
+          <div className="ex-decision-card__cell">
+            <span className="ex-decision-card__cell-label">CONFIDENCE</span>
+            <span className="ex-decision-card__cell-value">{pct}%</span>
           </div>
         )}
+        <div className="ex-decision-card__cell ex-decision-card__cell--status">
+          <span className="ex-decision-card__cell-label">STATUS</span>
+          <span className="ex-decision-card__cell-value ex-decision-card__cell-value--status">{status}</span>
+        </div>
+      </div>
+      <div className="ex-decision-card__next">
+        <span className="ex-decision-card__next-label">RECOMMENDED MOVE</span>
+        <span className="ex-decision-card__next-value">{nextStepCopy}</span>
       </div>
     </div>
   );
 }
 
-function ClarifyMsg({ content, missingFields, actions, onSend }) {
+// ─── Response pattern routing ─────────────────────────────────────────────────
+// Maps intent → one of 4 career operating system patterns.
+// Controls visual emphasis, action priority, and section ordering.
+// ─── Response pattern definitions ─────────────────────────────────────────────
+// 6 distinct patterns — each has its own visual accent and CTA priority logic.
+// These are career-native, not generic "type" buckets.
+//
+// Pattern         Intent(s)                         User state
+// ─────────────── ───────────────────────────────── ────────────────────────────
+// role_discovery  general_career, unclear           Exploring / unknown position
+// transition      career_transition, skill_gap      Evaluating a specific move
+// market_intel    salary_benchmark                  Benchmarking / negotiating
+// application     resume_optimise, linkedin_optimise Preparing to apply
+// execution       interview_prep                    In the interview process
+// eligibility     visa_eligibility                  Checking a viability gate
+const RESPONSE_PATTERNS = {
+  general_career:    { pattern: "role_discovery", accentColor: "#0F6E56" },
+  unclear:           { pattern: "role_discovery", accentColor: "#0F6E56" },
+  career_transition: { pattern: "transition",     accentColor: "#6366f1" },
+  skill_gap:         { pattern: "transition",     accentColor: "#6366f1" },
+  salary_benchmark:  { pattern: "market_intel",   accentColor: "#10b981" },
+  resume_optimise:   { pattern: "application",    accentColor: "#ec4899" },
+  linkedin_optimise: { pattern: "application",    accentColor: "#0ea5e9" },
+  interview_prep:    { pattern: "execution",      accentColor: "#8b5cf6" },
+  visa_eligibility:  { pattern: "eligibility",    accentColor: "#3b82f6" },
+};
+
+// ─── Intent-driven primary CTA selection ───────────────────────────────────────
+// The primary CTA should reflect the highest-value next action for the user's goal.
+// Not "first tool action wins" — the tool type must match the intent.
+//
+// Priority order per intent:
+//   transition/skill_gap  → roadmap > gap-explainer > salary > prompt
+//   market_intel          → salary tool > role comparison prompt > benchmark prompt
+//   application           → resume tool > linkedin tool > prompt
+//   execution             → interview tool > prompt
+//   eligibility           → visa tool > prompt
+//   role_discovery        → best-fit analysis prompt > any tool
+const CTA_TOOL_PRIORITY = {
+  career_transition: ["career-roadmap", "career-gap-explainer", "talent-profile"],
+  skill_gap:         ["career-gap-explainer", "career-roadmap", "talent-profile"],
+  salary_benchmark:  ["salary-benchmark", "talent-profile"],
+  resume_optimise:   ["resume-optimiser", "talent-profile"],
+  linkedin_optimise: ["linkedin-optimiser", "talent-profile"],
+  interview_prep:    ["interview-prep"],
+  visa_eligibility:  ["visa-intelligence"],
+  general_career:    ["talent-profile", "career-roadmap"],
+  unclear:           ["talent-profile"],
+};
+
+function selectPrimaryAction(nextActions, intent) {
+  if (!nextActions?.length) return null;
+
+  const toolActions   = nextActions.filter(a => a.type === "tool");
+  const promptActions = nextActions.filter(a => a.type !== "tool");
+
+  // For intents with explicit tool priority, find the highest-priority matching tool
+  const priorityList = CTA_TOOL_PRIORITY[intent];
+  if (priorityList && toolActions.length) {
+    for (const toolKey of priorityList) {
+      const match = toolActions.find(a =>
+        a.endpoint && a.endpoint.includes(toolKey)
+      );
+      if (match) return match;
+    }
+  }
+
+  // Fallback: first tool > first prompt
+  return toolActions[0] || promptActions[0] || null;
+}
+
+function selectSecondaryActions(nextActions, primaryAction) {
+  if (!nextActions?.length) return [];
+  return nextActions
+    .filter(a => a !== primaryAction)
+    .slice(0, 3);
+}
+
+function ActionButton({ action, router, onSend, className }) {
+  const handleClick = () => {
+    if (action.type === "tool") {
+      const r = ENDPOINT_TO_ROUTE[action.endpoint];
+      if (r) router.push(r);
+    } else {
+      onSend(action.prompt);
+    }
+  };
   return (
-    <div className="ex-msg ex-msg--ai">
-      <div className="ex-msg__av">
-        <EDGEXIcon size={20} state="idle" color="#0F6E56" />
+    <button className={className} onClick={handleClick}>
+      {className === "ex-act-primary" && (
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+      {action.label}
+    </button>
+  );
+}
+
+function AssistantMsg({ content, nextActions, intent, confidence, intelligenceMode, onSend, router, context }) {
+  const sections = parseReplyIntoSections(content || "");
+  const hasCards = sections.some(s => !["plain", "intro"].includes(s.key));
+
+  // Response pattern — controls action hierarchy
+  const patternCfg = RESPONSE_PATTERNS[intent] || RESPONSE_PATTERNS.general_career;
+
+  // Intent-driven CTA selection — not "first tool wins".
+  // selectPrimaryAction picks the highest-value tool for this intent type.
+  const primaryAction    = selectPrimaryAction(nextActions, intent);
+  const secondaryActions = selectSecondaryActions(nextActions, primaryAction);
+
+  return (
+    <div className={"ex-analysis ex-analysis--" + patternCfg.pattern}>
+      {/* Diagnosis header — makes every response feel like an analysis output */}
+      <DecisionCard
+        intent={intent}
+        confidence={confidence}
+        intelligenceMode={intelligenceMode}
+        nextActions={nextActions}
+        context={context || {}}
+      />
+
+      {/* Content — full-width structured cards or prose */}
+      <div className={hasCards ? "ex-analysis__cards" : "ex-analysis__prose"}>
+        {sections.map((s, i) => <RCard key={i} section={s} />)}
       </div>
-      <div className="ex-msg__body">
-        <div className="ex-clarify">
-          <span className="ex-clarify__icon">!</span>
-          <span className="ex-clarify__text">{content}</span>
+
+      {/* Action zone — primary CTA always dominates */}
+      {(primaryAction || secondaryActions.length > 0) && (
+        <div className="ex-analysis__actions">
+          {primaryAction && (
+            <ActionButton action={primaryAction} router={router} onSend={onSend} className="ex-act-primary" />
+          )}
+          {secondaryActions.length > 0 && (
+            <div className="ex-act-secondary-row">
+              {secondaryActions.map((a, i) => (
+                <ActionButton key={i} action={a} router={router} onSend={onSend} className="ex-act-secondary" />
+              ))}
+            </div>
+          )}
         </div>
-        {missingFields?.length > 0 && (
-          <div className="ex-missing">
-            {missingFields.map((f) => (
-              <span key={f} className="ex-missing__tag">
-                {f === "current_role" ? "Current role" : "Target role"}
-              </span>
-            ))}
-          </div>
-        )}
-        {actions?.length > 0 && (
-          <div className="ex-actions">
-            {actions.map((a, i) => (
-              <button key={i} className="ex-act ex-act--q" onClick={() => a?.prompt && onSend(a.prompt)}>
-                {a.label}
-              </button>
-            ))}
-          </div>
-        )}
+      )}
+    </div>
+  );
+}
+
+function ClarifyMsg({ content, missingFields, actions, onSend }) {
+  // Replace generic chatbot "!" clarification with a structured diagnosis prompt.
+  // EDGEX needs specific inputs to run real analysis — not asking for the sake of it.
+  const missingRole   = missingFields?.includes("current_role");
+  const missingTarget = missingFields?.includes("target_role");
+
+  const strategistPrompt = missingRole && missingTarget
+    ? "To run a full career diagnosis, EDGEX needs your current role and target position."
+    : missingRole
+    ? "EDGEX needs your current role to benchmark your position and identify the right path forward."
+    : missingTarget
+    ? "To analyse the transition gap and salary uplift, specify the role you are targeting."
+    : content; // fallback to backend content if no missing fields
+
+  return (
+    <div className="ex-analysis ex-analysis--clarify">
+      <div className="ex-clarify-block">
+        <div className="ex-clarify-block__icon">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="#0F6E56" strokeWidth="1.3"/>
+            <path d="M7 4v3.5M7 9.5v.5" stroke="#0F6E56" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <p className="ex-clarify-block__text">{strategistPrompt}</p>
       </div>
+      {(missingRole || missingTarget) && (
+        <div className="ex-clarify-block__fields">
+          {missingRole   && <span className="ex-clarify-block__tag">CURRENT ROLE · Required</span>}
+          {missingTarget && <span className="ex-clarify-block__tag">TARGET ROLE · Required</span>}
+        </div>
+      )}
+      {actions?.length > 0 && (
+        <div className="ex-act-secondary-row" style={{ marginTop: 10 }}>
+          {actions.map((a, i) => (
+            <button key={i} className="ex-act-secondary" onClick={() => a?.prompt && onSend(a.prompt)}>{a.label}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -414,31 +692,27 @@ function ErrorMsg({ content }) {
 
 function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tokenCount, extractionError }) {
   const TYPE_MAP = {
-    cv: { label: "CV uploaded", color: "#6366f1" },
-    jd: { label: "Job description uploaded", color: "#10b981" },
-    cover: { label: "Cover letter uploaded", color: "#f59e0b" },
-    document: { label: "Document uploaded", color: "#0F6E56" },
+    cv:       { label: "CV uploaded",                 color: "#6366f1" },
+    jd:       { label: "Job description uploaded",    color: "#10b981" },
+    cover:    { label: "Cover letter uploaded",       color: "#f59e0b" },
+    document: { label: "Document uploaded",           color: "#0F6E56" },
   };
   const t = TYPE_MAP[uploadType] || TYPE_MAP.document;
 
   return (
     <div className="ex-msg ex-msg--ai">
-      <div className="ex-msg__av">
-        <EDGEXIcon size={20} state="idle" color="#0F6E56" />
-      </div>
+      <div className="ex-msg__av"><EDGEXIcon size={20} state="idle" color="#0F6E56" /></div>
       <div className="ex-msg__body">
         <div className="ex-upload-card" style={{ "--uc": t.color }}>
           <div className="ex-upload-card__hd">
             <span className="ex-upload-card__icon" style={{ background: t.color + "18", color: t.color }}>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                 <path d="M3 1h5l3 3v9H3V1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M8 1v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <path d="M8 1v3h3"          stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
             </span>
             <div>
-              <div className="ex-upload-card__type" style={{ color: t.color }}>
-                {t.label}
-              </div>
+              <div className="ex-upload-card__type" style={{ color: t.color }}>{t.label}</div>
               <div className="ex-upload-card__name">{fileName}</div>
             </div>
           </div>
@@ -473,9 +747,7 @@ function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tok
               <p className="ex-upload-card__hint">What would you like EDGEX to do?</p>
               <div className="ex-actions ex-actions--wrap">
                 {actions.map((a, i) => (
-                  <button key={i} className="ex-act ex-act--q" onClick={() => onSend(a.prompt)}>
-                    {a.label}
-                  </button>
+                  <button key={i} className="ex-act ex-act--q" onClick={() => onSend(a.prompt)}>{a.label}</button>
                 ))}
               </div>
             </>
@@ -486,42 +758,30 @@ function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tok
   );
 }
 
-const IDLE_MSGS = [
-  "Ready to analyse your career",
-  "Powered by 1,200+ UK roles",
-  "Real data. Not generic advice.",
-  "Ask anything about your career",
-];
+// ─── Empty state ───────────────────────────────────────────────────────────────
 
-const CONTEXT_MSGS = [
-  "Understanding your profile...",
-  "Career data loaded",
-  "Transition intelligence ready",
-  "Building your career path...",
-];
+const IDLE_MSGS    = ["Ready to analyse your career", "Powered by 1,200+ UK roles", "Real data. Not generic advice.", "Ask anything about your career"];
+const CONTEXT_MSGS = ["Understanding your profile...", "Career data loaded", "Transition intelligence ready", "Building your career path..."];
 
 function StatusCycle({ context }) {
-  const msgs = context?.role || context?.target ? CONTEXT_MSGS : IDLE_MSGS;
+  const msgs = (context?.role || context?.target) ? CONTEXT_MSGS : IDLE_MSGS;
   const [i, setI] = useState(0);
-
   useEffect(() => {
-    const t = setInterval(() => setI((n) => (n + 1) % msgs.length), 3000);
+    const t = setInterval(() => setI(n => (n + 1) % msgs.length), 3000);
     return () => clearInterval(t);
   }, [msgs.length]);
-
   return <span className="ex-empty__status-text">{msgs[i]}</span>;
 }
 
 function IntelPreview({ onSend }) {
   const [open, setOpen] = useState(false);
-
   return (
     <div
       className={"ex-preview" + (open ? " ex-preview--open" : "")}
       onClick={() => !open && setOpen(true)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && !open && setOpen(true)}
+      onKeyDown={e => e.key === "Enter" && !open && setOpen(true)}
     >
       <div className="ex-preview__hd">
         <span className="ex-preview__label">Example Intelligence Output</span>
@@ -535,12 +795,10 @@ function IntelPreview({ onSend }) {
         {!open && <span className="ex-preview__tap">tap to expand</span>}
       </div>
       {open && (
-        <div className="ex-preview__body" onClick={(e) => e.stopPropagation()}>
+        <div className="ex-preview__body" onClick={e => e.stopPropagation()}>
           <div className="ex-preview__row">
             <span className="ex-preview__k">Difficulty</span>
-            <span className="ex-preview__v">
-              <span className="ex-preview__badge">Medium · 65/100</span>
-            </span>
+            <span className="ex-preview__v"><span className="ex-preview__badge">Medium · 65/100</span></span>
           </div>
           <div className="ex-preview__row">
             <span className="ex-preview__k">Salary jump</span>
@@ -571,11 +829,11 @@ function IntelPreview({ onSend }) {
 
 function EmptyState({ onSend, context }) {
   const sugg = smartSuggestions(context);
-
   return (
     <div className="ex-empty">
       <div className="ex-empty__glow" />
       <div className="ex-empty__flow">
+
         <div className="ex-empty__hero">
           <div className="ex-empty__orbit">
             <div className="ex-empty__ring" />
@@ -590,24 +848,22 @@ function EmptyState({ onSend, context }) {
           </div>
         </div>
 
-        <h1 className="ex-empty__h1">Your AI Career Intelligence Engine</h1>
-        <p className="ex-empty__sub">Real career data. Market intelligence. Not generic advice.</p>
+        <h1 className="ex-empty__h1">Career Operating System</h1>
+        <p className="ex-empty__sub">Diagnose your career. Identify your gaps. Execute your next move.</p>
 
         <IntelPreview onSend={onSend} />
 
         <button
           className="ex-empty__cta"
-          onClick={() =>
-            onSend("Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities.")
-          }
+          onClick={() => onSend("Run a full career diagnosis. Assess my current position, identify skill gaps, map transition options, and benchmark salary potential.")}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-            <line x1="4.5" y1="4.5" x2="10.2" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-            <line x1="19.5" y1="4.5" x2="13.8" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-            <line x1="4.5" y1="19.5" x2="10.2" y2="13.8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            <line x1="4.5"  y1="4.5"  x2="10.2" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            <line x1="19.5" y1="4.5"  x2="13.8" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            <line x1="4.5"  y1="19.5" x2="10.2" y2="13.8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
             <line x1="19.5" y1="19.5" x2="13.8" y2="13.8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
           </svg>
-          Start my career analysis
+          Start Career Analysis
         </button>
 
         <div className="ex-empty__grid">
@@ -625,68 +881,62 @@ function EmptyState({ onSend, context }) {
             </button>
           ))}
         </div>
+
       </div>
     </div>
   );
 }
 
-function Panel({ open, onClose, isMobile, className = "", children }) {
-  const ref = useRef(null);
+// ─── Shared panel wrapper ──────────────────────────────────────────────────────
 
+function Panel({ open, onClose, isMobile, anchor, children }) {
+  const ref = useRef(null);
   useEffect(() => {
     if (!open || isMobile) return;
-
-    const fn = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-
+    const fn = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
   }, [open, isMobile, onClose]);
 
   if (!open) return null;
 
-  if (isMobile) {
-    return (
-      <>
-        <div className="ex-backdrop" onClick={onClose} />
-        <div className="ex-sheet" role="dialog" aria-modal="true">
-          <div className="ex-sheet__handle" />
-          {children}
-        </div>
-      </>
-    );
-  }
+  if (isMobile) return (
+    <>
+      <div className="ex-backdrop" onClick={onClose} />
+      <div className="ex-sheet" role="dialog" aria-modal="true">
+        <div className="ex-sheet__handle" />
+        {children}
+      </div>
+    </>
+  );
 
   return (
-    <div className={"ex-pop " + className} ref={ref} role="dialog">
+    <div className={"ex-pop " + (anchor || "")} ref={ref} role="dialog">
       {children}
     </div>
   );
 }
 
+// ─── Tools panel ───────────────────────────────────────────────────────────────
+
 function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
   const paid = isPaid();
 
-  const handleTool = (t) => {
-    if (t.paid && !paid) {
-      onNeedUpgrade(t);
-      onClose();
-      return;
-    }
+  const handleTool = t => {
+    if (t.paid && !paid) { onNeedUpgrade(t); onClose(); return; }
     if (t.route) router.push(t.route);
     onClose();
   };
 
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile} className="ex-pop--tools">
+    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--tools">
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Career Tools</span>
           <button className="ex-panel__x" onClick={onClose}>✕</button>
         </div>
         <ul className="ex-panel__list">
-          {TOOLS.map((t) => (
+          {TOOLS.map(t => (
             <li key={t.key}>
               <button className="ex-tool-item" onClick={() => handleTool(t)}>
                 <span className="ex-tool-item__dot" style={{ background: t.color }} />
@@ -706,9 +956,11 @@ function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
   );
 }
 
+// ─── Intelligence panel ────────────────────────────────────────────────────────
+
 function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile} className="ex-pop--intel">
+    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--intel">
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Intelligence Mode</span>
@@ -717,19 +969,14 @@ function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
         </div>
         <p className="ex-panel__sub">Select a mode for deeper structured analysis in chat</p>
         <div className="ex-imode-grid">
-          {INTELLIGENCE_MODES.map((m) => (
+          {INTELLIGENCE_MODES.map(m => (
             <button
               key={m.key}
               className={"ex-imode" + (activeMode === m.key ? " ex-imode--on" : "")}
               style={{ "--im": m.color }}
-              onClick={() => {
-                onSelect(activeMode === m.key ? null : m.key);
-                onClose();
-              }}
+              onClick={() => { onSelect(activeMode === m.key ? null : m.key); onClose(); }}
             >
-              <span className="ex-imode__icon" style={{ background: m.color + "18", color: m.color }}>
-                {m.icon}
-              </span>
+              <span className="ex-imode__icon" style={{ background: m.color + "18", color: m.color }}>{m.icon}</span>
               <span className="ex-imode__label">{m.label}</span>
               <span className="ex-imode__desc">{m.tagline}</span>
               {activeMode === m.key && <span className="ex-imode__check">✓</span>}
@@ -737,13 +984,7 @@ function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
           ))}
         </div>
         {activeMode && (
-          <button
-            className="ex-panel__clear"
-            onClick={() => {
-              onSelect(null);
-              onClose();
-            }}
-          >
+          <button className="ex-panel__clear" onClick={() => { onSelect(null); onClose(); }}>
             Clear mode
           </button>
         )}
@@ -752,18 +993,20 @@ function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
   );
 }
 
+// ─── Upload panel ──────────────────────────────────────────────────────────────
+
 function UploadPanel({ open, onClose, isMobile, onFile }) {
-  const fileRef = useRef(null);
+  const fileRef        = useRef(null);
   const [accept, setAccept] = useState("*");
 
   const TYPES = [
-    { key: "cv", icon: "C", label: "CV / Resume", desc: "EDGEX analyses gaps, ATS fit, and rewrite suggestions", color: "#6366f1", accept: ".pdf,.doc,.docx" },
-    { key: "jd", icon: "J", label: "Job Description", desc: "EDGEX scores your fit and identifies what to close", color: "#10b981", accept: ".pdf,.txt,.doc,.docx" },
-    { key: "cover", icon: "L", label: "Cover Letter", desc: "EDGEX reviews impact, tone, and opening strength", color: "#f59e0b", accept: ".pdf,.doc,.docx,.txt" },
+    { key: "cv",    icon: "C", label: "CV / Resume",     desc: "EDGEX analyses gaps, ATS fit, and rewrite suggestions", color: "#6366f1", accept: ".pdf,.doc,.docx"      },
+    { key: "jd",    icon: "J", label: "Job Description", desc: "EDGEX scores your fit and identifies what to close",     color: "#10b981", accept: ".pdf,.txt,.doc,.docx" },
+    { key: "cover", icon: "L", label: "Cover Letter",    desc: "EDGEX reviews impact, tone, and opening strength",      color: "#f59e0b", accept: ".pdf,.doc,.docx,.txt" },
   ];
 
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile} className="ex-pop--upload">
+    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--upload">
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Upload Document</span>
@@ -771,19 +1014,10 @@ function UploadPanel({ open, onClose, isMobile, onFile }) {
         </div>
         <p className="ex-panel__sub">EDGEX will analyse your document in the context of your career goals</p>
         <ul className="ex-upload-list">
-          {TYPES.map((ut) => (
+          {TYPES.map(ut => (
             <li key={ut.key}>
-              <button
-                className="ex-utype"
-                onClick={() => {
-                  setAccept(ut.accept);
-                  fileRef.current?.click();
-                  onClose();
-                }}
-              >
-                <span className="ex-utype__icon" style={{ background: ut.color + "18", color: ut.color }}>
-                  {ut.icon}
-                </span>
+              <button className="ex-utype" onClick={() => { setAccept(ut.accept); fileRef.current?.click(); onClose(); }}>
+                <span className="ex-utype__icon" style={{ background: ut.color + "18", color: ut.color }}>{ut.icon}</span>
                 <div className="ex-utype__body">
                   <span className="ex-utype__name">{ut.label}</span>
                   <span className="ex-utype__desc">{ut.desc}</span>
@@ -797,20 +1031,17 @@ function UploadPanel({ open, onClose, isMobile, onFile }) {
           type="file"
           accept={accept}
           style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-            e.target.value = "";
-          }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
         />
       </div>
     </Panel>
   );
 }
 
+// ─── Upgrade modal ─────────────────────────────────────────────────────────────
+
 function UpgradeModal({ tool, onClose, router }) {
   if (!tool) return null;
-
   return (
     <>
       <div className="ex-backdrop" onClick={onClose} />
@@ -827,10 +1058,7 @@ function UpgradeModal({ tool, onClose, router }) {
           <div className="ex-upgrade__options">
             <button
               className="ex-upgrade__pack"
-              onClick={() => {
-                router.push("/billing?plan=career_pack");
-                onClose();
-              }}
+              onClick={() => { router.push("/billing?plan=career_pack"); onClose(); }}
             >
               <div className="ex-upgrade__pack-inner">
                 <span className="ex-upgrade__pack-label">Career Pack</span>
@@ -840,10 +1068,7 @@ function UpgradeModal({ tool, onClose, router }) {
             </button>
             <button
               className="ex-upgrade__pro"
-              onClick={() => {
-                router.push("/billing?plan=pro");
-                onClose();
-              }}
+              onClick={() => { router.push("/billing?plan=pro"); onClose(); }}
             >
               Unlock with Pro — £14.99/mo
             </button>
@@ -855,19 +1080,11 @@ function UpgradeModal({ tool, onClose, router }) {
   );
 }
 
-function PowerBar({
-  input,
-  setInput,
-  loading,
-  onSend,
-  uploadedFile,
-  onClearFile,
-  intelligenceMode,
-  onOpenTools,
-  onOpenIntel,
-  onOpenUpload,
-}) {
+// ─── Power input bar ───────────────────────────────────────────────────────────
+
+function PowerBar({ input, setInput, loading, onSend, uploadedFile, onClearFile, intelligenceMode, onOpenTools, onOpenIntel, onOpenUpload, onFile, panelContent }) {
   const textRef = useRef(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     const el = textRef.current;
@@ -876,28 +1093,21 @@ function PowerBar({
     el.style.height = Math.min(el.scrollHeight, 150) + "px";
   }, [input]);
 
-  const activeMode = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
-
-  const submit = () => onSend(input);
-
-  const keyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    }
-  };
+  const activeMode = intelligenceMode ? INTELLIGENCE_MODES.find(m => m.key === intelligenceMode) : null;
+  const submit     = () => onSend(input);
+  const keyDown    = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } };
 
   return (
     <div className="ex-powerbar">
+
+      {/* Panels rendered here so they anchor correctly to position:relative powerbar */}
+      {panelContent}
+
       {activeMode && (
         <div className="ex-mode-pill" style={{ "--mp": activeMode.color }}>
-          <span className="ex-mode-pill__icon" style={{ color: activeMode.color }}>
-            {activeMode.icon}
-          </span>
-          <span className="ex-mode-pill__name" style={{ color: activeMode.color }}>
-            {activeMode.label} active
-          </span>
-          <button className="ex-mode-pill__clear" onClick={onOpenIntel} title="Change or clear mode">✕</button>
+          <span className="ex-mode-pill__icon"  style={{ color: activeMode.color }}>{activeMode.icon}</span>
+          <span className="ex-mode-pill__name"  style={{ color: activeMode.color }}>{activeMode.label} active</span>
+          <button className="ex-mode-pill__clear" onClick={() => onOpenIntel()} title="Change or clear mode">✕</button>
         </div>
       )}
 
@@ -905,7 +1115,7 @@ function PowerBar({
         <div className="ex-fchip">
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
             <path d="M3 1h5l2 2v8H3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <path d="M7 1v3h3"           stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           <span className="ex-fchip__name">{uploadedFile.name}</span>
           <button className="ex-fchip__rm" onClick={onClearFile}>✕</button>
@@ -914,6 +1124,7 @@ function PowerBar({
 
       <div className="ex-bar">
         <div className="ex-bar__ctrl">
+
           <button className="ex-ctrl ex-ctrl--tools" onClick={onOpenTools} type="button">
             <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11.7 1.5a4.5 4.5 0 00-3.7 7l-5.5 5.5 1.5 1.5L9.5 10a4.5 4.5 0 007-3.7l-2.6 2.6-2.1-.7-.7-2.1z" />
@@ -946,24 +1157,27 @@ function PowerBar({
             </svg>
             <span className="ex-ctrl__lbl">{uploadedFile ? "1 file" : "Upload"}</span>
           </button>
+
         </div>
 
         <div className="ex-bar__input">
           <textarea
             ref={textRef}
             className="ex-bar__textarea"
-            placeholder={
-              activeMode
-                ? activeMode.label + " — describe your role and goal..."
-                : "Type your role and goal — I'll analyse your career instantly"
-            }
+            placeholder={activeMode ? activeMode.label + " — describe your current role and target move..." : "Tell me your current role and target — I'll diagnose your career path."}
             value={input}
             rows={1}
             disabled={loading}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={e => setInput(e.target.value)}
             onKeyDown={keyDown}
           />
-          <button className="ex-send" disabled={loading || !input.trim()} onClick={submit} aria-label="Send" type="button">
+          <button
+            className="ex-send"
+            disabled={loading || !input.trim()}
+            onClick={submit}
+            aria-label="Send"
+            type="button"
+          >
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
               <path d="M2 12.5L12.5 7L2 1.5V5.8L9 7L2 8.2V12.5Z" fill="currentColor" />
             </svg>
@@ -971,461 +1185,368 @@ function PowerBar({
         </div>
       </div>
 
-      <p className="ex-hint">
-        <kbd>Enter</kbd> to send &nbsp;<kbd>Shift+Enter</kbd> for new line
-      </p>
+      <p className="ex-hint"><kbd>Enter</kbd> to send &nbsp;<kbd>Shift+Enter</kbd> for new line</p>
     </div>
   );
 }
 
+
+// ─── Career Context Rail ────────────────────────────────────────────────────────
+// Desktop-only sticky right rail showing live career context + next best action.
+// Derived from existing context + last assistant message.
+function CareerContextRail({ context, messages, intelligenceMode, onSend, router }) {
+  const lastAssistant = [...messages].reverse().find(m => m.role === "assistant" && m.type === "assistant");
+  const primaryAction = lastAssistant?.nextActions?.[0] || null;
+  const modeInfo = intelligenceMode ? INTELLIGENCE_MODES.find(m => m.key === intelligenceMode) : null;
+
+  const QUICK_ACTIONS = [
+    { label: "Salary check", prompt: context?.role ? `What salary should a ${context.role} target in the UK?` : "What salary benchmarks should I know for my career transition?" },
+    { label: "Skill gaps", prompt: context?.target ? `What skills am I missing to become a ${context.target}?` : "What are the most common skill gaps in my industry?" },
+    { label: "Transition plan", prompt: context?.role && context?.target ? `Build a step-by-step transition plan from ${context.role} to ${context.target}` : "How should I plan my career transition?" },
+    { label: "Market demand", prompt: context?.target ? `What is the UK job market demand for ${context.target}?` : "What roles are most in demand in the UK right now?" },
+  ];
+
+  return (
+    <aside className="ex-rail">
+      {/* Career Context Card */}
+      <div className="ex-rail__card">
+        <div className="ex-rail__card-label">Career Context</div>
+        {context?.role ? (
+          <div className="ex-rail__context">
+            {context.role && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Current</span>
+                <span className="ex-rail__ctx-val">{context.role}</span>
+              </div>
+            )}
+            {context.target && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Target</span>
+                <span className="ex-rail__ctx-val ex-rail__ctx-val--accent">{context.target}</span>
+              </div>
+            )}
+            {context.yearsExp && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Experience</span>
+                <span className="ex-rail__ctx-val">{context.yearsExp} yrs</span>
+              </div>
+            )}
+            {context.country && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Location</span>
+                <span className="ex-rail__ctx-val">{context.country}</span>
+              </div>
+            )}
+            {modeInfo && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Focus</span>
+                <span className="ex-rail__ctx-val" style={{ color: modeInfo.color }}>{modeInfo.label}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="ex-rail__empty-hint">Tell EDGEX your current role and target to activate career intelligence.</p>
+        )}
+      </div>
+
+      {/* Next Best Action */}
+      {primaryAction && (
+        <div className="ex-rail__card ex-rail__card--action">
+          <div className="ex-rail__card-label">Next Best Action</div>
+          {primaryAction.type === "tool" ? (
+            <button
+              className="ex-rail__nba"
+              onClick={() => { const r = ENDPOINT_TO_ROUTE[primaryAction.endpoint]; if (r) router.push(r); }}
+            >
+              <span className="ex-rail__nba-label">{primaryAction.label}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          ) : (
+            <button className="ex-rail__nba" onClick={() => onSend(primaryAction.prompt)}>
+              <span className="ex-rail__nba-label">{primaryAction.label}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="ex-rail__card">
+        <div className="ex-rail__card-label">Quick Analysis</div>
+        <div className="ex-rail__quick-actions">
+          {QUICK_ACTIONS.map((a, i) => (
+            <button key={i} className="ex-rail__quick-btn" onClick={() => onSend(a.prompt)}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ─── Main ChatWindow ────────────────────────────────────────────────────────────
+
 export default function ChatWindow() {
-  const router = useRouter();
-  const {
-    context,
-    updateContext,
-    clear,
-    conversationId,
-    setConversationId,
-    incrementMessageCount,
-    registerNewChat,
-  } = useEDGEXContext();
+  const router   = useRouter();
+  const { context, updateContext, clear, conversationId, setConversationId, incrementMessageCount, registerNewChat } = useEDGEXContext();
+  // Load conversation from URL query param (e.g. /copilot?conv=abc123)
+  // This enables AppShell sidebar "recent chat" links to work correctly
+  const handledQueryConv = useRef(false);
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [documentText, setDocumentText] = useState(null);
+  const [messages,         setMessages]         = useState([]);
+  const [input,            setInput]            = useState("");
+  const [loading,          setLoading]          = useState(false);
+  const [uploadedFile,     setUploadedFile]     = useState(null);
+  const [documentText,     setDocumentText]     = useState(null);
   const [intelligenceMode, setIntelligenceMode] = useState(null);
-  const [thinkMode, setThinkMode] = useState(null);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [intelOpen, setIntelOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [upgradeTool, setUpgradeTool] = useState(null);
+  const [thinkMode,        setThinkMode]        = useState(null);
+  const [toolsOpen,        setToolsOpen]        = useState(false);
+  const [intelOpen,        setIntelOpen]        = useState(false);
+  const [uploadOpen,       setUploadOpen]       = useState(false);
+  const [upgradeTool,      setUpgradeTool]      = useState(null);
 
-  const bottomRef = useRef(null);
-  const titleSet = useRef(false);
-  const loadedConv = useRef(null);
-  const isNewChatRef = useRef(false);
+  const bottomRef    = useRef(null);
+  const titleSet     = useRef(false);
+  const loadedConv   = useRef(null);
+  const isNewChatRef = useRef(false); // blocks auto-load after newChat
 
-  const closeAll = useCallback(() => {
-    setToolsOpen(false);
-    setIntelOpen(false);
-    setUploadOpen(false);
-  }, []);
+  // Register newChat with context so EDGEXShell "New chat" button can call it
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { registerNewChat(newChat); }, []);
 
-  const newChat = useCallback(() => {
-    isNewChatRef.current = true;
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
-    closeAll();
-    setMessages([]);
-    setInput("");
-    setUploadedFile(null);
-    setDocumentText(null);
-    setIntelligenceMode(null);
-    setThinkMode(null);
-    setLoading(false);
-
-    clear();
-    setConversationId(null);
-    loadedConv.current = null;
-    titleSet.current = false;
-
-    const basePath = router.pathname === "/edgex" ? "/edgex" : "/copilot";
-
-    if (router.asPath !== basePath) {
-      router.replace(basePath, undefined, { shallow: true });
-    } else if (router.query?.conv) {
-      router.replace(basePath, undefined, { shallow: true });
-    }
-
-    requestAnimationFrame(() => {
+  // Handle ?conv=ID query param from AppShell recent chat links
+  useEffect(() => {
+    const convId = router.query?.conv;
+    if (convId && !handledQueryConv.current && convId !== conversationId) {
+      handledQueryConv.current = true;
       isNewChatRef.current = false;
-    });
-  }, [clear, closeAll, router, setConversationId]);
-
-  useEffect(() => {
-    registerNewChat(newChat);
-  }, [registerNewChat, newChat]);
-
-  useEffect(() => {
-    const scroller = bottomRef.current;
-    if (!scroller) return;
-    scroller.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, loading]);
-
-  useEffect(() => {
-    if (!router.isReady || !user) return;
-
-    const conv = router.query?.conv;
-    if (typeof conv === "string" && conv && conv !== conversationId) {
-      closeAll();
-      setConversationId(conv);
-      loadedConv.current = null;
-      titleSet.current = false;
+      setConversationId(convId);
+      // Clean URL without reload
+      // Clean URL using current pathname — works for both /copilot and /edgex
+      router.replace(router.pathname, undefined, { shallow: true });
     }
-  }, [router.isReady, router.query?.conv, user, conversationId, setConversationId, closeAll]);
+  }, [router.query?.conv]);
 
   useEffect(() => {
-    if (!user || conversationId || isNewChatRef.current) return;
-
+    if (!user || conversationId) return;
+    if (isNewChatRef.current) { isNewChatRef.current = false; return; } // blocked after newChat
     listConversations(user.id).then(({ data }) => {
-      if (isNewChatRef.current) return;
-      if (data?.length && !conversationId) {
-        setConversationId(data[0].id);
-      }
+      if (data?.length && !conversationId && !isNewChatRef.current) setConversationId(data[0].id);
     });
   }, [user, conversationId, setConversationId]);
 
   useEffect(() => {
     if (!user || !conversationId || loadedConv.current === conversationId) return;
-
     loadConversation(conversationId, user.id).then(({ data }) => {
       setMessages((data || []).map(dbRowToMsg));
       loadedConv.current = conversationId;
-      titleSet.current = (data || []).some((r) => r.role === "user");
+      titleSet.current   = (data || []).some(r => r.role === "user");
     });
   }, [user, conversationId]);
 
-  const handleFile = useCallback(
-    async (file) => {
-      setUploadedFile(file);
-      setDocumentText(null);
+  const handleFile = useCallback(async file => {
+    setUploadedFile(file);
+    setDocumentText(null);
 
-      const uploadType = detectUploadType(file.name);
-      const actions = getUploadActions(uploadType, context);
-      const msgId = Date.now();
+    const uploadType = detectUploadType(file.name);
+    const actions    = getUploadActions(uploadType, context);
+    const msgId      = Date.now();
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "upload",
-          type: "upload",
-          msgId,
-          fileName: file.name,
-          uploadType,
-          actions,
-          extractionState: "extracting",
-          tokenCount: null,
-          extractionError: null,
-        },
-      ]);
+    setMessages(prev => [...prev, {
+      role: "upload", type: "upload", msgId,
+      fileName: file.name, uploadType, actions,
+      extractionState: "extracting", tokenCount: null, extractionError: null,
+    }]);
 
-      const result = await extractDocument(file);
+    const result = await extractDocument(file);
 
-      if (result.error) {
-        setMessages((prev) =>
-          prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "error", extractionError: result.error } : m))
-        );
-      } else {
-        const tokens = estimateTokens(result.text);
-        setDocumentText(result.text);
-        setMessages((prev) =>
-          prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "ready", tokenCount: tokens } : m))
-        );
+    if (result.error) {
+      setMessages(prev => prev.map(m =>
+        m.msgId === msgId ? { ...m, extractionState: "error", extractionError: result.error } : m
+      ));
+    } else {
+      const tokens = estimateTokens(result.text);
+      setDocumentText(result.text);
+      setMessages(prev => prev.map(m =>
+        m.msgId === msgId ? { ...m, extractionState: "ready", tokenCount: tokens } : m
+      ));
+    }
+  }, [context]);
+
+  const closeAll = () => { setToolsOpen(false); setIntelOpen(false); setUploadOpen(false); };
+
+  const send = useCallback(async text => {
+    const trimmed = (text || "").trim();
+    if (!trimmed || loading) return;
+
+    const intent      = classifyIntent(trimmed, context);
+    const useMode     = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
+    const fileSnap    = uploadedFile;
+    const docTextSnap = documentText;
+
+    setThinkMode(useMode);
+    setMessages(prev => [...prev, { role: "user", content: trimmed, fileName: fileSnap?.name || null }]);
+    setInput("");
+    setUploadedFile(null);
+    setDocumentText(null);
+    setLoading(true);
+
+    let convId = conversationId;
+    if (!convId && user) {
+      const { data } = await createConversation(user.id);
+      if (data) {
+        convId = data.id;
+        setConversationId(data.id);
+        loadedConv.current = data.id;
+        titleSet.current = false;
       }
-    },
-    [context]
-  );
-
-  const send = useCallback(
-    async (text) => {
-      const trimmed = (text || "").trim();
-      if (!trimmed || loading) return;
-
-      closeAll();
-
-      const intent = classifyIntent(trimmed, context);
-      const useMode = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
-      const fileSnap = uploadedFile;
-      const docTextSnap = documentText;
-
-      setThinkMode(useMode);
-      setMessages((prev) => [...prev, { role: "user", content: trimmed, fileName: fileSnap?.name || null }]);
-      setInput("");
-      setUploadedFile(null);
-      setDocumentText(null);
-      setLoading(true);
-
-      let convId = conversationId;
-      if (!convId && user) {
-        const { data } = await createConversation(user.id);
-        if (data) {
-          convId = data.id;
-          setConversationId(data.id);
-          loadedConv.current = data.id;
-          titleSet.current = false;
-        }
+    }
+    if (convId && user) {
+      await saveMessage({ conversationId: convId, userId: user.id, role: "user", content: trimmed, meta: { type: "user" } });
+      if (!titleSet.current) {
+        await updateConversationTitle(convId, user.id, trimmed.slice(0, 60));
+        titleSet.current = true;
       }
+    }
 
-      if (convId && user) {
-        await saveMessage({
-          conversationId: convId,
-          userId: user.id,
-          role: "user",
-          content: trimmed,
-          meta: { type: "user", fileName: fileSnap?.name || null },
-        });
+    try {
+      const payload = buildRequestPayload(trimmed, context, intent, useMode, fileSnap, docTextSnap);
+      const res = await fetch(`${API_BASE}/api/copilot/chat`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "X-HireEdge-Plan": getPlan() },
+        body:    JSON.stringify(payload),
+      });
 
-        if (!titleSet.current) {
-          await updateConversationTitle(convId, user.id, trimmed.slice(0, 60));
-          titleSet.current = true;
-        }
+      let json;
+      try { json = await res.json(); } catch { throw new Error("Non-JSON response"); }
+
+      if (!res.ok || !json.ok) {
+        const e = { role: "assistant", type: "error", content: json?.error || "Something went wrong." };
+        setMessages(p => [...p, e]);
+        if (convId && user) await saveMessage({ conversationId: convId, userId: user.id, role: "assistant", content: e.content, meta: { type: "error" } });
+        return;
       }
 
-      try {
-        const payload = buildRequestPayload(trimmed, context, intent, useMode, fileSnap, docTextSnap);
-        const res = await fetch(`${API_BASE}/api/copilot/chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-HireEdge-Plan": getPlan(),
-          },
-          body: JSON.stringify(payload),
-        });
+      const data = json.data;
+      if (!data) throw new Error("Empty response");
 
-        let json;
-        try {
-          json = await res.json();
-        } catch {
-          throw new Error("Non-JSON response");
-        }
-
-        if (!res.ok || !json.ok) {
-          const e = { role: "assistant", type: "error", content: json?.error || "Something went wrong." };
-          setMessages((p) => [...p, e]);
-
-          if (convId && user) {
-            await saveMessage({
-              conversationId: convId,
-              userId: user.id,
-              role: "assistant",
-              content: e.content,
-              meta: { type: "error" },
-            });
-          }
-          return;
-        }
-
-        const data = json.data;
-        if (!data) throw new Error("Empty response");
-
-        if (data.type === "clarification") {
-          const m = {
-            role: "assistant",
-            type: "clarification",
-            content: data.reply,
-            missingFields: data.missing_fields || [],
-            actions: data.next_actions || [],
-          };
-
-          setMessages((p) => [...p, m]);
-          if (data.context) updateContext(_safe(data.context));
-
-          if (convId && user) {
-            await saveMessage({
-              conversationId: convId,
-              userId: user.id,
-              role: "assistant",
-              content: m.content,
-              meta: {
-                type: "clarification",
-                missingFields: m.missingFields,
-                actions: m.actions,
-              },
-            });
-          }
-          return;
-        }
-
+      if (data.type === "clarification") {
         const m = {
-          role: "assistant",
-          type: "assistant",
+          role: "assistant", type: "clarification",
           content: data.reply,
-          nextActions: data.next_actions || [],
-          intent: data.intent?.name,
-          confidence: data.intent?.confidence,
-          intelligenceMode: useMode,
+          missingFields: data.missing_fields || [],
+          actions: data.next_actions || [],
         };
-
-        setMessages((p) => [...p, m]);
-        incrementMessageCount();
-
+        setMessages(p => [...p, m]);
         if (data.context) updateContext(_safe(data.context));
-
-        if (convId && user) {
-          await saveMessage({
-            conversationId: convId,
-            userId: user.id,
-            role: "assistant",
-            content: m.content,
-            meta: {
-              type: "assistant",
-              intent: m.intent,
-              confidence: m.confidence,
-              nextActions: m.nextActions,
-              intelligenceMode: useMode,
-            },
-          });
-        }
-      } catch {
-        const e = { role: "assistant", type: "error", content: "Connection error. Please try again." };
-        setMessages((p) => [...p, e]);
-
-        if (convId && user) {
-          await saveMessage({
-            conversationId: convId,
-            userId: user.id,
-            role: "assistant",
-            content: e.content,
-            meta: { type: "error" },
-          });
-        }
-      } finally {
-        setLoading(false);
-        setThinkMode(null);
+        if (convId && user) await saveMessage({ conversationId: convId, userId: user.id, role: "assistant", content: m.content, meta: { type: "clarification", missingFields: m.missingFields, actions: m.actions } });
+        return;
       }
-    },
-    [
-      closeAll,
-      context,
-      loading,
-      updateContext,
-      conversationId,
-      setConversationId,
-      user,
-      uploadedFile,
-      intelligenceMode,
-      documentText,
-      incrementMessageCount,
-    ]
-  );
+
+      const m = {
+        role: "assistant", type: "assistant",
+        content: data.reply,
+        nextActions: data.next_actions || [],
+        intent: data.intent?.name,
+        confidence: data.intent?.confidence,
+        intelligenceMode: useMode,
+      };
+      setMessages(p => [...p, m]);
+      incrementMessageCount();
+      if (data.context) updateContext(_safe(data.context));
+      if (convId && user) await saveMessage({ conversationId: convId, userId: user.id, role: "assistant", content: m.content, meta: { type: "assistant", intent: m.intent, confidence: m.confidence, nextActions: m.nextActions, intelligenceMode: useMode } });
+
+    } catch {
+      const e = { role: "assistant", type: "error", content: "Connection error. Please try again." };
+      setMessages(p => [...p, e]);
+      if (convId && user) await saveMessage({ conversationId: convId, userId: user.id, role: "assistant", content: e.content, meta: { type: "error" } });
+    } finally {
+      setLoading(false);
+      setThinkMode(null);
+    }
+  }, [context, loading, updateContext, conversationId, setConversationId, user, uploadedFile, intelligenceMode, documentText, incrementMessageCount]);
+
+  const newChat = () => {
+    isNewChatRef.current = true; // prevent auto-load effect from restoring old conversation
+    setMessages([]); setInput(""); setUploadedFile(null); setDocumentText(null); setIntelligenceMode(null);
+    clear(); setConversationId(null); loadedConv.current = null; titleSet.current = false;
+  };
 
   const editContext = () => {
-    const role = window.prompt("Current role:", context?.role || "");
-    const target = window.prompt("Target role:", context?.target || "");
-    if (role !== null || target !== null) {
-      updateContext({
-        role: role || context?.role,
-        target: target || context?.target,
-      });
-    }
+    const role   = window.prompt("Current role:", context?.role   || "");
+    const target = window.prompt("Target role:",  context?.target || "");
+    if (role !== null || target !== null)
+      updateContext({ role: role || context?.role, target: target || context?.target });
   };
 
   return (
-    <div className="ex-chat">
-      <ToolsPanel
-        open={toolsOpen}
-        onClose={() => setToolsOpen(false)}
-        isMobile={isMobile}
-        router={router}
-        onNeedUpgrade={(t) => setUpgradeTool(t)}
-      />
+    <div className="ex-chat" style={{ position: "relative" }}>
 
-      <IntelPanel
-        open={intelOpen}
-        onClose={() => setIntelOpen(false)}
-        isMobile={isMobile}
-        activeMode={intelligenceMode}
-        onSelect={setIntelligenceMode}
-      />
-
-      <UploadPanel
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        isMobile={isMobile}
-        onFile={handleFile}
-      />
-
-      {upgradeTool && <UpgradeModal tool={upgradeTool} onClose={() => setUpgradeTool(null)} router={router} />}
-
-      <PersonalizationBar context={context} onEdit={editContext} />
-
-      <div className="ex-messages">
-        {messages.length === 0 && !loading && <EmptyState onSend={send} context={context} />}
-
-        {messages.map((msg, i) => {
-          if (msg.type === "upload") {
-            return (
-              <UploadMsg
-                key={i}
-                fileName={msg.fileName}
-                uploadType={msg.uploadType}
-                actions={msg.actions}
-                onSend={send}
-                extractionState={msg.extractionState}
-                tokenCount={msg.tokenCount}
-                extractionError={msg.extractionError}
-              />
-            );
-          }
-
-          if (msg.role === "user") {
-            return <UserMsg key={i} content={msg.content} fileName={msg.fileName} />;
-          }
-
-          if (msg.type === "clarification") {
-            return (
-              <ClarifyMsg
-                key={i}
-                content={msg.content}
-                missingFields={msg.missingFields}
-                actions={msg.actions}
-                onSend={send}
-              />
-            );
-          }
-
-          if (msg.type === "error") {
-            return <ErrorMsg key={i} content={msg.content} />;
-          }
-
-          return (
-            <AssistantMsg
-              key={i}
-              content={msg.content}
-              nextActions={msg.nextActions}
-              intent={msg.intent}
-              confidence={msg.confidence}
-              intelligenceMode={msg.intelligenceMode}
-              onSend={send}
-              router={router}
-            />
-          );
-        })}
-
-        {loading && <ThinkingState mode={thinkMode} />}
-        <div ref={bottomRef} />
-      </div>
-
-      <PowerBar
-        input={input}
-        setInput={setInput}
-        loading={loading}
-        onSend={send}
-        uploadedFile={uploadedFile}
-        onClearFile={() => {
-          setUploadedFile(null);
-          setDocumentText(null);
-        }}
+      {/* Session Header — strong workspace-feel top bar */}
+      <SessionHeader
+        context={context}
+        messages={messages}
         intelligenceMode={intelligenceMode}
-        onOpenTools={() => {
-          setIntelOpen(false);
-          setUploadOpen(false);
-          setToolsOpen((v) => !v);
-        }}
-        onOpenIntel={() => {
-          setToolsOpen(false);
-          setUploadOpen(false);
-          setIntelOpen((v) => !v);
-        }}
-        onOpenUpload={() => {
-          setToolsOpen(false);
-          setIntelOpen(false);
-          setUploadOpen((v) => !v);
-        }}
+        onEdit={editContext}
       />
+
+      {/* Workspace: main chat column + right context rail */}
+      <div className="ex-workspace">
+        <div className="ex-workspace__main">
+          <div className="ex-messages">
+            {messages.length === 0 && !loading && <EmptyState onSend={send} context={context} />}
+
+            {messages.map((msg, i) => {
+              if (msg.type === "upload")        return <UploadMsg  key={i} fileName={msg.fileName} uploadType={msg.uploadType} actions={msg.actions} onSend={send} extractionState={msg.extractionState} tokenCount={msg.tokenCount} extractionError={msg.extractionError} />;
+              if (msg.role === "user")          return <UserMsg    key={i} content={msg.content} fileName={msg.fileName} />;
+              if (msg.type === "clarification") return <ClarifyMsg key={i} content={msg.content} missingFields={msg.missingFields} actions={msg.actions} onSend={send} />;
+              if (msg.type === "error")         return <ErrorMsg   key={i} content={msg.content} />;
+              return <AssistantMsg key={i} content={msg.content} nextActions={msg.nextActions} intent={msg.intent} confidence={msg.confidence} intelligenceMode={msg.intelligenceMode} onSend={send} router={router} context={context} />;
+            })}
+
+            {loading && <ThinkingState mode={thinkMode} />}
+            <div ref={bottomRef} />
+          </div>
+
+          <PowerBar
+            input={input}               setInput={setInput}
+            loading={loading}           onSend={send}
+            onFile={handleFile}         uploadedFile={uploadedFile}     onClearFile={() => { setUploadedFile(null); setDocumentText(null); }}
+            intelligenceMode={intelligenceMode}
+            onOpenTools={()  => { closeAll(); setToolsOpen(v => !v);  }}
+            onOpenIntel={()  => { closeAll(); setIntelOpen(v => !v);  }}
+            onOpenUpload={() => { closeAll(); setUploadOpen(v => !v); }}
+            panelContent={
+              <>
+                <ToolsPanel   open={toolsOpen}  onClose={() => setToolsOpen(false)}  isMobile={isMobile} router={router} onNeedUpgrade={t => setUpgradeTool(t)} />
+                <IntelPanel   open={intelOpen}  onClose={() => setIntelOpen(false)}  isMobile={isMobile} activeMode={intelligenceMode} onSelect={setIntelligenceMode} />
+                <UploadPanel  open={uploadOpen} onClose={() => setUploadOpen(false)} isMobile={isMobile} onFile={handleFile} />
+                {upgradeTool && <UpgradeModal tool={upgradeTool} onClose={() => setUpgradeTool(null)} router={router} />}
+              </>
+            }
+          />
+        </div>
+
+        {/* Right context rail — desktop only, hidden on mobile */}
+        <CareerContextRail
+          context={context}
+          messages={messages}
+          intelligenceMode={intelligenceMode}
+          onSend={send}
+          router={router}
+        />
+      </div>
     </div>
   );
 }
