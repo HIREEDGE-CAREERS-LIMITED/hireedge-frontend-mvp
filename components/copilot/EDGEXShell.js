@@ -4,6 +4,7 @@
 // ============================================================================
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { useEDGEXContext } from "../../context/CopilotContext";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -175,6 +176,86 @@ function RecentChatsDrawer({ open, onClose, onSelect }) {
   );
 }
 
+// ─── Mobile Bottom Navigation ──────────────────────────────────────────────────
+function MobileBottomNav() {
+  const router = useRouter();
+  const active = (href) => router.pathname === href || router.pathname.startsWith(href + "/");
+
+  const items = [
+    {
+      href: "/copilot",
+      label: "EDGEX",
+      icon: (on) => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <line x1="6" y1="6" x2="10.8" y2="10.8" stroke="currentColor" strokeWidth={on ? "2.4" : "2"} strokeLinecap="round"/>
+          <line x1="18" y1="6" x2="13.2" y2="10.8" stroke="currentColor" strokeWidth={on ? "2.4" : "2"} strokeLinecap="round"/>
+          <line x1="6" y1="18" x2="10.8" y2="13.2" stroke="currentColor" strokeWidth={on ? "2.4" : "2"} strokeLinecap="round"/>
+          <line x1="18" y1="18" x2="13.2" y2="13.2" stroke="currentColor" strokeWidth={on ? "2.4" : "2"} strokeLinecap="round"/>
+        </svg>
+      ),
+    },
+    {
+      href: "/intelligence",
+      label: "Intelligence",
+      icon: (on) => (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={on ? "1.8" : "1.5"} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 16V9M9 9C9 6 7 4.5 5 4.5S1.5 6 1.5 8c0 1.5 1 2.8 2.5 3.2M9 9c0-3 2-4.5 4-4.5s3.5 1.5 3.5 3.5c0 1.5-1 2.8-2.5 3.2" />
+          <path d="M5 4.5C5 3 6 1.5 7.5 1.5S9 2 9 3M13 4.5c0-1.5-1-3-2.5-3S9 2 9 3" />
+        </svg>
+      ),
+    },
+    {
+      href: "/tools",
+      label: "Tools",
+      icon: (on) => (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={on ? "1.8" : "1.5"} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11.7 1.5a4.5 4.5 0 00-3.7 7l-5.5 5.5 1.5 1.5L9.5 10a4.5 4.5 0 007-3.7l-2.6 2.6-2.1-.7-.7-2.1z" />
+        </svg>
+      ),
+    },
+    {
+      href: "/dashboard",
+      label: "Dashboard",
+      icon: (on) => (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={on ? "1.8" : "1.5"} strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1.5" y="1.5" width="6" height="6" rx="1.5" />
+          <rect x="10.5" y="1.5" width="6" height="6" rx="1.5" />
+          <rect x="1.5" y="10.5" width="6" height="6" rx="1.5" />
+          <rect x="10.5" y="10.5" width="6" height="6" rx="1.5" />
+        </svg>
+      ),
+    },
+    {
+      href: "/account",
+      label: "Account",
+      icon: (on) => (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={on ? "1.8" : "1.5"} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="6" r="3.5" />
+          <path d="M2.5 16c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <nav className="exs-bottom-nav">
+      {items.map(item => {
+        const on = active(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={"exs-bottom-nav__item" + (on ? " exs-bottom-nav__item--active" : "")}
+          >
+            <span className="exs-bottom-nav__icon">{item.icon(on)}</span>
+            <span className="exs-bottom-nav__label">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function EDGEXShell() {
   const router = useRouter();
   const { triggerNewChat, setConversationId } = useEDGEXContext();
@@ -242,6 +323,8 @@ export default function EDGEXShell() {
           <ChatWindow />
         </div>
       </main>
+
+      <MobileBottomNav />
 
       <RecentChatsDrawer
         open={drawerOpen}
