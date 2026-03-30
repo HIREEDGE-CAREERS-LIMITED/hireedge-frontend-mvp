@@ -1,13 +1,12 @@
 // ============================================================================
 // pages/_app.js
 // HireEdge Frontend — Next.js Custom App
-//
-// Root wrapper. Loads global styles, wraps pages in the AppShell layout,
-// and provides auth context across the app.
+// Global providers + AppShell layout
 // ============================================================================
 
 import AppShell from "../components/layout/AppShell";
 import { AuthProvider } from "../contexts/AuthContext";
+import { CopilotProvider } from "../context/CopilotContext";
 
 import "../styles/marketing.css";
 import "../styles/globals.css";
@@ -23,11 +22,14 @@ import "../styles/career-blind-spot.css";
 import "../styles/resume-optimiser.css";
 
 export default function HireEdgeApp({ Component, pageProps }) {
-  const getLayout = Component.getLayout || ((page) => <AppShell>{page}</AppShell>);
+  const getLayout =
+    Component.getLayout || ((page) => <AppShell>{page}</AppShell>);
 
   return (
     <AuthProvider>
-      {getLayout(<Component {...pageProps} />)}
+      <CopilotProvider>
+        {getLayout(<Component {...pageProps} />)}
+      </CopilotProvider>
     </AuthProvider>
   );
 }
