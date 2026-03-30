@@ -149,12 +149,13 @@ function ThinkingState({ mode }) {
     path: ["Charting career routes...", "Finding stepping-stone roles...", "Mapping alternatives...", "Calculating best path..."],
   };
 
-  const msgs = MSGS_BY_MODE[mode] || [
-    "Analysing your career path...",
-    "Checking 1,200+ UK roles...",
-    "Calculating transition metrics...",
-    "Building your intelligence report...",
-  ];
+  const msgs =
+    MSGS_BY_MODE[mode] || [
+      "Analysing your career path...",
+      "Checking 1,200+ UK roles...",
+      "Calculating transition metrics...",
+      "Building your intelligence report...",
+    ];
 
   const [i, setI] = useState(0);
 
@@ -190,7 +191,6 @@ function IntentBadge({ intent, confidence, intelligenceMode }) {
   if (!intent) return null;
 
   const cfg = INTENT_CONFIG[intent] || INTENT_CONFIG.general_career;
-
   return (
     <span className="ex-badge" style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.color + "28" }}>
       {cfg.label}
@@ -201,6 +201,7 @@ function IntentBadge({ intent, confidence, intelligenceMode }) {
 
 function PersonalizationBar({ context, onEdit }) {
   if (!context?.role && !context?.target) return null;
+
   const intent = context?.lastIntent;
   const cfg = intent ? INTENT_CONFIG[intent] || INTENT_CONFIG.general_career : null;
 
@@ -435,7 +436,9 @@ function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tok
               </svg>
             </span>
             <div>
-              <div className="ex-upload-card__type" style={{ color: t.color }}>{t.label}</div>
+              <div className="ex-upload-card__type" style={{ color: t.color }}>
+                {t.label}
+              </div>
               <div className="ex-upload-card__name">{fileName}</div>
             </div>
           </div>
@@ -483,8 +486,19 @@ function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tok
   );
 }
 
-const IDLE_MSGS = ["Ready to analyse your career", "Powered by 1,200+ UK roles", "Real data. Not generic advice.", "Ask anything about your career"];
-const CONTEXT_MSGS = ["Understanding your profile...", "Career data loaded", "Transition intelligence ready", "Building your career path..."];
+const IDLE_MSGS = [
+  "Ready to analyse your career",
+  "Powered by 1,200+ UK roles",
+  "Real data. Not generic advice.",
+  "Ask anything about your career",
+];
+
+const CONTEXT_MSGS = [
+  "Understanding your profile...",
+  "Career data loaded",
+  "Transition intelligence ready",
+  "Building your career path...",
+];
 
 function StatusCycle({ context }) {
   const msgs = context?.role || context?.target ? CONTEXT_MSGS : IDLE_MSGS;
@@ -524,7 +538,9 @@ function IntelPreview({ onSend }) {
         <div className="ex-preview__body" onClick={(e) => e.stopPropagation()}>
           <div className="ex-preview__row">
             <span className="ex-preview__k">Difficulty</span>
-            <span className="ex-preview__v"><span className="ex-preview__badge">Medium · 65/100</span></span>
+            <span className="ex-preview__v">
+              <span className="ex-preview__badge">Medium · 65/100</span>
+            </span>
           </div>
           <div className="ex-preview__row">
             <span className="ex-preview__k">Salary jump</span>
@@ -540,7 +556,9 @@ function IntelPreview({ onSend }) {
           </div>
           <button
             className="ex-preview__cta"
-            onClick={() => onSend("I am a sales manager and want to become a product manager. Run a full transition analysis.")}
+            onClick={() =>
+              onSend("I am a sales manager and want to become a product manager. Run a full transition analysis.")
+            }
           >
             Run this analysis for my profile
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 5 }}>
@@ -581,7 +599,11 @@ function EmptyState({ onSend, context }) {
 
         <button
           className="ex-empty__cta"
-          onClick={() => onSend("Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities.")}
+          onClick={() =>
+            onSend(
+              "Start my career analysis. Help me understand my current market position, skill gaps, and career opportunities."
+            )
+          }
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
             <line x1="4.5" y1="4.5" x2="10.2" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
@@ -612,7 +634,7 @@ function EmptyState({ onSend, context }) {
   );
 }
 
-function Panel({ open, onClose, isMobile, anchor, children }) {
+function Panel({ open, onClose, isMobile, children }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -639,7 +661,7 @@ function Panel({ open, onClose, isMobile, anchor, children }) {
   }
 
   return (
-    <div className={"ex-pop " + (anchor || "")} ref={ref} role="dialog">
+    <div className="ex-pop" ref={ref} role="dialog">
       {children}
     </div>
   );
@@ -659,11 +681,13 @@ function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
   };
 
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--tools">
+    <Panel open={open} onClose={onClose} isMobile={isMobile}>
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Career Tools</span>
-          <button className="ex-panel__x" onClick={onClose}>✕</button>
+          <button className="ex-panel__x" onClick={onClose}>
+            ✕
+          </button>
         </div>
         <ul className="ex-panel__list">
           {TOOLS.map((t) => (
@@ -688,12 +712,14 @@ function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
 
 function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--intel">
+    <Panel open={open} onClose={onClose} isMobile={isMobile}>
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Intelligence Mode</span>
           <span className="ex-panel__free">Free</span>
-          <button className="ex-panel__x" onClick={onClose}>✕</button>
+          <button className="ex-panel__x" onClick={onClose}>
+            ✕
+          </button>
         </div>
         <p className="ex-panel__sub">Select a mode for deeper structured analysis in chat</p>
         <div className="ex-imode-grid">
@@ -707,7 +733,9 @@ function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
                 onClose();
               }}
             >
-              <span className="ex-imode__icon" style={{ background: m.color + "18", color: m.color }}>{m.icon}</span>
+              <span className="ex-imode__icon" style={{ background: m.color + "18", color: m.color }}>
+                {m.icon}
+              </span>
               <span className="ex-imode__label">{m.label}</span>
               <span className="ex-imode__desc">{m.tagline}</span>
               {activeMode === m.key && <span className="ex-imode__check">✓</span>}
@@ -715,7 +743,13 @@ function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
           ))}
         </div>
         {activeMode && (
-          <button className="ex-panel__clear" onClick={() => { onSelect(null); onClose(); }}>
+          <button
+            className="ex-panel__clear"
+            onClick={() => {
+              onSelect(null);
+              onClose();
+            }}
+          >
             Clear mode
           </button>
         )}
@@ -735,11 +769,13 @@ function UploadPanel({ open, onClose, isMobile, onFile }) {
   ];
 
   return (
-    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--upload">
+    <Panel open={open} onClose={onClose} isMobile={isMobile}>
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Upload Document</span>
-          <button className="ex-panel__x" onClick={onClose}>✕</button>
+          <button className="ex-panel__x" onClick={onClose}>
+            ✕
+          </button>
         </div>
         <p className="ex-panel__sub">EDGEX will analyse your document in the context of your career goals</p>
         <ul className="ex-upload-list">
@@ -753,7 +789,9 @@ function UploadPanel({ open, onClose, isMobile, onFile }) {
                   onClose();
                 }}
               >
-                <span className="ex-utype__icon" style={{ background: ut.color + "18", color: ut.color }}>{ut.icon}</span>
+                <span className="ex-utype__icon" style={{ background: ut.color + "18", color: ut.color }}>
+                  {ut.icon}
+                </span>
                 <div className="ex-utype__body">
                   <span className="ex-utype__name">{ut.label}</span>
                   <span className="ex-utype__desc">{ut.desc}</span>
@@ -795,18 +833,32 @@ function UpgradeModal({ tool, onClose, router }) {
           <h3 className="ex-upgrade__title">{tool.label}</h3>
           <p className="ex-upgrade__desc">{tool.tagline}</p>
           <div className="ex-upgrade__options">
-            <button className="ex-upgrade__pack" onClick={() => { router.push("/billing?plan=career_pack"); onClose(); }}>
+            <button
+              className="ex-upgrade__pack"
+              onClick={() => {
+                router.push("/billing?plan=career_pack");
+                onClose();
+              }}
+            >
               <div className="ex-upgrade__pack-inner">
                 <span className="ex-upgrade__pack-label">Career Pack</span>
                 <span className="ex-upgrade__pack-price">£6.99 one-time</span>
               </div>
               <span className="ex-upgrade__pack-note">All tools · One payment · No subscription</span>
             </button>
-            <button className="ex-upgrade__pro" onClick={() => { router.push("/billing?plan=pro"); onClose(); }}>
+            <button
+              className="ex-upgrade__pro"
+              onClick={() => {
+                router.push("/billing?plan=pro");
+                onClose();
+              }}
+            >
               Unlock with Pro — £14.99/mo
             </button>
           </div>
-          <button className="ex-upgrade__dismiss" onClick={onClose}>Not now</button>
+          <button className="ex-upgrade__dismiss" onClick={onClose}>
+            Not now
+          </button>
         </div>
       </div>
     </>
@@ -826,7 +878,6 @@ function PowerBar({
   onOpenUpload,
 }) {
   const textRef = useRef(null);
-  const activeMode = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
 
   useEffect(() => {
     const el = textRef.current;
@@ -835,7 +886,9 @@ function PowerBar({
     el.style.height = Math.min(el.scrollHeight, 150) + "px";
   }, [input]);
 
+  const activeMode = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
   const submit = () => onSend(input);
+
   const keyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -847,9 +900,15 @@ function PowerBar({
     <div className="ex-powerbar">
       {activeMode && (
         <div className="ex-mode-pill" style={{ "--mp": activeMode.color }}>
-          <span className="ex-mode-pill__icon" style={{ color: activeMode.color }}>{activeMode.icon}</span>
-          <span className="ex-mode-pill__name" style={{ color: activeMode.color }}>{activeMode.label} active</span>
-          <button className="ex-mode-pill__clear" onClick={onOpenIntel} title="Change or clear mode">✕</button>
+          <span className="ex-mode-pill__icon" style={{ color: activeMode.color }}>
+            {activeMode.icon}
+          </span>
+          <span className="ex-mode-pill__name" style={{ color: activeMode.color }}>
+            {activeMode.label} active
+          </span>
+          <button className="ex-mode-pill__clear" onClick={() => onOpenIntel()} title="Change or clear mode">
+            ✕
+          </button>
         </div>
       )}
 
@@ -860,7 +919,9 @@ function PowerBar({
             <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           <span className="ex-fchip__name">{uploadedFile.name}</span>
-          <button className="ex-fchip__rm" onClick={onClearFile}>✕</button>
+          <button className="ex-fchip__rm" onClick={onClearFile}>
+            ✕
+          </button>
         </div>
       )}
 
@@ -887,11 +948,7 @@ function PowerBar({
             <span className="ex-ctrl__free">Free</span>
           </button>
 
-          <button
-            className={"ex-ctrl ex-ctrl--upload" + (uploadedFile ? " ex-ctrl--on" : "")}
-            onClick={onOpenUpload}
-            type="button"
-          >
+          <button className={"ex-ctrl ex-ctrl--upload" + (uploadedFile ? " ex-ctrl--on" : "")} onClick={onOpenUpload} type="button">
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 10V3M4 6l3-3 3 3" />
               <path d="M2 12h10" />
@@ -904,7 +961,11 @@ function PowerBar({
           <textarea
             ref={textRef}
             className="ex-bar__textarea"
-            placeholder={activeMode ? activeMode.label + " — describe your role and goal..." : "Type your role and goal — I'll analyse your career instantly"}
+            placeholder={
+              activeMode
+                ? activeMode.label + " — describe your role and goal..."
+                : "Type your role and goal — I'll analyse your career instantly"
+            }
             value={input}
             rows={1}
             disabled={loading}
@@ -919,7 +980,9 @@ function PowerBar({
         </div>
       </div>
 
-      <p className="ex-hint"><kbd>Enter</kbd> to send &nbsp;<kbd>Shift+Enter</kbd> for new line</p>
+      <p className="ex-hint">
+        <kbd>Enter</kbd> to send &nbsp;<kbd>Shift+Enter</kbd> for new line
+      </p>
     </div>
   );
 }
@@ -965,6 +1028,7 @@ export default function ChatWindow() {
 
   useEffect(() => {
     if (!router.isReady || !user) return;
+
     const conv = router.query?.conv;
     if (typeof conv === "string" && conv && conv !== conversationId) {
       setConversationId(conv);
@@ -993,43 +1057,46 @@ export default function ChatWindow() {
     });
   }, [user, conversationId]);
 
-  const handleFile = useCallback(async (file) => {
-    setUploadedFile(file);
-    setDocumentText(null);
+  const handleFile = useCallback(
+    async (file) => {
+      setUploadedFile(file);
+      setDocumentText(null);
 
-    const uploadType = detectUploadType(file.name);
-    const actions = getUploadActions(uploadType, context);
-    const msgId = Date.now();
+      const uploadType = detectUploadType(file.name);
+      const actions = getUploadActions(uploadType, context);
+      const msgId = Date.now();
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "upload",
-        type: "upload",
-        msgId,
-        fileName: file.name,
-        uploadType,
-        actions,
-        extractionState: "extracting",
-        tokenCount: null,
-        extractionError: null,
-      },
-    ]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "upload",
+          type: "upload",
+          msgId,
+          fileName: file.name,
+          uploadType,
+          actions,
+          extractionState: "extracting",
+          tokenCount: null,
+          extractionError: null,
+        },
+      ]);
 
-    const result = await extractDocument(file);
+      const result = await extractDocument(file);
 
-    if (result.error) {
-      setMessages((prev) =>
-        prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "error", extractionError: result.error } : m))
-      );
-    } else {
-      const tokens = estimateTokens(result.text);
-      setDocumentText(result.text);
-      setMessages((prev) =>
-        prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "ready", tokenCount: tokens } : m))
-      );
-    }
-  }, [context]);
+      if (result.error) {
+        setMessages((prev) =>
+          prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "error", extractionError: result.error } : m))
+        );
+      } else {
+        const tokens = estimateTokens(result.text);
+        setDocumentText(result.text);
+        setMessages((prev) =>
+          prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "ready", tokenCount: tokens } : m))
+        );
+      }
+    },
+    [context]
+  );
 
   const closeAll = () => {
     setToolsOpen(false);
@@ -1037,69 +1104,147 @@ export default function ChatWindow() {
     setUploadOpen(false);
   };
 
-  const send = useCallback(async (text) => {
-    const trimmed = (text || "").trim();
-    if (!trimmed || loading) return;
+  const send = useCallback(
+    async (text) => {
+      const trimmed = (text || "").trim();
+      if (!trimmed || loading) return;
 
-    const intent = classifyIntent(trimmed, context);
-    const useMode = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
-    const fileSnap = uploadedFile;
-    const docTextSnap = documentText;
+      const intent = classifyIntent(trimmed, context);
+      const useMode = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
+      const fileSnap = uploadedFile;
+      const docTextSnap = documentText;
 
-    setThinkMode(useMode);
-    setMessages((prev) => [...prev, { role: "user", content: trimmed, fileName: fileSnap?.name || null }]);
-    setInput("");
-    setUploadedFile(null);
-    setDocumentText(null);
-    setLoading(true);
+      setThinkMode(useMode);
+      setMessages((prev) => [...prev, { role: "user", content: trimmed, fileName: fileSnap?.name || null }]);
+      setInput("");
+      setUploadedFile(null);
+      setDocumentText(null);
+      setLoading(true);
 
-    let convId = conversationId;
-    if (!convId && user) {
-      const { data } = await createConversation(user.id);
-      if (data) {
-        convId = data.id;
-        setConversationId(data.id);
-        loadedConv.current = data.id;
-        titleSet.current = false;
+      let convId = conversationId;
+      if (!convId && user) {
+        const { data } = await createConversation(user.id);
+        if (data) {
+          convId = data.id;
+          setConversationId(data.id);
+          loadedConv.current = data.id;
+          titleSet.current = false;
+        }
       }
-    }
 
-    if (convId && user) {
-      await saveMessage({
-        conversationId: convId,
-        userId: user.id,
-        role: "user",
-        content: trimmed,
-        meta: { type: "user" },
-      });
+      if (convId && user) {
+        await saveMessage({
+          conversationId: convId,
+          userId: user.id,
+          role: "user",
+          content: trimmed,
+          meta: { type: "user" },
+        });
 
-      if (!titleSet.current) {
-        await updateConversationTitle(convId, user.id, trimmed.slice(0, 60));
-        titleSet.current = true;
+        if (!titleSet.current) {
+          await updateConversationTitle(convId, user.id, trimmed.slice(0, 60));
+          titleSet.current = true;
+        }
       }
-    }
 
-    try {
-      const payload = buildRequestPayload(trimmed, context, intent, useMode, fileSnap, docTextSnap);
-      const res = await fetch(`${API_BASE}/api/copilot/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-HireEdge-Plan": getPlan(),
-        },
-        body: JSON.stringify(payload),
-      });
-
-      let json;
       try {
-        json = await res.json();
-      } catch {
-        throw new Error("Non-JSON response");
-      }
+        const payload = buildRequestPayload(trimmed, context, intent, useMode, fileSnap, docTextSnap);
+        const res = await fetch(`${API_BASE}/api/copilot/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-HireEdge-Plan": getPlan(),
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (!res.ok || !json.ok) {
-        const e = { role: "assistant", type: "error", content: json?.error || "Something went wrong." };
+        let json;
+        try {
+          json = await res.json();
+        } catch {
+          throw new Error("Non-JSON response");
+        }
+
+        if (!res.ok || !json.ok) {
+          const e = { role: "assistant", type: "error", content: json?.error || "Something went wrong." };
+          setMessages((p) => [...p, e]);
+          if (convId && user) {
+            await saveMessage({
+              conversationId: convId,
+              userId: user.id,
+              role: "assistant",
+              content: e.content,
+              meta: { type: "error" },
+            });
+          }
+          return;
+        }
+
+        const data = json.data;
+        if (!data) throw new Error("Empty response");
+
+        if (data.type === "clarification") {
+          const m = {
+            role: "assistant",
+            type: "clarification",
+            content: data.reply,
+            missingFields: data.missing_fields || [],
+            actions: data.next_actions || [],
+          };
+
+          setMessages((p) => [...p, m]);
+          if (data.context) updateContext(_safe(data.context));
+
+          if (convId && user) {
+            await saveMessage({
+              conversationId: convId,
+              userId: user.id,
+              role: "assistant",
+              content: m.content,
+              meta: {
+                type: "clarification",
+                missingFields: m.missingFields,
+                actions: m.actions,
+              },
+            });
+          }
+          return;
+        }
+
+        const m = {
+          role: "assistant",
+          type: "assistant",
+          content: data.reply,
+          nextActions: data.next_actions || [],
+          intent: data.intent?.name,
+          confidence: data.intent?.confidence,
+          intelligenceMode: useMode,
+        };
+
+        setMessages((p) => [...p, m]);
+        incrementMessageCount();
+
+        if (data.context) updateContext(_safe(data.context));
+
+        if (convId && user) {
+          await saveMessage({
+            conversationId: convId,
+            userId: user.id,
+            role: "assistant",
+            content: m.content,
+            meta: {
+              type: "assistant",
+              intent: m.intent,
+              confidence: m.confidence,
+              nextActions: m.nextActions,
+              intelligenceMode: useMode,
+            },
+          });
+        }
+      } catch {
+        const e = { role: "assistant", type: "error", content: "Connection error. Please try again." };
         setMessages((p) => [...p, e]);
+
         if (convId && user) {
           await saveMessage({
             conversationId: convId,
@@ -1109,94 +1254,24 @@ export default function ChatWindow() {
             meta: { type: "error" },
           });
         }
-        return;
+      } finally {
+        setLoading(false);
+        setThinkMode(null);
       }
-
-      const data = json.data;
-      if (!data) throw new Error("Empty response");
-
-      if (data.type === "clarification") {
-        const m = {
-          role: "assistant",
-          type: "clarification",
-          content: data.reply,
-          missingFields: data.missing_fields || [],
-          actions: data.next_actions || [],
-        };
-
-        setMessages((p) => [...p, m]);
-        if (data.context) updateContext(_safe(data.context));
-
-        if (convId && user) {
-          await saveMessage({
-            conversationId: convId,
-            userId: user.id,
-            role: "assistant",
-            content: m.content,
-            meta: { type: "clarification", missingFields: m.missingFields, actions: m.actions },
-          });
-        }
-        return;
-      }
-
-      const m = {
-        role: "assistant",
-        type: "assistant",
-        content: data.reply,
-        nextActions: data.next_actions || [],
-        intent: data.intent?.name,
-        confidence: data.intent?.confidence,
-        intelligenceMode: useMode,
-      };
-
-      setMessages((p) => [...p, m]);
-      incrementMessageCount();
-
-      if (data.context) updateContext(_safe(data.context));
-
-      if (convId && user) {
-        await saveMessage({
-          conversationId: convId,
-          userId: user.id,
-          role: "assistant",
-          content: m.content,
-          meta: {
-            type: "assistant",
-            intent: m.intent,
-            confidence: m.confidence,
-            nextActions: m.nextActions,
-            intelligenceMode: useMode,
-          },
-        });
-      }
-    } catch {
-      const e = { role: "assistant", type: "error", content: "Connection error. Please try again." };
-      setMessages((p) => [...p, e]);
-      if (convId && user) {
-        await saveMessage({
-          conversationId: convId,
-          userId: user.id,
-          role: "assistant",
-          content: e.content,
-          meta: { type: "error" },
-        });
-      }
-    } finally {
-      setLoading(false);
-      setThinkMode(null);
-    }
-  }, [
-    context,
-    loading,
-    updateContext,
-    conversationId,
-    setConversationId,
-    user,
-    uploadedFile,
-    intelligenceMode,
-    documentText,
-    incrementMessageCount,
-  ]);
+    },
+    [
+      context,
+      loading,
+      updateContext,
+      conversationId,
+      setConversationId,
+      user,
+      uploadedFile,
+      intelligenceMode,
+      documentText,
+      incrementMessageCount,
+    ]
+  );
 
   function newChat() {
     isNewChatRef.current = true;
@@ -1212,6 +1287,12 @@ export default function ChatWindow() {
     setConversationId(null);
     loadedConv.current = null;
     titleSet.current = false;
+
+    if (router.asPath !== "/copilot" && router.asPath !== "/edgex") {
+      router.push("/copilot");
+    } else if (router.query?.conv) {
+      router.replace("/copilot", undefined, { shallow: true });
+    }
 
     setTimeout(() => {
       isNewChatRef.current = false;
@@ -1230,7 +1311,7 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="ex-chat" style={{ position: "relative" }}>
+    <div className="ex-chat">
       <ToolsPanel open={toolsOpen} onClose={() => setToolsOpen(false)} isMobile={isMobile} router={router} onNeedUpgrade={(t) => setUpgradeTool(t)} />
       <IntelPanel open={intelOpen} onClose={() => setIntelOpen(false)} isMobile={isMobile} activeMode={intelligenceMode} onSelect={setIntelligenceMode} />
       <UploadPanel open={uploadOpen} onClose={() => setUploadOpen(false)} isMobile={isMobile} onFile={handleFile} />
@@ -1256,11 +1337,27 @@ export default function ChatWindow() {
               />
             );
           }
-          if (msg.role === "user") return <UserMsg key={i} content={msg.content} fileName={msg.fileName} />;
-          if (msg.type === "clarification") {
-            return <ClarifyMsg key={i} content={msg.content} missingFields={msg.missingFields} actions={msg.actions} onSend={send} />;
+
+          if (msg.role === "user") {
+            return <UserMsg key={i} content={msg.content} fileName={msg.fileName} />;
           }
-          if (msg.type === "error") return <ErrorMsg key={i} content={msg.content} />;
+
+          if (msg.type === "clarification") {
+            return (
+              <ClarifyMsg
+                key={i}
+                content={msg.content}
+                missingFields={msg.missingFields}
+                actions={msg.actions}
+                onSend={send}
+              />
+            );
+          }
+
+          if (msg.type === "error") {
+            return <ErrorMsg key={i} content={msg.content} />;
+          }
+
           return (
             <AssistantMsg
               key={i}
