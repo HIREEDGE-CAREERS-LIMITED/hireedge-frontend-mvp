@@ -140,28 +140,13 @@ const CAT_ICON  = { Skills:"G", Salary:"£", Plan:"P", Visa:"V", Transition:"T",
 
 // ─── Thinking state ────────────────────────────────────────────────────────────
 
-function ThinkingState({ mode }) {
-  const MSGS_BY_MODE = {
-    salary:     ["Querying UK salary data...",     "Benchmarking your role...",      "Checking market rates...",    "Crunching compensation data..."  ],
-    transition: ["Scoring transition difficulty..","Checking demand signals...",     "Mapping your move...",         "Calculating success factors..."  ],
-    skills:     ["Mapping skill requirements...",  "Comparing role profiles...",     "Identifying gaps...",          "Scoring your readiness..."       ],
-    path:       ["Charting career routes...",      "Finding stepping-stone roles...", "Mapping alternatives...",     "Calculating best path..."        ],
-  };
-  const msgs = MSGS_BY_MODE[mode] || ["Running career analysis...", "Cross-referencing 1,228 UK roles...", "Calculating transition metrics...", "Generating intelligence report..."];
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setI(n => (n + 1) % msgs.length), 1900);
-    return () => clearInterval(t);
-  }, [msgs.length]);
+function ThinkingState() {
   return (
     <div className="ex-thinking">
-      <div className="ex-thinking__icon">
-        <EDGEXIcon size={20} state="thinking" color="#0F6E56" />
-        <div className="ex-thinking__pulse" />
-      </div>
-      <div className="ex-thinking__content">
-        <span className="ex-thinking__text">{msgs[i]}</span>
-        <span className="ex-thinking__sub">Cross-referencing 1,228 UK roles · salary data · transition signals</span>
+      <div className="ex-thinking__dots">
+        <span className="ex-thinking__dot" />
+        <span className="ex-thinking__dot" />
+        <span className="ex-thinking__dot" />
       </div>
     </div>
   );
@@ -768,12 +753,8 @@ function EmptyState({ onSend, context }) {
       <div className="ex-empty__flow">
 
         <div className="ex-empty__hero">
-          <div className="ex-empty__orbit">
-            <div className="ex-empty__ring" />
-            <div className="ex-empty__ring ex-empty__ring--2" />
-            <div className="ex-empty__core">
-              <EDGEXIcon size={28} state="hero" color="#0F6E56" />
-            </div>
+          <div className="ex-empty__icon-glow">
+            <EDGEXIcon size={32} state="hero" color="#0F6E56" />
           </div>
           <div className="ex-empty__status">
             <span className="ex-empty__dot" />
@@ -1231,7 +1212,6 @@ export default function ChatWindow() {
   const [uploadedFile,     setUploadedFile]     = useState(null);
   const [documentText,     setDocumentText]     = useState(null);
   const [intelligenceMode, setIntelligenceMode] = useState(null);
-  const [thinkMode,        setThinkMode]        = useState(null);
   const [toolsOpen,        setToolsOpen]        = useState(false);
   const [intelOpen,        setIntelOpen]        = useState(false);
   const [uploadOpen,       setUploadOpen]       = useState(false);
@@ -1314,8 +1294,6 @@ export default function ChatWindow() {
     const useMode     = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
     const fileSnap    = uploadedFile;
     const docTextSnap = documentText;
-
-    setThinkMode(useMode);
     setMessages(prev => [...prev, { role: "user", content: trimmed, fileName: fileSnap?.name || null }]);
     setInput("");
     setUploadedFile(null);
@@ -1393,7 +1371,6 @@ export default function ChatWindow() {
       if (convId && user) await saveMessage({ conversationId: convId, userId: user.id, role: "assistant", content: e.content, meta: { type: "error" } });
     } finally {
       setLoading(false);
-      setThinkMode(null);
     }
   }, [context, loading, updateContext, conversationId, setConversationId, user, uploadedFile, intelligenceMode, documentText, incrementMessageCount]);
 
@@ -1433,7 +1410,7 @@ export default function ChatWindow() {
               return <AssistantMsg key={i} content={msg.content} nextActions={msg.nextActions} intent={msg.intent} confidence={msg.confidence} intelligenceMode={msg.intelligenceMode} onSend={send} router={router} context={context} />;
             })}
 
-            {loading && <ThinkingState mode={thinkMode} />}
+            {loading && <ThinkingState />}
             <div ref={bottomRef} />
           </div>
 
