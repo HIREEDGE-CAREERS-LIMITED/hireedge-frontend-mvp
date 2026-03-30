@@ -326,10 +326,13 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 .ex-sugg__label  { font-size:12px; font-weight:500; color:rgba(255,255,255,0.65); line-height:1.4; margin-top:2px; }
 
 @media (max-width: 680px) {
-  /* 2-column at 680px feels tight — go full width for cleaner tap targets */
+  /* Single column — cleaner tap targets */
   .ex-empty__grid  { grid-template-columns:1fr; gap:6px; }
   .ex-sugg         { padding:9px 12px; }
   .ex-sugg__label  { font-size:12px; }
+  /* Hide verbose content on mobile — keep it tight */
+  .ex-empty__sub   { display:none; }
+  .ex-preview      { display:none; }
 }
 
 /* Legacy suggestion cards (v5) */
@@ -536,7 +539,6 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-msg__bubble--user { max-width:88%; }
   .ex-empty__title      { font-size:18px; }
   .ex-empty__h1         { font-size:18px; }
-  .ex-empty__grid       { grid-template-columns:1fr 1fr; }
   .ex-empty__suggestions{ grid-template-columns:1fr; }
   .ex-header__sub, .ex-header__sep { display:none; }
   /* ex-pop hidden on mobile — bottom sheets used instead */
@@ -569,8 +571,8 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-send { width:42px; height:42px; }
   .ex-bar { padding:6px 6px 6px 12px; }
   .ex-powerbar { padding:8px 12px env(safe-area-inset-bottom, 12px); }
-  /* Padding-bottom clears the powerbar; justify-content centers content vertically */
-  .ex-empty { padding:20px 16px 90px; }
+  /* Padding-top must clear box-shadow (extends 16px out) + breathing room */
+  .ex-empty { padding:36px 16px 90px; }
   .ex-hint { display:none; }
 }
 
