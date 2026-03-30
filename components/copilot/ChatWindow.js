@@ -1437,6 +1437,11 @@ export default function ChatWindow() {
             <div ref={bottomRef} />
           </div>
 
+          {/* Micro-guidance — shown only on empty state to orient first-time users */}
+          {messages.length === 0 && !loading && (
+            <p className="ex-input-guide">Start by telling EDGEX your current role and goal</p>
+          )}
+
           <PowerBar
             input={input}               setInput={setInput}
             loading={loading}           onSend={send}
