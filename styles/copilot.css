@@ -468,7 +468,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 .ex-upgrade__dismiss:hover { color:rgba(255,255,255,0.55); }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
-/* (old sidebar responsive rules removed) */
+@media (max-width: 900px) {
   .ex-messages          { padding:14px 14px 10px; }
   .ex-powerbar          { padding:8px 12px 12px; }
   .ex-pop--tools, .ex-pop--intel, .ex-pop--upload { bottom:90px; left:12px; right:12px; width:auto !important; }
