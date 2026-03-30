@@ -104,9 +104,25 @@
 .ex-pbar__edit:hover { color:rgba(255,255,255,0.60); border-color:rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); }
 
 /* ─── Messages ─────────────────────────────────────────────────────────────── */
-.ex-messages { flex:1; overflow-y:auto; padding:20px 20px 12px; display:flex; flex-direction:column; gap:4px; scroll-behavior:smooth; }
+.ex-messages {
+  flex:1;
+  overflow-y:auto;
+  padding:20px 20px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  scroll-behavior:smooth;
+  align-items:center;
+}
 .ex-messages::-webkit-scrollbar       { width:3px; }
 .ex-messages::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:2px; }
+
+.ex-msg,
+.ex-thinking,
+.ex-empty {
+  width:100%;
+  max-width:760px;
+}
 
 /* ─── Message base ─────────────────────────────────────────────────────────── */
 .ex-msg            { display:flex; gap:10px; padding:7px 0; animation:ex-in .18s ease; }
@@ -357,7 +373,12 @@
 .ex-input-hint kbd  { background:rgba(255,255,255,0.05); border-radius:3px; padding:1px 4px; font-family:inherit; font-size:10px; }
 
 /* ─── Power input bar (new) ────────────────────────────────────────────────── */
-.ex-powerbar          { flex-shrink:0; padding:10px 16px 14px; position:relative; }
+.ex-powerbar {
+  flex-shrink:0;
+  padding:10px 16px 14px;
+  position:relative;
+  z-index:120;
+}
 .ex-mode-pill         { display:inline-flex; align-items:center; gap:7px; padding:4px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:20px; margin-bottom:6px; animation:ex-in .15s ease; }
 .ex-mode-pill__icon   { font-size:11px; font-weight:700; }
 .ex-mode-pill__name   { font-size:11px; font-weight:600; }
@@ -380,6 +401,22 @@
 
 .ex-hint              { text-align:center; font-size:10px; color:rgba(255,255,255,0.14); margin:7px 0 0; }
 .ex-hint kbd          { background:rgba(255,255,255,0.05); border-radius:3px; padding:1px 4px; font-family:inherit; font-size:10px; }
+
+/* ─── Click safety ─────────────────────────────────────────────────────────── */
+.ex-ctrl,
+.ex-send,
+.ex-panel,
+.ex-tool-item,
+.ex-imode,
+.ex-utype,
+.ex-act,
+.ex-empty__cta,
+.ex-sugg,
+.ex-upgrade__pack,
+.ex-upgrade__pro,
+.ex-upgrade__dismiss {
+  pointer-events:auto;
+}
 
 /* ─── Panels (shared) ──────────────────────────────────────────────────────── */
 .ex-panel         { padding:10px 8px; }
@@ -424,10 +461,23 @@
 .ex-utype__desc  { font-size:10px; color:rgba(255,255,255,0.28); line-height:1.4; }
 
 /* ─── Desktop popovers ─────────────────────────────────────────────────────── */
-.ex-pop          { position:absolute; bottom:calc(100% + 8px); z-index:200; background:#111214; border:1px solid rgba(255,255,255,0.10); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.30); animation:ex-in .15s ease; overflow:hidden; }
-.ex-pop--tools   { left:16px; width:270px; }
-.ex-pop--intel   { left:16px; width:285px; }
-.ex-pop--upload  { left:16px; width:270px; }
+.ex-pop {
+  position:fixed;
+  left:50%;
+  bottom:96px;
+  transform:translateX(-50%);
+  z-index:400;
+  background:#111214;
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:14px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.30);
+  animation:ex-in .15s ease;
+  overflow:hidden;
+  pointer-events:auto;
+}
+.ex-pop--tools   { width:270px; }
+.ex-pop--intel   { width:285px; }
+.ex-pop--upload  { width:270px; }
 
 /* ─── Bottom sheets ────────────────────────────────────────────────────────── */
 .ex-backdrop   { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:300; animation:ex-fade-in .18s ease; }
@@ -455,6 +505,28 @@
 @media (max-width: 900px) {
   .exs-mobile-bar { display:flex; }
   .exs-sidebar    { width:260px; }
+
+  .ex-messages {
+    padding:14px 14px 10px;
+  }
+
+  .ex-powerbar {
+    padding:10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ex-msg__bubble,
+  .ex-msg__bubble--user {
+    max-width:88%;
+  }
+
+  .ex-ctrl {
+    min-height:36px;
+  }
+
+  .ex-send {
+    width:36px;
+    height:36px;
+  }
 }
 
 @media (max-width: 680px) {
