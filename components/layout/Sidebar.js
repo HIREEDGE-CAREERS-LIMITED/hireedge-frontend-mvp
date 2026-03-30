@@ -5,7 +5,7 @@
 
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { NAV_SECTIONS, ACCOUNT_NAV } from "../../config/navigation";
 import EDGEXIcon from "../brand/EDGEXIcon";
 import HireEdgeLogo from "../brand/HireEdgeLogo";
@@ -109,24 +109,14 @@ function ChatHistory({
   const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
-    if (!userId) {
-      setConversations([]);
-      return;
-    }
-
-    let active = true;
+    if (!userId) return;
 
     async function loadHistory() {
       const { data } = await listConversations(userId);
-      if (!active) return;
       setConversations(data || []);
     }
 
     loadHistory();
-
-    return () => {
-      active = false;
-    };
   }, [userId, currentConversationId]);
 
   if (collapsed || !userId) return null;
@@ -200,13 +190,13 @@ function ChatHistory({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: 20,
-            height: 20,
-            background: "none",
-            border: "none",
-            color: "var(--text-tertiary)",
+            width: 28,
+            height: 28,
+            background: "rgba(15,110,86,0.08)",
+            border: "1px solid rgba(15,110,86,0.28)",
+            color: "#0F6E56",
             cursor: "pointer",
-            borderRadius: "var(--radius-sm)",
+            borderRadius: "999px",
             flexShrink: 0,
           }}
         >
@@ -309,42 +299,33 @@ export default function Sidebar({
   const avatarLetter = rawName?.[0]?.toUpperCase() || "U";
   const planLabel = PLAN_LABELS[plan] || "Free";
 
-  const isActive = useCallback(
-    (href) => router.pathname === href || router.asPath === href,
-    [router.pathname, router.asPath]
-  );
+  const isActive = (href) => router.pathname === href || router.asPath === href;
 
-  const isParentActive = useCallback(
-    (section) => {
-      if (isActive(section.href)) return true;
-      return section.children?.some((c) => isActive(c.href));
-    },
-    [isActive]
-  );
+  const isParentActive = (section) => {
+    if (isActive(section.href)) return true;
+    return section.children?.some((c) => isActive(c.href));
+  };
 
-  const toggleSection = useCallback((id) => {
+  const toggleSection = (id) => {
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
+  };
 
-  const renderNavIcon = useCallback((section) => {
+  const renderNavIcon = (section) => {
     if (section.id === "edgex") return <EDGEXNavIcon />;
     return <span className="sidebar__icon">{getIcon(section.icon)}</span>;
-  }, []);
+  };
 
-  const handleSelectConversation = useCallback(
-    (id) => {
-      setConversationId(id);
-      router.push(`/copilot?conv=${id}`);
-      onMobileClose?.();
-    },
-    [setConversationId, router, onMobileClose]
-  );
+  function handleSelectConversation(id) {
+    setConversationId(id);
+    if (mobileOpen) onMobileClose?.();
+    router.push(`/copilot?conv=${id}`);
+  }
 
-  const handleNewChat = useCallback(() => {
+  function handleNewChat() {
     triggerNewChat();
+    if (mobileOpen) onMobileClose?.();
     router.push("/copilot");
-    onMobileClose?.();
-  }, [triggerNewChat, router, onMobileClose]);
+  }
 
   const sidebarClass = [
     "sidebar",
@@ -363,18 +344,13 @@ export default function Sidebar({
 
       <aside className={sidebarClass}>
         <div className="sidebar__header">
-          <Link href="/copilot" className="sidebar__logo" onClick={() => onMobileClose?.()}>
+          <Link href="/copilot" className="sidebar__logo">
             <HireEdgeLogo size={collapsed ? 24 : 28} interactive />
             {!collapsed && <span>HireEdge</span>}
           </Link>
 
           {!collapsed && (
-            <button
-              className="sidebar__toggle"
-              onClick={onToggle}
-              aria-label="Collapse sidebar"
-              type="button"
-            >
+            <button className="sidebar__toggle" onClick={onToggle} aria-label="Collapse sidebar" type="button">
               <span className="sidebar__icon">{getIcon("chevron")}</span>
             </button>
           )}
@@ -407,9 +383,6 @@ export default function Sidebar({
                   .filter(Boolean)
                   .join(" ")}
                 title={collapsed ? section.label : undefined}
-                onClick={() => {
-                  if (!section.children) onMobileClose?.();
-                }}
               >
                 {renderNavIcon(section)}
                 {!collapsed && <span>{section.label}</span>}
@@ -448,7 +421,6 @@ export default function Sidebar({
                         ]
                           .filter(Boolean)
                           .join(" ")}
-                        onClick={() => onMobileClose?.()}
                       >
                         <span>{child.label}</span>
                         {child.plan === "pro" && <span className="sidebar__badge">PRO</span>}
@@ -474,7 +446,6 @@ export default function Sidebar({
                 .filter(Boolean)
                 .join(" ")}
               title={collapsed ? item.label : undefined}
-              onClick={() => onMobileClose?.()}
             >
               <span className="sidebar__icon">{getIcon(item.icon)}</span>
               {!collapsed && <span>{item.label}</span>}
