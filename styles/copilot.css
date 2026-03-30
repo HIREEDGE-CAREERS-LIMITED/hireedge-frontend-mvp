@@ -322,9 +322,8 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-sugg__label  { font-size:12px; }
   /* Hide verbose content on mobile — keep it tight */
   .ex-empty__sub   { display:none; }
-  /* Show intel preview compactly on mobile */
-  .ex-preview      { display:block; padding:8px 12px; margin-bottom:8px; border-radius:9px; }
-  .ex-preview__body { display:none; }
+  /* Hide intel preview on mobile — not enough space */
+  .ex-preview      { display:none !important; }
 }
 
 /* Legacy suggestion cards (v5) */
