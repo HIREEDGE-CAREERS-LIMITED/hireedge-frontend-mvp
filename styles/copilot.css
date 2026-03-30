@@ -259,7 +259,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 /* ex-thinking defined above */
 
 /* ─── Empty state ──────────────────────────────────────────────────────────── */
-.ex-empty         { flex:1; display:flex; flex-direction:column; align-items:center; padding:16px 20px 10px; overflow-y:auto; position:relative; justify-content:center; }
+.ex-empty         { flex:1; display:flex; flex-direction:column; align-items:center; padding:16px 20px 10px; overflow-y:auto; position:relative; justify-content:flex-start; }
 .ex-empty__bg-glow{ position:absolute; width:500px; height:300px; border-radius:50%; background:radial-gradient(ellipse at center, rgba(15,110,86,0.10) 0%, transparent 70%); top:30%; left:50%; transform:translate(-50%,-50%); pointer-events:none; animation:ex-glow-drift 8s ease-in-out infinite; z-index:0; }
 .ex-empty__flow   { display:flex; flex-direction:column; align-items:center; width:100%; max-width:500px; position:relative; z-index:1; }
 
@@ -275,10 +275,10 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 @media (max-width: 680px) {
   /* Scale the hero down slightly on mobile */
   .ex-empty__icon-glow { width:40px; height:40px; border-radius:11px; }
-  .ex-empty__h1     { font-size:16px; margin-bottom:4px; }
+  .ex-empty__h1     { font-size:15px; margin-bottom:4px; }
   .ex-empty__sub    { font-size:12px; margin-bottom:10px; }
   .ex-preview        { margin-bottom:10px; padding:10px 13px; }
-  .ex-empty__cta     { margin-bottom:8px; }
+  .ex-empty__cta     { margin-bottom:6px; }
   .ex-empty__hero   { margin-bottom:8px; }
 }
 /* Legacy orbit names */
@@ -318,11 +318,13 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 @media (max-width: 680px) {
   /* Single column — cleaner tap targets */
   .ex-empty__grid  { grid-template-columns:1fr; gap:5px; margin-bottom:0; }
-  .ex-sugg         { padding:9px 12px; }
+  .ex-sugg         { padding:8px 12px; }
   .ex-sugg__label  { font-size:12px; }
   /* Hide verbose content on mobile — keep it tight */
   .ex-empty__sub   { display:none; }
-  .ex-preview      { display:none; }
+  /* Show intel preview compactly on mobile */
+  .ex-preview      { display:block; padding:8px 12px; margin-bottom:8px; border-radius:9px; }
+  .ex-preview__body { display:none; }
 }
 
 /* Legacy suggestion cards (v5) */
@@ -562,12 +564,12 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-bar { padding:6px 6px 6px 12px; }
   .ex-powerbar { padding:8px 12px env(safe-area-inset-bottom, 12px); }
   /* Tight padding — hero hidden, content fits without scrolling */
-  .ex-empty { padding:12px 16px 16px; justify-content:center; }
+  .ex-empty { padding:20px 16px 16px; justify-content:flex-start; }
   /* iOS: font-size < 16px triggers auto-zoom on input focus */
   .ex-bar__textarea { font-size:16px; }
   .ex-input { font-size:16px; }
-  .ex-empty__hero { display:flex !important; margin-bottom:6px; gap:6px; }
-  .ex-empty__icon-glow { width:34px; height:34px; border-radius:9px; box-shadow:0 0 0 5px rgba(15,110,86,0.06), 0 0 16px rgba(15,110,86,0.18); }
+  .ex-empty__hero { display:flex !important; margin-bottom:4px; gap:6px; }
+  .ex-empty__icon-glow { width:30px; height:30px; border-radius:8px; box-shadow:0 0 0 4px rgba(15,110,86,0.06), 0 0 12px rgba(15,110,86,0.16); }
   .ex-hint { display:none; }
 }
 
