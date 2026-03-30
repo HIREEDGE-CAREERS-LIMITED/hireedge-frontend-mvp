@@ -768,3 +768,40 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 .ex-analysis--application .ex-decision-card    { --dc: #ec4899; }
 .ex-analysis--execution .ex-decision-card      { --dc: #8b5cf6; }
 .ex-analysis--eligibility .ex-decision-card    { --dc: #3b82f6; }
+
+/* ─── Header actions group ───────────────────────────────────────────────── */
+.exs-header__actions  { display:flex; align-items:center; gap:8px; }
+
+/* History button — mobile only (hidden on desktop) */
+.exs-header__history  { display:none; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:rgba(255,255,255,0.45); cursor:pointer; font-family:inherit; transition:all .15s; -webkit-tap-highlight-color:transparent; flex-shrink:0; }
+.exs-header__history:hover { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.85); }
+
+@media (max-width: 900px) {
+  .exs-header__history { display:flex; }
+}
+
+/* ─── Recent Chats Drawer ─────────────────────────────────────────────────── */
+.exs-drawer-backdrop  { position:fixed; inset:0; background:rgba(0,0,0,0.60); z-index:400; animation:ex-fade-in .18s ease; }
+.exs-drawer           { position:fixed; bottom:0; left:0; right:0; background:#111214; border-top:1px solid rgba(255,255,255,0.10); border-radius:20px 20px 0 0; z-index:500; max-height:75vh; display:flex; flex-direction:column; animation:ex-sheet-up .22s cubic-bezier(0.34,1.1,0.64,1); padding-bottom:calc(env(safe-area-inset-bottom, 16px) + 8px); }
+.exs-drawer__handle   { width:36px; height:4px; border-radius:2px; background:rgba(255,255,255,0.12); margin:12px auto 0; flex-shrink:0; }
+.exs-drawer__header   { display:flex; align-items:center; justify-content:space-between; padding:14px 18px 10px; border-bottom:1px solid rgba(255,255,255,0.06); flex-shrink:0; }
+.exs-drawer__title    { font-size:13px; font-weight:700; color:rgba(255,255,255,0.85); letter-spacing:-.01em; }
+.exs-drawer__close    { font-size:12px; color:rgba(255,255,255,0.28); background:transparent; border:none; cursor:pointer; padding:4px 6px; font-family:inherit; transition:color .12s; -webkit-tap-highlight-color:transparent; }
+.exs-drawer__close:hover { color:rgba(255,255,255,0.70); }
+.exs-drawer__list     { flex:1; overflow-y:auto; padding:6px 0 8px; -webkit-overflow-scrolling:touch; }
+
+/* Conversation item */
+.exs-drawer__item     { display:flex; align-items:center; gap:10px; width:100%; padding:13px 18px; background:transparent; border:none; cursor:pointer; font-family:inherit; text-align:left; transition:background .12s; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.exs-drawer__item:hover, .exs-drawer__item:active { background:rgba(255,255,255,0.04); }
+.exs-drawer__item-icon  { color:rgba(255,255,255,0.25); flex-shrink:0; }
+.exs-drawer__item-title { flex:1; font-size:13px; font-weight:500; color:rgba(255,255,255,0.72); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.exs-drawer__item:hover .exs-drawer__item-title { color:rgba(255,255,255,0.95); }
+.exs-drawer__item-arrow { color:rgba(255,255,255,0.18); flex-shrink:0; }
+
+/* Empty / loading states */
+.exs-drawer__empty    { font-size:13px; color:rgba(255,255,255,0.28); text-align:center; padding:28px 20px; margin:0; line-height:1.6; }
+.exs-drawer__loading  { display:flex; align-items:center; justify-content:center; gap:5px; padding:32px; }
+.exs-drawer__dot      { width:7px; height:7px; border-radius:50%; background:#0F6E56; animation:ex-dot-bounce 1.3s ease-in-out infinite; }
+.exs-drawer__dot:nth-child(1) { animation-delay:0s; }
+.exs-drawer__dot:nth-child(2) { animation-delay:0.18s; }
+.exs-drawer__dot:nth-child(3) { animation-delay:0.36s; }
