@@ -721,3 +721,89 @@ body {
     max-width: 100%;
   }
 }
+/* ============================================================================
+   EDGEX premium width tuning
+   ============================================================================ */
+
+.ex-messages {
+  align-items: stretch;
+  padding: 24px 32px 16px;
+}
+
+.ex-msg,
+.ex-thinking,
+.ex-empty {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.ex-msg__body,
+.ex-rcards,
+.ex-prose-wrap,
+.ex-prose {
+  width: 100%;
+}
+
+.ex-powerbar {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: 32px;
+  padding-right: 32px;
+  box-sizing: border-box;
+}
+
+.ex-pbar {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.ex-msg__bubble,
+.ex-msg__bubble--user {
+  max-width: 640px;
+}
+
+.ex-rcard,
+.ex-card,
+.ex-upload-card,
+.ex-clarify {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1280px) {
+  .ex-msg,
+  .ex-thinking,
+  .ex-empty,
+  .ex-powerbar,
+  .ex-pbar {
+    max-width: 1000px;
+  }
+}
+
+@media (max-width: 900px) {
+  .ex-messages {
+    padding: 16px 16px 10px;
+  }
+
+  .ex-msg,
+  .ex-thinking,
+  .ex-empty,
+  .ex-powerbar,
+  .ex-pbar {
+    max-width: 100%;
+  }
+
+  .ex-powerbar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .ex-msg__bubble,
+  .ex-msg__bubble--user {
+    max-width: 88%;
+  }
+}
