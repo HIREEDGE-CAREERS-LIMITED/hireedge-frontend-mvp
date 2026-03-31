@@ -607,21 +607,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 .ex-session-header__main     { display:flex; align-items:center; gap:12px; flex:1; min-width:0; overflow:hidden; }
 
 /* ─── Session Header — mobile responsive ────────────────────────────────── */
-@media (max-width: 680px) {
-  /* Stack the header into two rows: goal on top, meta below */
-  .ex-session-header         { flex-wrap:wrap; padding:8px 14px; gap:6px; align-items:flex-start; }
-  .ex-session-header__main   { flex-direction:column; align-items:flex-start; overflow:visible; gap:6px; flex:1; min-width:0; }
-  .ex-session-header__goal   { gap:6px; flex-wrap:wrap; }
-  /* Truncate role values to fit mobile width — max 110px each side */
-  .ex-session-header__role-val { max-width:110px; font-size:11px; }
-  /* Hide the vertical divider — saves horizontal space */
-  .ex-session-header__divider  { display:none; }
-  /* Meta row (focus + stage) wraps naturally below goal */
-  .ex-session-header__meta   { gap:5px; }
-  .ex-session-header__tag    { font-size:9px; padding:2px 7px; }
-  /* Edit button stays on the right, aligned to first row */
-  .ex-session-header__edit   { font-size:9px; padding:3px 7px; align-self:flex-start; margin-top:2px; }
-}
+
 .ex-session-header__goal     { display:flex; align-items:center; gap:10px; }
 .ex-session-header__role     { display:flex; flex-direction:column; gap:1px; }
 .ex-session-header__role-lbl { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,0.20); }
@@ -859,4 +845,92 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 
   /* Messages bottom padding */
   .ex-messages { padding-bottom: 20px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE UX REFINEMENTS  ≤680px
+   Targets: session header, CTA, input bar, guidance, bottom spacing
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 680px) {
+
+  /* ── 1. Session header: compressed, single row, calm ─────────────────────
+     Hide the CURRENT→TARGET goal block entirely — too much noise.
+     Keep only: Career Intelligence tag + Ready stage + Set context button. */
+  .ex-session-header {
+    padding: 6px 14px;
+    gap: 0;
+    align-items: center;
+    flex-wrap: nowrap;
+    min-height: 0;
+  }
+  .ex-session-header__main {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+  }
+  .ex-session-header__goal    { display: none; }
+  .ex-session-header__divider { display: none; }
+  .ex-session-header__meta    { gap: 4px; flex-wrap: nowrap; }
+  .ex-session-header__tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    letter-spacing: 0.02em;
+  }
+  .ex-session-header__tag--stage {
+    font-size: 10px;
+    padding: 2px 0;
+  }
+  .ex-session-header__edit {
+    font-size: 9px;
+    padding: 3px 8px;
+    margin-top: 0;
+    align-self: center;
+    opacity: 0.6;
+    border-color: rgba(255,255,255,0.06);
+  }
+
+  /* ── 2. Reduce CTA dominance ─────────────────────────────────────────────
+     The suggestion cards are primary on mobile. CTA is secondary entry. */
+  .ex-empty__cta {
+    padding: 9px 16px !important;
+    font-size: 13px !important;
+    margin-bottom: 6px !important;
+    box-shadow: none !important;
+    opacity: 0.9;
+  }
+
+  /* ── 3. Tighten gap between cards and input block ───────────────────────
+     Remove dead space below suggestion cards. */
+  .ex-empty__grid  { gap: 5px; margin-bottom: 0; }
+  .ex-messages     { padding-bottom: 8px; }
+
+  /* ── 4 + 5. Input bar: stronger presence, "start here" feel ─────────────
+     Micro-guidance sits directly above input via ex-input-guide.
+     Bar gets stronger border and clear focus glow. */
+  .ex-input-guide {
+    padding: 0 14px 4px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.01em;
+    text-align: left;
+  }
+  .ex-bar {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.055);
+  }
+  .ex-bar:focus-within {
+    border-color: rgba(15,110,86,0.65);
+    box-shadow: 0 0 0 3px rgba(15,110,86,0.13), 0 2px 10px rgba(0,0,0,0.25);
+    background: rgba(255,255,255,0.07);
+  }
+  .ex-bar__textarea::placeholder {
+    color: rgba(255,255,255,0.28);
+  }
+
+  /* ── 6. Bottom safe spacing ──────────────────────────────────────────────
+     Input clears bottom nav + iPhone home bar without wasted space. */
+  .ex-powerbar {
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+  }
 }
