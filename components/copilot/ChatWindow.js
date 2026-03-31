@@ -97,7 +97,11 @@ function dbRowToMsg(row) {
 }
 
 function useIsMobile() {
-  const [mobile, setMobile] = useState(false);
+  // Start with true on small screens — avoids flash of desktop layout on mobile
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 900;
+  });
   useEffect(() => {
     // 900px: ensures tablets also get bottom sheets (better touch experience)
     const check = () => setMobile(window.innerWidth < 900);
