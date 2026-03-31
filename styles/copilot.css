@@ -318,7 +318,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 @media (max-width: 680px) {
   /* Single column — cleaner tap targets */
   .ex-empty__grid  { grid-template-columns:1fr; gap:5px; margin-bottom:0; }
-  .ex-sugg         { padding:8px 12px; }
+  .ex-sugg         { padding:7px 12px; }
   .ex-sugg__label  { font-size:12px; }
   /* Hide verbose content on mobile — keep it tight */
   .ex-empty__sub   { display:none; }
