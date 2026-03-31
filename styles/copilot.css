@@ -854,11 +854,12 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
     text-transform: uppercase;
   }
 
-  /* Lift powerbar above bottom nav */
-  .ex-powerbar {
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 60px) !important;
-  }
+  /* Push entire shell content above the bottom nav */
+  .exs-shell { padding-bottom: 56px; }
 
-  /* Adjust messages bottom padding for bottom nav */
-  .ex-messages { padding-bottom: 160px; }
+  /* Lift powerbar above bottom nav */
+  .ex-powerbar { padding-bottom: 12px !important; }
+
+  /* Messages bottom padding — clear powerbar only, shell handles nav */
+  .ex-messages { padding-bottom: 110px; }
 }
