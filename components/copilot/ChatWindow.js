@@ -1,22 +1,5 @@
 // ============================================================================
 // components/copilot/ChatWindow.js  —  EDGEX Final Production
-//
-// Owns all chat state. Renders:
-//   • EDGEX header
-//   • Personalization bar (context-aware)
-//   • Message stream (user, assistant, upload, clarification, error)
-//   • Power input bar (Tools | Intelligence | Upload | textarea | Send)
-//   • Overlay panels (Tools, Intelligence, Upload, Upgrade)
-//     — Desktop: upward popovers
-//     — Mobile <680px: bottom sheets
-//
-// Features:
-//   • Client-side document extraction via lib/documentExtractor
-//   • documentText sent with API payload when extraction succeeds
-//   • Intelligence modes: Salary, Transition, Skills Gap, Career Path (all free)
-//   • Free/paid tool gating — paid tools trigger UpgradeModal
-//   • Supabase conversation persistence (unchanged from v6)
-//   • messageCount incremented in shared context for sidebar display
 // ============================================================================
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -26,6 +9,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import EDGEXIcon from "../brand/EDGEXIcon";
 import {
   createConversation,
+  listConversations,
   loadConversation,
   saveMessage,
   updateConversationTitle,
@@ -43,7 +27,7 @@ import {
 } from "../../lib/edgexOrchestrator";
 import { extractDocument, estimateTokens } from "../../lib/documentExtractor";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
 
 const ENDPOINT_TO_ROUTE = {
   "/api/tools/career-gap-explainer": "/tools/career-gap-explainer",
@@ -67,8 +51,6 @@ const INTENT_CONFIG = {
   general_career: { label: "Career Intelligence", color: "#0F6E56", bg: "rgba(15,110,86,0.12)" },
   unclear: { label: "Exploring", color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
 };
-
-// ─── Utilities ─────────────────────────────────────────────────────────────────
 
 function _safe(ctx) {
   if (!ctx || typeof ctx !== "object") return {};
@@ -117,100 +99,33 @@ function smartSuggestions(ctx) {
 
   if (!role && !target) {
     return [
-      {
-        label: "Diagnose my skill gaps",
-        prompt: "Tell me what skills I am missing for the next step in my career. Start with my current role.",
-        cat: "Skills",
-      },
-      {
-        label: "Benchmark my salary",
-        prompt: "What is the UK market rate for my role, and how do I move into the top salary band?",
-        cat: "Salary",
-      },
-      {
-        label: "Map my transition path",
-        prompt: "I want to change careers. Help me identify the best move and what it will take to get there.",
-        cat: "Plan",
-      },
-      {
-        label: "Check UK visa eligibility",
-        prompt: "I am a skilled professional. What UK visa routes am I eligible for and what is the fastest path?",
-        cat: "Visa",
-      },
+      { label: "Diagnose my skill gaps", prompt: "Tell me what skills I am missing for the next step in my career. Start with my current role.", cat: "Skills" },
+      { label: "Benchmark my salary", prompt: "What is the UK market rate for my role, and how do I move into the top salary band?", cat: "Salary" },
+      { label: "Map my transition path", prompt: "I want to change careers. Help me identify the best move and what it will take to get there.", cat: "Plan" },
+      { label: "Check UK visa eligibility", prompt: "I am a skilled professional. What UK visa routes am I eligible for and what is the fastest path?", cat: "Visa" },
     ];
   }
 
   if (role && !target) {
     return [
-      {
-        label: "Best transition from " + role,
-        prompt: "I am a " + role + ". What is the highest-value career transition I can make and how long will it take?",
-        cat: "Transition",
-      },
-      {
-        label: "My salary ceiling",
-        prompt: "What is the top-of-band salary for a " + role + " in the UK, and what is the fastest path to reach it?",
-        cat: "Salary",
-      },
-      {
-        label: "Skills holding me back",
-        prompt: "As a " + role + ", what are the exact skills I am missing that are blocking my next career step?",
-        cat: "Skills",
-      },
-      {
-        label: "6-month action plan",
-        prompt: "Build me a 6-month career action plan starting from my current role as a " + role,
-        cat: "Plan",
-      },
+      { label: "Best transition from " + role, prompt: "I am a " + role + ". What is the highest-value career transition I can make and how long will it take?", cat: "Transition" },
+      { label: "My salary ceiling", prompt: "What is the top-of-band salary for a " + role + " in the UK, and what is the fastest path to reach it?", cat: "Salary" },
+      { label: "Skills holding me back", prompt: "As a " + role + ", what are the exact skills I am missing that are blocking my next career step?", cat: "Skills" },
+      { label: "6-month action plan", prompt: "Build me a 6-month career action plan starting from my current role as a " + role, cat: "Plan" },
     ];
   }
 
   const short = target.split(" ").slice(0, 2).join(" ");
   return [
-    {
-      label: "Exact gaps to " + short,
-      prompt: "What are the exact skills I am missing to move from " + role + " to " + target + "? Give me a prioritised list.",
-      cat: "Skills",
-    },
-    {
-      label: "Salary jump",
-      prompt: "What is the salary difference between " + role + " and " + target + " in the UK? What is the top quartile for " + target + "?",
-      cat: "Salary",
-    },
-    {
-      label: "90-day transition plan",
-      prompt: "Build a 90-day action plan to move me from " + role + " to " + target + ". Focus on the highest-leverage moves first.",
-      cat: "Plan",
-    },
-    {
-      label: short + " interview prep",
-      prompt: "I am a " + role + " interviewing for " + target + " roles. Give me the 5 hardest interview questions and how to answer each one.",
-      cat: "Interview",
-    },
+    { label: "Exact gaps to " + short, prompt: "What are the exact skills I am missing to move from " + role + " to " + target + "? Give me a prioritised list.", cat: "Skills" },
+    { label: "Salary jump", prompt: "What is the salary difference between " + role + " and " + target + " in the UK? What is the top quartile for " + target + "?", cat: "Salary" },
+    { label: "90-day transition plan", prompt: "Build a 90-day action plan to move me from " + role + " to " + target + ". Focus on the highest-leverage moves first.", cat: "Plan" },
+    { label: short + " interview prep", prompt: "I am a " + role + " interviewing for " + target + " roles. Give me the 5 hardest interview questions and how to answer each one.", cat: "Interview" },
   ];
 }
 
-const CAT_COLOR = {
-  Skills: "#f59e0b",
-  Salary: "#10b981",
-  Plan: "#0F6E56",
-  Visa: "#3b82f6",
-  Transition: "#6366f1",
-  Interview: "#8b5cf6",
-  CV: "#ec4899",
-};
-
-const CAT_ICON = {
-  Skills: "G",
-  Salary: "£",
-  Plan: "P",
-  Visa: "V",
-  Transition: "T",
-  Interview: "I",
-  CV: "C",
-};
-
-// ─── Thinking state ────────────────────────────────────────────────────────────
+const CAT_COLOR = { Skills: "#f59e0b", Salary: "#10b981", Plan: "#0F6E56", Visa: "#3b82f6", Transition: "#6366f1", Interview: "#8b5cf6", CV: "#ec4899" };
+const CAT_ICON = { Skills: "G", Salary: "£", Plan: "P", Visa: "V", Transition: "T", Interview: "I", CV: "C" };
 
 function ThinkingState() {
   return (
@@ -224,17 +139,12 @@ function ThinkingState() {
   );
 }
 
-// ─── Intent / mode badge ───────────────────────────────────────────────────────
-
 function IntentBadge({ intent, intelligenceMode }) {
   if (intelligenceMode) {
     const m = INTELLIGENCE_MODES.find((x) => x.key === intelligenceMode);
     if (m) {
       return (
-        <span
-          className="ex-badge"
-          style={{ background: m.color + "18", color: m.color, borderColor: m.color + "28" }}
-        >
+        <span className="ex-badge" style={{ background: m.color + "18", color: m.color, borderColor: m.color + "28" }}>
           <span className="ex-badge__icon">{m.icon}</span>
           {m.label}
         </span>
@@ -246,16 +156,11 @@ function IntentBadge({ intent, intelligenceMode }) {
 
   const cfg = INTENT_CONFIG[intent] || INTENT_CONFIG.general_career;
   return (
-    <span
-      className="ex-badge"
-      style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.color + "28" }}
-    >
+    <span className="ex-badge" style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.color + "28" }}>
       {cfg.label}
     </span>
   );
 }
-
-// ─── Session Header ────────────────────────────────────────────────────────────
 
 function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
   const hasConversation = messages && messages.some((m) => m.role === "user");
@@ -273,36 +178,18 @@ function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
         <div className="ex-session-header__goal">
           <div className="ex-session-header__role">
             <span className="ex-session-header__role-lbl">CURRENT</span>
-            <span
-              className={
-                currentRole
-                  ? "ex-session-header__role-val"
-                  : "ex-session-header__role-val ex-session-header__role-val--unset"
-              }
-            >
+            <span className={currentRole ? "ex-session-header__role-val" : "ex-session-header__role-val ex-session-header__role-val--unset"}>
               {currentRole || "Not set"}
             </span>
           </div>
 
           <svg className="ex-session-header__arrow" width="16" height="10" viewBox="0 0 16 10" fill="none">
-            <path
-              d="M0 5h14M10 1l4 4-4 4"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M0 5h14M10 1l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
 
           <div className="ex-session-header__role">
             <span className="ex-session-header__role-lbl">TARGET</span>
-            <span
-              className={
-                targetRole
-                  ? "ex-session-header__role-val ex-session-header__role-val--accent"
-                  : "ex-session-header__role-val ex-session-header__role-val--unset"
-              }
-            >
+            <span className={targetRole ? "ex-session-header__role-val ex-session-header__role-val--accent" : "ex-session-header__role-val ex-session-header__role-val--unset"}>
               {targetRole || "Not set"}
             </span>
           </div>
@@ -311,18 +198,7 @@ function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
         <div className="ex-session-header__divider" />
 
         <div className="ex-session-header__meta">
-          <div
-            className="ex-session-header__tag"
-            style={
-              modeInfo
-                ? {
-                    color: modeInfo.color,
-                    background: modeInfo.color + "14",
-                    borderColor: modeInfo.color + "28",
-                  }
-                : {}
-            }
-          >
+          <div className="ex-session-header__tag" style={modeInfo ? { color: modeInfo.color, background: modeInfo.color + "14", borderColor: modeInfo.color + "28" } : {}}>
             <span
               style={{
                 width: 5,
@@ -353,27 +229,15 @@ function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
         </div>
       </div>
 
-      <button
-        className="ex-session-header__edit"
-        onClick={onEdit}
-        title={hasContext ? "Edit career context" : "Set your career context"}
-      >
+      <button className="ex-session-header__edit" onClick={onEdit} title={hasContext ? "Edit career context" : "Set your career context"}>
         <svg width="10" height="10" viewBox="0 0 11 11" fill="none">
-          <path
-            d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {hasContext ? "Edit" : "Set context"}
       </button>
     </div>
   );
 }
-
-// ─── Response rendering ────────────────────────────────────────────────────────
 
 const SECTION_DISPLAY = {
   summary: { display: "Summary" },
@@ -389,6 +253,7 @@ const SECTION_DISPLAY = {
 
 function RLine({ item }) {
   if (!item || item.type === "gap") return null;
+
   if (item.type === "bullet") {
     return (
       <div className="ex-rline ex-rline--bullet">
@@ -397,6 +262,7 @@ function RLine({ item }) {
       </div>
     );
   }
+
   return <p className="ex-rline">{item.text}</p>;
 }
 
@@ -441,21 +307,13 @@ function RCard({ section }) {
   );
 }
 
-// ─── Message types ─────────────────────────────────────────────────────────────
-
 function UserMsg({ content, fileName }) {
   return (
     <div className="ex-msg ex-msg--user">
       {fileName && (
         <div className="ex-fchip ex-fchip--msg">
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-            <path
-              d="M3 1h5l2 2v8H3V1z"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M3 1h5l2 2v8H3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           {fileName}
@@ -470,6 +328,7 @@ function DecisionCard({ intent, confidence, intelligenceMode, nextActions, conte
   const intentCfg = intent ? INTENT_CONFIG[intent] || INTENT_CONFIG.general_career : null;
   const modeCfg = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
   const activeCfg = modeCfg || intentCfg;
+
   if (!activeCfg) return null;
 
   const pct = confidence ? Math.round(confidence * 100) : null;
@@ -477,31 +336,18 @@ function DecisionCard({ intent, confidence, intelligenceMode, nextActions, conte
   const target = context?.target || null;
 
   const STATUS_MAP = {
-    career_transition: target && role
-      ? `${role} → ${target} transition assessed`
-      : target
-      ? `Path to ${target} assessed`
-      : "Transition complexity assessed",
-    skill_gap: target
-      ? `Gap to ${target} identified`
-      : role
-      ? `Gaps beyond ${role} identified`
-      : "Skill gap diagnosed",
+    career_transition: target && role ? `${role} → ${target} transition assessed` : target ? `Path to ${target} assessed` : "Transition complexity assessed",
+    skill_gap: target ? `Gap to ${target} identified` : role ? `Gaps beyond ${role} identified` : "Skill gap diagnosed",
     salary_benchmark: role ? `${role} market rate benchmarked` : "UK salary benchmarked",
     visa_eligibility: role ? `${role} visa eligibility assessed` : "Visa route assessed",
     resume_optimise: target ? `CV aligned to ${target}` : "CV gaps identified",
     linkedin_optimise: target ? `Profile positioned for ${target}` : "LinkedIn gaps identified",
     interview_prep: target ? `${target} interview strategy built` : "Interview strategy built",
-    general_career: role && target
-      ? `${role} → ${target} career position assessed`
-      : role
-      ? `${role} career position assessed`
-      : "Career position assessed",
+    general_career: role && target ? `${role} → ${target} career position assessed` : role ? `${role} career position assessed` : "Career position assessed",
     unclear: "Insufficient context — add role and target for full diagnosis",
   };
 
   const status = STATUS_MAP[intent] || activeCfg.label + " analysis run";
-
   const toolAction = nextActions?.find((a) => a.type === "tool");
   const promptAction = nextActions?.find((a) => a.type !== "tool");
   const primaryAction = toolAction || promptAction || null;
@@ -529,19 +375,20 @@ function DecisionCard({ intent, confidence, intelligenceMode, nextActions, conte
             {activeCfg.label}
           </span>
         </div>
+
         {pct !== null && (
           <div className="ex-decision-card__cell">
             <span className="ex-decision-card__cell-label">CONFIDENCE</span>
             <span className="ex-decision-card__cell-value">{pct}%</span>
           </div>
         )}
+
         <div className="ex-decision-card__cell ex-decision-card__cell--status">
           <span className="ex-decision-card__cell-label">STATUS</span>
-          <span className="ex-decision-card__cell-value ex-decision-card__cell-value--status">
-            {status}
-          </span>
+          <span className="ex-decision-card__cell-value ex-decision-card__cell-value--status">{status}</span>
         </div>
       </div>
+
       <div className="ex-decision-card__next">
         <span className="ex-decision-card__next-label">RECOMMENDED MOVE</span>
         <span className="ex-decision-card__next-value">{nextStepCopy}</span>
@@ -576,6 +423,7 @@ const CTA_TOOL_PRIORITY = {
 
 function selectPrimaryAction(nextActions, intent) {
   if (!nextActions?.length) return null;
+
   const toolActions = nextActions.filter((a) => a.type === "tool");
   const promptActions = nextActions.filter((a) => a.type !== "tool");
   const priorityList = CTA_TOOL_PRIORITY[intent];
@@ -609,13 +457,7 @@ function ActionButton({ action, router, onSend, className }) {
     <button className={className} onClick={handleClick}>
       {className === "ex-act-primary" && (
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-          <path
-            d="M2 7h10M7 2l5 5-5 5"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
       {action.label}
@@ -639,16 +481,19 @@ function AssistantMsg({ content, nextActions, intent, confidence, intelligenceMo
         nextActions={nextActions}
         context={context || {}}
       />
+
       <div className={hasCards ? "ex-analysis__cards" : "ex-analysis__prose"}>
         {sections.map((s, i) => (
           <RCard key={i} section={s} />
         ))}
       </div>
+
       {(primaryAction || secondaryActions.length > 0) && (
         <div className="ex-analysis__actions">
           {primaryAction && (
             <ActionButton action={primaryAction} router={router} onSend={onSend} className="ex-act-primary" />
           )}
+
           {secondaryActions.length > 0 && (
             <div className="ex-act-secondary-row">
               {secondaryActions.map((a, i) => (
@@ -744,13 +589,7 @@ function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tok
           <div className="ex-upload-card__hd">
             <span className="ex-upload-card__icon" style={{ background: t.color + "18", color: t.color }}>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M3 1h5l3 3v9H3V1z"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M3 1h5l3 3v9H3V1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M8 1v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
             </span>
@@ -772,13 +611,7 @@ function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tok
           {extractionState === "ready" && tokenCount != null && (
             <div className="ex-upload-card__status ex-upload-card__status--ready">
               <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M2 6l3 3 5-5"
-                  stroke="#10b981"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M2 6l3 3 5-5" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Content read — approximately {tokenCount.toLocaleString()} tokens
             </div>
@@ -810,8 +643,6 @@ function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tok
     </div>
   );
 }
-
-// ─── Empty state ───────────────────────────────────────────────────────────────
 
 const IDLE_MSGS = [
   "Ready to analyse your career",
@@ -871,18 +702,22 @@ function IntelPreview({ onSend }) {
               <span className="ex-preview__badge">Medium · 65/100</span>
             </span>
           </div>
+
           <div className="ex-preview__row">
             <span className="ex-preview__k">Salary jump</span>
             <span className="ex-preview__v ex-preview__v--green">£45k → £65k (+30%)</span>
           </div>
+
           <div className="ex-preview__row">
             <span className="ex-preview__k">Top skill gap</span>
             <span className="ex-preview__v">Product lifecycle management</span>
           </div>
+
           <div className="ex-preview__row">
             <span className="ex-preview__k">Timeline</span>
             <span className="ex-preview__v">9–14 months with deliberate steps</span>
           </div>
+
           <button
             className="ex-preview__cta"
             onClick={() =>
@@ -891,13 +726,7 @@ function IntelPreview({ onSend }) {
           >
             Run this analysis for my profile
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 5 }}>
-              <path
-                d="M2 6h8M6 2l4 4-4 4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
@@ -911,15 +740,9 @@ function EmptyState({ onSend, context }) {
   const isMobile = useIsMobile();
 
   return (
-    <div
-      className="ex-empty"
-      style={isMobile ? { overflowY: "hidden", justifyContent: "flex-start", padding: "16px 14px 0" } : {}}
-    >
+    <div className="ex-empty" style={isMobile ? { overflowY: "hidden", justifyContent: "flex-start", padding: "16px 14px 0" } : {}}>
       <div className="ex-empty__glow" />
-      <div
-        className="ex-empty__flow"
-        style={isMobile ? { width: "100%", gap: 0, display: "flex", flexDirection: "column", alignItems: "center" } : {}}
-      >
+      <div className="ex-empty__flow" style={isMobile ? { width: "100%", gap: 0, display: "flex", flexDirection: "column", alignItems: "center" } : {}}>
         {!isMobile && (
           <div className="ex-empty__hero">
             <div className="ex-empty__icon-glow">
@@ -932,21 +755,11 @@ function EmptyState({ onSend, context }) {
           </div>
         )}
 
-        <h1
-          className="ex-empty__h1"
-          style={
-            isMobile
-              ? { fontSize: 19, fontWeight: 800, textAlign: "center", margin: "0 0 8px", color: "#fff", letterSpacing: "-0.5px" }
-              : {}
-          }
-        >
+        <h1 className="ex-empty__h1" style={isMobile ? { fontSize: 19, fontWeight: 800, textAlign: "center", margin: "0 0 8px", color: "#fff", letterSpacing: "-0.5px" } : {}}>
           Career Operating System
         </h1>
 
-        {!isMobile && (
-          <p className="ex-empty__sub">Diagnose your career. Identify your gaps. Execute your next move.</p>
-        )}
-
+        {!isMobile && <p className="ex-empty__sub">Diagnose your career. Identify your gaps. Execute your next move.</p>}
         {!isMobile && <IntelPreview onSend={onSend} />}
 
         <button
@@ -987,10 +800,7 @@ function EmptyState({ onSend, context }) {
           Start Career Analysis
         </button>
 
-        <div
-          className="ex-empty__grid"
-          style={isMobile ? { display: "flex", flexDirection: "column", gap: 6, width: "100%" } : {}}
-        >
+        <div className="ex-empty__grid" style={isMobile ? { display: "flex", flexDirection: "column", gap: 6, width: "100%" } : {}}>
           {sugg.map((s, i) => (
             <button
               key={i}
@@ -1016,13 +826,7 @@ function EmptyState({ onSend, context }) {
                   : { "--sc": CAT_COLOR[s.cat] || "#0F6E56" }
               }
             >
-              <span
-                className="ex-sugg__icon"
-                style={{
-                  color: CAT_COLOR[s.cat] || "#0F6E56",
-                  background: (CAT_COLOR[s.cat] || "#0F6E56") + "18",
-                }}
-              >
+              <span className="ex-sugg__icon" style={{ color: CAT_COLOR[s.cat] || "#0F6E56", background: (CAT_COLOR[s.cat] || "#0F6E56") + "18" }}>
                 {CAT_ICON[s.cat] || "·"}
               </span>
               <span className="ex-sugg__label">{s.label}</span>
@@ -1033,8 +837,6 @@ function EmptyState({ onSend, context }) {
     </div>
   );
 }
-
-// ─── Shared panel wrapper ──────────────────────────────────────────────────────
 
 function Panel({ open, onClose, isMobile, anchor, children }) {
   const ref = useRef(null);
@@ -1087,9 +889,7 @@ function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Career Tools</span>
-          <button className="ex-panel__x" onClick={onClose}>
-            ✕
-          </button>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
         </div>
         <ul className="ex-panel__list">
           {TOOLS.map((t) => (
@@ -1119,9 +919,7 @@ function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Intelligence Mode</span>
           <span className="ex-panel__free">Free</span>
-          <button className="ex-panel__x" onClick={onClose}>
-            ✕
-          </button>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
         </div>
         <p className="ex-panel__sub">Select a mode for deeper structured analysis in chat</p>
         <div className="ex-imode-grid">
@@ -1145,13 +943,7 @@ function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
           ))}
         </div>
         {activeMode && (
-          <button
-            className="ex-panel__clear"
-            onClick={() => {
-              onSelect(null);
-              onClose();
-            }}
-          >
+          <button className="ex-panel__clear" onClick={() => { onSelect(null); onClose(); }}>
             Clear mode
           </button>
         )}
@@ -1165,30 +957,9 @@ function UploadPanel({ open, onClose, isMobile, onFile }) {
   const [accept, setAccept] = useState("*");
 
   const TYPES = [
-    {
-      key: "cv",
-      icon: "C",
-      label: "CV / Resume",
-      desc: "EDGEX analyses gaps, ATS fit, and rewrite suggestions",
-      color: "#6366f1",
-      accept: ".pdf,.doc,.docx",
-    },
-    {
-      key: "jd",
-      icon: "J",
-      label: "Job Description",
-      desc: "EDGEX scores your fit and identifies what to close",
-      color: "#10b981",
-      accept: ".pdf,.txt,.doc,.docx",
-    },
-    {
-      key: "cover",
-      icon: "L",
-      label: "Cover Letter",
-      desc: "EDGEX reviews impact, tone, and opening strength",
-      color: "#f59e0b",
-      accept: ".pdf,.doc,.docx,.txt",
-    },
+    { key: "cv", icon: "C", label: "CV / Resume", desc: "EDGEX analyses gaps, ATS fit, and rewrite suggestions", color: "#6366f1", accept: ".pdf,.doc,.docx" },
+    { key: "jd", icon: "J", label: "Job Description", desc: "EDGEX scores your fit and identifies what to close", color: "#10b981", accept: ".pdf,.txt,.doc,.docx" },
+    { key: "cover", icon: "L", label: "Cover Letter", desc: "EDGEX reviews impact, tone, and opening strength", color: "#f59e0b", accept: ".pdf,.doc,.docx,.txt" },
   ];
 
   return (
@@ -1196,9 +967,7 @@ function UploadPanel({ open, onClose, isMobile, onFile }) {
       <div className="ex-panel">
         <div className="ex-panel__hd">
           <span className="ex-panel__title">Upload Document</span>
-          <button className="ex-panel__x" onClick={onClose}>
-            ✕
-          </button>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
         </div>
         <p className="ex-panel__sub">EDGEX will analyse your document in the context of your career goals</p>
         <ul className="ex-upload-list">
@@ -1249,16 +1018,7 @@ function UpgradeModal({ tool, onClose, router }) {
         <div className="ex-sheet__handle" />
         <div className="ex-upgrade">
           <div className="ex-upgrade__icon" style={{ background: tool.color + "18", color: tool.color }}>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 18 18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 2l1.5 3.5L14 7l-2.5 2.5.6 3.5L9 11.5 6.9 13l.6-3.5L5 7l3.5-1.5z" />
             </svg>
           </div>
@@ -1278,6 +1038,7 @@ function UpgradeModal({ tool, onClose, router }) {
               </div>
               <span className="ex-upgrade__pack-note">All tools · One payment · No subscription</span>
             </button>
+
             <button
               className="ex-upgrade__pro"
               onClick={() => {
@@ -1288,16 +1049,12 @@ function UpgradeModal({ tool, onClose, router }) {
               Unlock with Pro — £14.99/mo
             </button>
           </div>
-          <button className="ex-upgrade__dismiss" onClick={onClose}>
-            Not now
-          </button>
+          <button className="ex-upgrade__dismiss" onClick={onClose}>Not now</button>
         </div>
       </div>
     </>
   );
 }
-
-// ─── Power input bar ───────────────────────────────────────────────────────────
 
 function PowerBar({
   input,
@@ -1336,34 +1093,20 @@ function PowerBar({
 
       {activeMode && (
         <div className="ex-mode-pill" style={{ "--mp": activeMode.color }}>
-          <span className="ex-mode-pill__icon" style={{ color: activeMode.color }}>
-            {activeMode.icon}
-          </span>
-          <span className="ex-mode-pill__name" style={{ color: activeMode.color }}>
-            {activeMode.label} active
-          </span>
-          <button className="ex-mode-pill__clear" onClick={() => onOpenIntel()} title="Change or clear mode">
-            ✕
-          </button>
+          <span className="ex-mode-pill__icon" style={{ color: activeMode.color }}>{activeMode.icon}</span>
+          <span className="ex-mode-pill__name" style={{ color: activeMode.color }}>{activeMode.label} active</span>
+          <button className="ex-mode-pill__clear" onClick={() => onOpenIntel()} title="Change or clear mode">✕</button>
         </div>
       )}
 
       {uploadedFile && (
         <div className="ex-fchip">
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-            <path
-              d="M3 1h5l2 2v8H3V1z"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M3 1h5l2 2v8H3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
           <span className="ex-fchip__name">{uploadedFile.name}</span>
-          <button className="ex-fchip__rm" onClick={onClearFile}>
-            ✕
-          </button>
+          <button className="ex-fchip__rm" onClick={onClearFile}>✕</button>
         </div>
       )}
 
@@ -1407,11 +1150,7 @@ function PowerBar({
           <textarea
             ref={textRef}
             className="ex-bar__textarea"
-            placeholder={
-              activeMode
-                ? activeMode.label + " — describe your current role and target move..."
-                : "Tell me your current role and target — I'll diagnose your career path."
-            }
+            placeholder={activeMode ? activeMode.label + " — describe your current role and target move..." : "Tell me your current role and target — I'll diagnose your career path."}
             value={input}
             rows={1}
             disabled={loading}
@@ -1426,9 +1165,7 @@ function PowerBar({
         </div>
       </div>
 
-      <p className="ex-hint">
-        <kbd>Enter</kbd> to send &nbsp;<kbd>Shift+Enter</kbd> for new line
-      </p>
+      <p className="ex-hint"><kbd>Enter</kbd> to send &nbsp;<kbd>Shift+Enter</kbd> for new line</p>
     </div>
   );
 }
@@ -1439,31 +1176,10 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
   const modeInfo = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
 
   const QUICK_ACTIONS = [
-    {
-      label: "Salary check",
-      prompt: context?.role
-        ? `What salary should a ${context.role} target in the UK?`
-        : "What salary benchmarks should I know for my career transition?",
-    },
-    {
-      label: "Skill gaps",
-      prompt: context?.target
-        ? `What skills am I missing to become a ${context.target}?`
-        : "What are the most common skill gaps in my industry?",
-    },
-    {
-      label: "Transition plan",
-      prompt:
-        context?.role && context?.target
-          ? `Build a step-by-step transition plan from ${context.role} to ${context.target}`
-          : "How should I plan my career transition?",
-    },
-    {
-      label: "Market demand",
-      prompt: context?.target
-        ? `What is the UK job market demand for ${context.target}?`
-        : "What roles are most in demand in the UK right now?",
-    },
+    { label: "Salary check", prompt: context?.role ? `What salary should a ${context.role} target in the UK?` : "What salary benchmarks should I know for my career transition?" },
+    { label: "Skill gaps", prompt: context?.target ? `What skills am I missing to become a ${context.target}?` : "What are the most common skill gaps in my industry?" },
+    { label: "Transition plan", prompt: context?.role && context?.target ? `Build a step-by-step transition plan from ${context.role} to ${context.target}` : "How should I plan my career transition?" },
+    { label: "Market demand", prompt: context?.target ? `What is the UK job market demand for ${context.target}?` : "What roles are most in demand in the UK right now?" },
   ];
 
   return (
@@ -1499,16 +1215,12 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
             {modeInfo && (
               <div className="ex-rail__ctx-row">
                 <span className="ex-rail__ctx-key">Focus</span>
-                <span className="ex-rail__ctx-val" style={{ color: modeInfo.color }}>
-                  {modeInfo.label}
-                </span>
+                <span className="ex-rail__ctx-val" style={{ color: modeInfo.color }}>{modeInfo.label}</span>
               </div>
             )}
           </div>
         ) : (
-          <p className="ex-rail__empty-hint">
-            Tell EDGEX your current role and target to activate career intelligence.
-          </p>
+          <p className="ex-rail__empty-hint">Tell EDGEX your current role and target to activate career intelligence.</p>
         )}
       </div>
 
@@ -1525,26 +1237,14 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
             >
               <span className="ex-rail__nba-label">{primaryAction.label}</span>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M2 6h8M6 2l4 4-4 4"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           ) : (
             <button className="ex-rail__nba" onClick={() => onSend(primaryAction.prompt)}>
               <span className="ex-rail__nba-label">{primaryAction.label}</span>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M2 6h8M6 2l4 4-4 4"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           )}
@@ -1565,19 +1265,9 @@ function CareerContextRail({ context, messages, intelligenceMode, onSend, router
   );
 }
 
-// ─── Main ChatWindow ────────────────────────────────────────────────────────────
-
 export default function ChatWindow() {
   const router = useRouter();
-  const {
-    context,
-    updateContext,
-    clear,
-    conversationId,
-    setConversationId,
-    incrementMessageCount,
-    registerNewChat,
-  } = useEDGEXContext();
+  const { context, updateContext, clear, conversationId, setConversationId, incrementMessageCount, registerNewChat } = useEDGEXContext();
   const handledQueryConv = useRef(false);
   const { user } = useAuth();
   const isMobile = useIsMobile();
@@ -1598,10 +1288,9 @@ export default function ChatWindow() {
   const loadedConv = useRef(null);
   const isNewChatRef = useRef(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     registerNewChat(newChat);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1615,10 +1304,11 @@ export default function ChatWindow() {
       setConversationId(convId);
       router.replace(router.pathname, undefined, { shallow: true });
     }
-  }, [router.query?.conv, router, conversationId, setConversationId]);
+  }, [router.query?.conv]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!user || !conversationId || loadedConv.current === conversationId) return;
+
     loadConversation(conversationId, user.id).then(({ data }) => {
       setMessages((data || []).map(dbRowToMsg));
       loadedConv.current = conversationId;
@@ -1626,46 +1316,47 @@ export default function ChatWindow() {
     });
   }, [user, conversationId]);
 
-  const handleFile = useCallback(
-    async (file) => {
-      setUploadedFile(file);
-      setDocumentText(null);
+  const handleFile = useCallback(async (file) => {
+    setUploadedFile(file);
+    setDocumentText(null);
 
-      const uploadType = detectUploadType(file.name);
-      const actions = getUploadActions(uploadType, context);
-      const msgId = Date.now();
+    const uploadType = detectUploadType(file.name);
+    const actions = getUploadActions(uploadType, context);
+    const msgId = Date.now();
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "upload",
-          type: "upload",
-          msgId,
-          fileName: file.name,
-          uploadType,
-          actions,
-          extractionState: "extracting",
-          tokenCount: null,
-          extractionError: null,
-        },
-      ]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "upload",
+        type: "upload",
+        msgId,
+        fileName: file.name,
+        uploadType,
+        actions,
+        extractionState: "extracting",
+        tokenCount: null,
+        extractionError: null,
+      },
+    ]);
 
-      const result = await extractDocument(file);
+    const result = await extractDocument(file);
 
-      if (result.error) {
-        setMessages((prev) =>
-          prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "error", extractionError: result.error } : m))
-        );
-      } else {
-        const tokens = estimateTokens(result.text);
-        setDocumentText(result.text);
-        setMessages((prev) =>
-          prev.map((m) => (m.msgId === msgId ? { ...m, extractionState: "ready", tokenCount: tokens } : m))
-        );
-      }
-    },
-    [context]
-  );
+    if (result.error) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.msgId === msgId ? { ...m, extractionState: "error", extractionError: result.error } : m
+        )
+      );
+    } else {
+      const tokens = estimateTokens(result.text);
+      setDocumentText(result.text);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.msgId === msgId ? { ...m, extractionState: "ready", tokenCount: tokens } : m
+        )
+      );
+    }
+  }, [context]);
 
   const closeAll = () => {
     setToolsOpen(false);
@@ -1673,171 +1364,79 @@ export default function ChatWindow() {
     setUploadOpen(false);
   };
 
-  const send = useCallback(
-    async (text) => {
-      const trimmed = (text || "").trim();
-      if (!trimmed || loading) return;
+  const send = useCallback(async (text) => {
+    const trimmed = (text || "").trim();
+    if (!trimmed || loading) return;
 
-      const intent = classifyIntent(trimmed, context);
-      const useMode = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
-      const fileSnap = uploadedFile;
-      const docTextSnap = documentText;
+    const intent = classifyIntent(trimmed, context);
+    const useMode = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
+    const fileSnap = uploadedFile;
+    const docTextSnap = documentText;
 
-      setMessages((prev) => [...prev, { role: "user", content: trimmed, fileName: fileSnap?.name || null }]);
-      setInput("");
-      setUploadedFile(null);
-      setDocumentText(null);
-      setLoading(true);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: trimmed, fileName: fileSnap?.name || null },
+    ]);
 
-      let convId = conversationId;
+    setInput("");
+    setUploadedFile(null);
+    setDocumentText(null);
+    setLoading(true);
 
-      if (!convId && user) {
-        const { data } = await createConversation(user.id);
-        if (data) {
-          convId = data.id;
-          setConversationId(data.id);
-          loadedConv.current = data.id;
-          titleSet.current = false;
-        }
+    let convId = conversationId;
+
+    if (!convId && user) {
+      const { data } = await createConversation(user.id);
+      if (data) {
+        convId = data.id;
+        setConversationId(data.id);
+        loadedConv.current = data.id;
+        titleSet.current = false;
       }
+    }
 
-      if (convId && user) {
-        await saveMessage({
-          conversationId: convId,
-          userId: user.id,
-          role: "user",
-          content: trimmed,
-          meta: { type: "user" },
-        });
+    if (convId && user) {
+      await saveMessage({
+        conversationId: convId,
+        userId: user.id,
+        role: "user",
+        content: trimmed,
+        meta: { type: "user" },
+      });
 
-        if (!titleSet.current) {
-          await updateConversationTitle(convId, user.id, trimmed.slice(0, 60));
-          titleSet.current = true;
-        }
+      if (!titleSet.current) {
+        await updateConversationTitle(convId, user.id, trimmed.slice(0, 60));
+        titleSet.current = true;
       }
+    }
 
+    try {
+      const payload = buildRequestPayload(trimmed, context, intent, useMode, fileSnap, docTextSnap);
+
+      const res = await fetch(`${API_BASE}/api/copilot/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-HireEdge-Plan": getPlan(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let json = null;
       try {
-        const payload = buildRequestPayload(trimmed, context, intent, useMode, fileSnap, docTextSnap);
-        const requestUrl = `${API_BASE}/api/copilot/chat`;
+        json = await res.json();
+      } catch {
+        throw new Error("Backend returned non-JSON response");
+      }
 
-        console.log("[EDGEX] API_BASE:", API_BASE);
-        console.log("[EDGEX] requestUrl:", requestUrl);
-        console.log("[EDGEX] payload:", payload);
-
-        const res = await fetch(requestUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-HireEdge-Plan": getPlan(),
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const rawText = await res.text();
-
-        console.log("[EDGEX] status:", res.status);
-        console.log("[EDGEX] raw response:", rawText);
-
-        let json;
-        try {
-          json = JSON.parse(rawText);
-        } catch {
-          throw new Error(`Non-JSON response (${res.status}): ${rawText.slice(0, 300)}`);
-        }
-
-        if (!res.ok || !json.ok) {
-          const e = {
-            role: "assistant",
-            type: "error",
-            content: json?.error || json?.message || `Request failed (${res.status}).`,
-          };
-
-          setMessages((p) => [...p, e]);
-
-          if (convId && user) {
-            await saveMessage({
-              conversationId: convId,
-              userId: user.id,
-              role: "assistant",
-              content: e.content,
-              meta: { type: "error" },
-            });
-          }
-          return;
-        }
-
-        const data = json.data;
-        if (!data) throw new Error("Empty response");
-
-        if (data.type === "clarification") {
-          const m = {
-            role: "assistant",
-            type: "clarification",
-            content: data.reply,
-            missingFields: data.missing_fields || [],
-            actions: data.next_actions || [],
-          };
-
-          setMessages((p) => [...p, m]);
-
-          if (data.context) updateContext(_safe(data.context));
-
-          if (convId && user) {
-            await saveMessage({
-              conversationId: convId,
-              userId: user.id,
-              role: "assistant",
-              content: m.content,
-              meta: {
-                type: "clarification",
-                missingFields: m.missingFields,
-                actions: m.actions,
-              },
-            });
-          }
-          return;
-        }
-
-        const m = {
-          role: "assistant",
-          type: "assistant",
-          content: data.reply,
-          nextActions: data.next_actions || [],
-          intent: data.intent?.name,
-          confidence: data.intent?.confidence,
-          intelligenceMode: useMode,
-        };
-
-        setMessages((p) => [...p, m]);
-        incrementMessageCount();
-
-        if (data.context) updateContext(_safe(data.context));
-
-        if (convId && user) {
-          await saveMessage({
-            conversationId: convId,
-            userId: user.id,
-            role: "assistant",
-            content: m.content,
-            meta: {
-              type: "assistant",
-              intent: m.intent,
-              confidence: m.confidence,
-              nextActions: m.nextActions,
-              intelligenceMode: useMode,
-            },
-          });
-        }
-      } catch (err) {
-        console.error("[EDGEX] send error:", err);
+      if (!res.ok || !json?.ok) {
+        const backendMsg =
+          json?.error || json?.message || `Request failed with status ${res.status}`;
 
         const e = {
           role: "assistant",
           type: "error",
-          content:
-            err?.message?.startsWith("Non-JSON response")
-              ? err.message
-              : err?.message || "Connection error. Please try again.",
+          content: backendMsg,
         };
 
         setMessages((p) => [...p, e]);
@@ -1851,23 +1450,108 @@ export default function ChatWindow() {
             meta: { type: "error" },
           });
         }
-      } finally {
-        setLoading(false);
+
+        return;
       }
-    },
-    [
-      context,
-      loading,
-      updateContext,
-      conversationId,
-      setConversationId,
-      user,
-      uploadedFile,
-      intelligenceMode,
-      documentText,
-      incrementMessageCount,
-    ]
-  );
+
+      const data = json.data;
+      if (!data) throw new Error("Empty response from backend");
+
+      if (data.type === "clarification") {
+        const m = {
+          role: "assistant",
+          type: "clarification",
+          content: data.reply,
+          missingFields: data.missing_fields || [],
+          actions: data.next_actions || [],
+        };
+
+        setMessages((p) => [...p, m]);
+
+        if (data.context) updateContext(_safe(data.context));
+
+        if (convId && user) {
+          await saveMessage({
+            conversationId: convId,
+            userId: user.id,
+            role: "assistant",
+            content: m.content,
+            meta: {
+              type: "clarification",
+              missingFields: m.missingFields,
+              actions: m.actions,
+            },
+          });
+        }
+
+        return;
+      }
+
+      const m = {
+        role: "assistant",
+        type: "assistant",
+        content: data.reply,
+        nextActions: data.next_actions || [],
+        intent: data.intent?.name,
+        confidence: data.intent?.confidence,
+        intelligenceMode: useMode,
+      };
+
+      setMessages((p) => [...p, m]);
+      incrementMessageCount();
+
+      if (data.context) updateContext(_safe(data.context));
+
+      if (convId && user) {
+        await saveMessage({
+          conversationId: convId,
+          userId: user.id,
+          role: "assistant",
+          content: m.content,
+          meta: {
+            type: "assistant",
+            intent: m.intent,
+            confidence: m.confidence,
+            nextActions: m.nextActions,
+            intelligenceMode: useMode,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[EDGEX] send error:", err);
+
+      const e = {
+        role: "assistant",
+        type: "error",
+        content: err?.message || "Connection error. Please try again.",
+      };
+
+      setMessages((p) => [...p, e]);
+
+      if (convId && user) {
+        await saveMessage({
+          conversationId: convId,
+          userId: user.id,
+          role: "assistant",
+          content: e.content,
+          meta: { type: "error" },
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    context,
+    loading,
+    updateContext,
+    conversationId,
+    setConversationId,
+    user,
+    uploadedFile,
+    intelligenceMode,
+    documentText,
+    incrementMessageCount,
+  ]);
 
   const newChat = () => {
     isNewChatRef.current = true;
@@ -1922,9 +1606,11 @@ export default function ChatWindow() {
                   />
                 );
               }
+
               if (msg.role === "user") {
                 return <UserMsg key={i} content={msg.content} fileName={msg.fileName} />;
               }
+
               if (msg.type === "clarification") {
                 return (
                   <ClarifyMsg
@@ -1936,9 +1622,11 @@ export default function ChatWindow() {
                   />
                 );
               }
+
               if (msg.type === "error") {
                 return <ErrorMsg key={i} content={msg.content} />;
               }
+
               return (
                 <AssistantMsg
                   key={i}
@@ -1994,6 +1682,7 @@ export default function ChatWindow() {
                   router={router}
                   onNeedUpgrade={(t) => setUpgradeTool(t)}
                 />
+
                 <IntelPanel
                   open={intelOpen}
                   onClose={() => setIntelOpen(false)}
@@ -2001,13 +1690,21 @@ export default function ChatWindow() {
                   activeMode={intelligenceMode}
                   onSelect={setIntelligenceMode}
                 />
+
                 <UploadPanel
                   open={uploadOpen}
                   onClose={() => setUploadOpen(false)}
                   isMobile={isMobile}
                   onFile={handleFile}
                 />
-                {upgradeTool && <UpgradeModal tool={upgradeTool} onClose={() => setUpgradeTool(null)} router={router} />}
+
+                {upgradeTool && (
+                  <UpgradeModal
+                    tool={upgradeTool}
+                    onClose={() => setUpgradeTool(null)}
+                    router={router}
+                  />
+                )}
               </>
             }
           />
