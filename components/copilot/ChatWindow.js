@@ -782,8 +782,16 @@ function EmptyState({ onSend, context }) {
         {!isMobile && <IntelPreview onSend={onSend} />}
 
         <button
-          className="ex-empty__cta"
-          style={isMobile ? { alignSelf: "center", margin: "0 0 8px 0", padding: "10px 24px", fontSize: 13, borderRadius: 10, display: "flex" } : {}}
+          className={isMobile ? "" : "ex-empty__cta"}
+          style={isMobile ? {
+            display: "flex", alignItems: "center", gap: 8,
+            alignSelf: "stretch", margin: "0 0 8px 0", padding: "11px 18px",
+            fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+            borderRadius: 10, cursor: "pointer",
+            background: "linear-gradient(135deg,#0f6e56,#0a5542)",
+            border: "1px solid rgba(15,110,86,0.45)", color: "#fff",
+            WebkitTapHighlightColor: "transparent"
+          } : {}}
           onClick={() => onSend("Run a full career diagnosis. Assess my current position, identify skill gaps, map transition options, and benchmark salary potential.")}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
