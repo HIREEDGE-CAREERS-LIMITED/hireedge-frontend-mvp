@@ -563,7 +563,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-bar { padding:6px 6px 6px 12px; }
   .ex-powerbar { padding:8px 12px env(safe-area-inset-bottom, 12px); }
   /* Tight padding — hero hidden, content fits without scrolling */
-  .ex-empty { padding:6px 16px 16px; justify-content:center; }
+  .ex-empty { padding:6px 16px 16px; justify-content:flex-start; }
   /* iOS: font-size < 16px triggers auto-zoom on input focus */
   .ex-bar__textarea { font-size:16px; }
   .ex-input { font-size:16px; }
