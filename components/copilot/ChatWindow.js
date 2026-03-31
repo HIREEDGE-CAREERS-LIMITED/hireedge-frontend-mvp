@@ -1,317 +1,58 @@
 // ============================================================================
-// api/copilot/chat.js
-// EDGEX chat endpoint — CORS + standalone query + strict salary benchmark mode
+// components/copilot/ChatWindow.js  —  EDGEX Final Production
 // ============================================================================
 
-import OpenAI from "openai";
-import { getRoleBySlug } from "../../lib/dataset/roleIndex.js";
-import { detectIntent, routeTool, callTool } from "../../lib/copilot/intentRouter.js";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/router";
+import { useEDGEXContext } from "../../context/CopilotContext";
+import { useAuth } from "../../contexts/AuthContext";
+import EDGEXIcon from "../brand/EDGEXIcon";
+import {
+  createConversation,
+  loadConversation,
+  saveMessage,
+  updateConversationTitle,
+} from "../../lib/conversations";
+import {
+  TOOLS,
+  INTELLIGENCE_MODES,
+  getPlan,
+  isPaid,
+  classifyIntent,
+  buildRequestPayload,
+  parseReplyIntoSections,
+  detectUploadType,
+  getUploadActions,
+} from "../../lib/edgexOrchestrator";
+import { extractDocument, estimateTokens } from "../../lib/documentExtractor";
 
-let openai = null;
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Intelligence mode prompts
-// ─────────────────────────────────────────────────────────────────────────────
-
-const INTELLIGENCE_MODE_PROMPTS = {
-  salary: `
-FORMAT (Salary Intelligence mode — use these exact section headers):
-SUMMARY
-One sentence: the key salary finding.
-
-KEY INSIGHT
-The most important salary figure with specific UK pound amounts.
-
-GAP / OPPORTUNITY
-What salary range the user should target and why.
-
-NEXT STEP
-The single most important action to improve earning potential.
-
-Use real UK salary figures. Be specific with pound amounts and percentages.`,
-
-  transition: `
-FORMAT (Transition Analysis mode — use these exact section headers):
-SUMMARY
-One sentence: transition feasibility.
-
-KEY INSIGHT
-Difficulty score (out of 100) and realistic timeline in months.
-
-GAP / OPPORTUNITY
-The 2-3 most critical gaps that determine success or failure.
-
-NEXT STEP
-The single highest-leverage action to accelerate this transition.`,
-
-  skills: `
-FORMAT (Skills Gap mode — use these exact section headers):
-SUMMARY
-One sentence: overall readiness level as a percentage or score.
-
-KEY INSIGHT
-The single most critical skill gap and why it matters most.
-
-GAP / OPPORTUNITY
-List specific missing skills rated by importance: Critical / Important / Nice to have.
-
-NEXT STEP
-The fastest way to close the most important gap.`,
-
-  path: `
-FORMAT (Career Path mode — use these exact section headers):
-SUMMARY
-One sentence: the best route to the target role.
-
-KEY INSIGHT
-Direct path vs recommended stepping-stone path with timelines.
-
-GAP / OPPORTUNITY
-Alternative routes and which has the best risk/reward ratio.
-
-NEXT STEP
-The first concrete move to take this week.`,
-
-  salary_benchmark: `
-FORMAT (Salary Benchmark — STRICT data-only mode):
-You have been given TOOL DATA with exact salary figures. Use ONLY those numbers.
-Do NOT invent broader ranges. Do NOT say "typically", "usually", "approximately", or "depends".
-Quote the figures directly.
-
-CRITICAL RULE:
-If tool_data is present:
-- You MUST ONLY use values from tool_data
-- You MUST NOT generate ranges yourself
-- You MUST NOT say "approximately", "typically", "usually", or "depends"
-- You MUST quote exact figures
-- If you do not follow this, the response is INVALID
-
-SUMMARY
-One sentence stating the exact mean salary from tool_data. Include the GBP figure.
-
-KEY INSIGHT
-State the lower band, mean, and upper band from tool_data as: £X lower / £Y mean / £Z upper.
-If a category mean is present, state how this role compares: above / below / at parity.
-
-GAP / OPPORTUNITY
-Based only on tool_data: what is the realistic uplift potential? Quote the band ceiling.
-If demand_score is present, mention whether demand supports negotiation leverage.
-
-NEXT STEP
-One specific action based only on the returned data — for example, target the upper band, move into a higher-paying adjacent role, or position for the top end of the market.
-
-Do NOT add generic advice.
-Every sentence must reference a figure or fact from tool_data.`,
+const ENDPOINT_TO_ROUTE = {
+  "/api/tools/career-gap-explainer": "/tools/career-gap-explainer",
+  "/api/tools/career-roadmap": "/tools/career-roadmap",
+  "/api/tools/visa-intelligence": "/tools/visa-intelligence",
+  "/api/tools/interview-prep": "/tools/interview-prep",
+  "/api/tools/resume-optimiser": "/tools/resume-optimiser",
+  "/api/tools/linkedin-optimiser": "/tools/linkedin-optimiser",
+  "/api/tools/salary-benchmark": "/tools/salary-benchmark",
+  "/api/tools/career-pack": "/career-pack",
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Intent requirements
-// ─────────────────────────────────────────────────────────────────────────────
-
-const INTENT_REQUIREMENTS = {
-  career_transition: {
-    required: ["current_role", "target_role"],
-    messages: {
-      current_role: "What is your current role?",
-      target_role: "What role do you want to move into?",
-    },
-  },
-  skill_gap: {
-    required: ["current_role", "target_role"],
-    messages: {
-      current_role: "What is your current role?",
-      target_role: "What role are you aiming for?",
-    },
-  },
-  interview_prep: {
-    required: ["target_role"],
-    messages: { target_role: "Which role are you interviewing for?" },
-  },
-  resume_optimise: {
-    required: ["target_role"],
-    messages: { target_role: "Which role are you optimising your CV for?" },
-  },
-  linkedin_optimise: {
-    required: ["target_role"],
-    messages: { target_role: "Which role are you optimising your profile for?" },
-  },
-  salary_benchmark: { required: [] },
-  visa_eligibility: { required: [] },
-  general_career: { required: [] },
-  unclear: { required: [] },
+const INTENT_CONFIG = {
+  career_transition: { label: "Career Transition", color: "#6366f1", bg: "rgba(99,102,241,0.12)" },
+  skill_gap: { label: "Skill Gap", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+  salary_benchmark: { label: "Salary Benchmark", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
+  visa_eligibility: { label: "Visa Eligibility", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
+  resume_optimise: { label: "CV Optimisation", color: "#ec4899", bg: "rgba(236,72,153,0.12)" },
+  linkedin_optimise: { label: "LinkedIn", color: "#0ea5e9", bg: "rgba(14,165,233,0.12)" },
+  interview_prep: { label: "Interview Prep", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
+  general_career: { label: "Career Intelligence", color: "#0F6E56", bg: "rgba(15,110,86,0.12)" },
+  unclear: { label: "Exploring", color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CORS
-// ─────────────────────────────────────────────────────────────────────────────
-
-function applyCors(req, res) {
-  const allowedOrigins = [
-    "https://hireedge-frontend-mvp.vercel.app",
-    "https://hireedge-frontend-mvp-git-main-srinath-senthilkumar-projects.vercel.app",
-    "http://localhost:3000",
-  ];
-
-  const requestOrigin = req.headers.origin;
-  const allowOrigin =
-    requestOrigin && allowedOrigins.includes(requestOrigin)
-      ? requestOrigin
-      : allowedOrigins[0];
-
-  res.setHeader("Access-Control-Allow-Origin", allowOrigin);
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, X-HireEdge-Plan, X-HireEdge-User-Id"
-  );
-}
-
-function sendJson(req, res, status, payload) {
-  applyCors(req, res);
-  return res.status(status).json(payload);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Validation
-// ─────────────────────────────────────────────────────────────────────────────
-
-function validateRequest(intent, resolved) {
-  const spec = INTENT_REQUIREMENTS[intent] || { required: [] };
-  const missing = spec.required.filter((f) =>
-    f === "current_role" ? !resolved.role : !resolved.target
-  );
-
-  if (missing.length === 0) return null;
-
-  const labels = missing.map((f) =>
-    f === "current_role" ? "your current role" : "your target role"
-  );
-
-  const actions = missing.map((f) => ({
-    type: "question",
-    label: spec.messages[f],
-    prompt: spec.messages[f],
-  }));
-
-  const intentLabel =
-    {
-      career_transition: "a career transition plan",
-      skill_gap: "a skill gap analysis",
-      resume_optimise: "CV optimisation",
-      linkedin_optimise: "LinkedIn optimisation",
-      interview_prep: "interview preparation",
-    }[intent] || "this";
-
-  return {
-    ok: true,
-    data: {
-      type: "clarification",
-      reply:
-        "To build " +
-        intentLabel +
-        ", I need " +
-        labels.join(" and ") +
-        " first.",
-      intent: { name: intent, confidence: 0.9 },
-      tool_used: null,
-      missing_fields: missing,
-      next_actions: actions,
-      recommendations: [],
-      context: resolved,
-    },
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Context resolution
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ROLE_RE = [
-  [/(?<![a-zA-Z])from\s+(?:a |an )?([A-Za-z][A-Za-z -]{2,28}?)\s+(?:to|into)\s+(?:a |an )?([A-Za-z][A-Za-z -]{2,28}?)(?=[,.]|$|\?|\s+(?:role|as)\b)/i, "both"],
-  [/\bi\s+(?:work|worked)\s+as\s+(?:a |an )?([a-z][a-z -]{1,24}?)\s+and\s+(?:want|need|hope|plan|look)/i, "role"],
-  [/\bi\s+am\s+(?:currently\s+)?(?:a |an )?([A-Za-z][A-Za-z -]{2,28}?)(?=\s+(?:and|looking|wanting|hoping|trying|aiming|moving|planning|who)\b|[,.]|$)/i, "role"],
-  [/\bcurrently\s+(?:a |an )?([A-Za-z][A-Za-z -]{2,28}?)(?=[,.]|\s+(?:and|looking|aiming)\b|$)/i, "role"],
-  [/want(?:ing)?\s+to\s+(?:be|become|transition\s+(?:to|into)|move\s+into)\s+(?:a |an )?([A-Za-z][A-Za-z -]{2,28}?)(?=[,.]|$|\?|\s+role\b)/i, "target"],
-  [/(?<![a-z])(?:become|move\s+into|transition\s+(?:to|into)|moving\s+(?:to|into))\s+(?:a |an )?([A-Za-z][A-Za-z -]{2,28}?)(?=[,.]|$|\?|\s+role\b)/i, "target"],
-  [/aim(?:ing)?\s+(?:for|to\s+become)\s+(?:a |an )?([A-Za-z][A-Za-z -]{2,28}?)(?=[,.]|$|\s+role\b)/i, "target"],
-];
-
-const SHORT_X_TO_Y = /^([A-Za-z][A-Za-z -]{2,25}?)\s+to\s+([A-Za-z][A-Za-z -]{2,25})$/i;
-
-function extractRoles(message) {
-  let role = null;
-  let target = null;
-  const t = (message || "").toLowerCase().trim();
-
-  if (t.split(/\s+/).length <= 6) {
-    const m = SHORT_X_TO_Y.exec(t);
-    if (m) {
-      role = m[1].trim();
-      target = m[2].trim();
-    }
-  }
-
-  for (const [re, kind] of ROLE_RE) {
-    const m = re.exec(t);
-    if (!m) continue;
-    if (kind === "both") {
-      if (!role) role = m[1].trim();
-      if (!target && m[2]) target = m[2].trim();
-    } else if (kind === "role" && !role) {
-      role = m[1].trim();
-    } else if (kind === "target" && !target) {
-      target = m[1].trim();
-    }
-    if (role && target) break;
-  }
-
-  return { role, target };
-}
-
-const PERSONAL_RE =
-  /\b(my\s+(salary|role|transition|skill|cv|resume|profile|current|target)|for\s+me|my\s+background|from\s+my|i\s+(am|work|want|need)|i'm\s+a)\b/i;
-
-const GREETING_RE =
-  /^(hi|hello|hey|helo|hello there|good morning|good afternoon|good evening)\b[!. ]*$/i;
-
-const STANDALONE_RE =
-  /\b(salary\s+of\s+(?:a\s+|an\s+)?[a-z]|how\s+much\s+(?:do|does)\s+(?:a\s+|an\s+)?[a-z]|what\s+(?:is|are)\s+the\s+salary\s+of\s+(?:a\s+|an\s+)?[a-z]|what\s+(?:is|are|does)\s+(?:a\s+|an\s+)?[a-z].{0,40}(earn|paid|salary|role)|what\s+do\s+[a-z].{2,30}\s+(do|earn)|market\s+rate\s+for\s+(?:a\s+|an\s+)?[a-z])\b/i;
-
-function isStandaloneQuery(message) {
-  if (!message) return false;
-  if (GREETING_RE.test(message.trim())) return true;
-  if (PERSONAL_RE.test(message)) return false;
-  return STANDALONE_RE.test(message);
-}
-
-function resolveContext(context, message) {
-  const extracted = extractRoles(message);
-  const standalone = isStandaloneQuery(message);
-
-  if (standalone) {
-    return {
-      role: extracted.role || null,
-      target: extracted.target || null,
-      yearsExp: null,
-      country: context?.country || null,
-    };
-  }
-
-  return {
-    role: extracted.role || context?.role || null,
-    target: extracted.target || context?.target || null,
-    yearsExp: context?.yearsExp || null,
-    country: context?.country || null,
-  };
-}
-
-function safeContext(ctx) {
-  if (!ctx) return {};
+function _safe(ctx) {
+  if (!ctx || typeof ctx !== "object") return {};
   const out = {};
   for (const k of ["role", "target", "yearsExp", "country", "lastIntent"]) {
     if (ctx[k] != null) out[k] = ctx[k];
@@ -319,459 +60,1702 @@ function safeContext(ctx) {
   return out;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Career graph
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SEN_RANK = {
-  junior: 1,
-  mid: 2,
-  senior: 3,
-  lead: 4,
-  head: 5,
-  director: 6,
-  vp: 7,
-  c_suite: 8,
-};
-
-function findRole(title) {
-  if (!title) return null;
-  try {
-    const slug = title
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
-    return getRoleBySlug(slug) || null;
-  } catch {
-    return null;
-  }
-}
-
-function buildCareerGraph(fromTitle, toTitle) {
-  const from = findRole(fromTitle);
-  const to = findRole(toTitle);
-  if (!from && !to) return "";
-
-  const lines = ["[CAREER GRAPH DATA -- use these numbers in your response]"];
-
-  if (from) {
-    const skills = [
-      ...(from.skills_grouped?.core || []),
-      ...(from.skills_grouped?.technical || []),
-    ];
-    lines.push(
-      "FROM: " + from.title,
-      "  Salary: GBP" + (from.salary_uk?.mean?.toLocaleString("en-GB") || "n/a"),
-      "  Skills: " + skills.slice(0, 6).join(", ")
-    );
-  }
-
-  if (to) {
-    const skills = [
-      ...(to.skills_grouped?.core || []),
-      ...(to.skills_grouped?.technical || []),
-    ];
-    lines.push(
-      "TO: " + to.title,
-      "  Salary: GBP" + (to.salary_uk?.mean?.toLocaleString("en-GB") || "n/a"),
-      "  Demand: " + (to.demand_score || 50) + "/100",
-      "  Skills: " + skills.slice(0, 6).join(", ")
-    );
-  }
-
-  if (from && to) {
-    const fromSet = new Set(
-      [
-        ...(from.skills_grouped?.core || []),
-        ...(from.skills_grouped?.technical || []),
-      ].map((s) => s.toLowerCase())
-    );
-
-    const toSkills = [
-      ...(to.skills_grouped?.core || []),
-      ...(to.skills_grouped?.technical || []),
-    ].map((s) => s.toLowerCase());
-
-    const overlap = toSkills.filter((s) => fromSet.has(s));
-    const missing = toSkills.filter((s) => !fromSet.has(s));
-    const matchPct = toSkills.length
-      ? Math.round((overlap.length / toSkills.length) * 100)
-      : 50;
-
-    const senDelta = Math.max(
-      0,
-      (SEN_RANK[to.seniority] || 3) - (SEN_RANK[from.seniority] || 3)
-    );
-
-    const diff = Math.min(
-      100,
-      Math.round(
-        (to.difficulty_to_enter || 50) * 0.5 +
-          (100 - matchPct) * 0.35 +
-          senDelta * 5
-      )
-    );
-
-    const rate = Math.max(
-      15,
-      Math.min(
-        90,
-        Math.round(
-          matchPct * 0.5 +
-            (100 - diff) * 0.35 +
-            (from.demand_score || 50) * 0.15
-        )
-      )
-    );
-
-    const tMin = Math.max(
-      2,
-      Math.round(missing.length * 0.8 + senDelta * 2 + (to.time_to_hire || 3)) - 2
-    );
-
-    const fromSal = from.salary_uk?.mean || 0;
-    const toSal = to.salary_uk?.mean || 0;
-    const salD =
-      fromSal > 0 && toSal > 0
-        ? (((toSal - fromSal) / fromSal) * 100).toFixed(0)
-        : null;
-
-    lines.push(
-      "METRICS: Difficulty=" +
-        diff +
-        "/100 | Success=" +
-        rate +
-        "% | Timeline=" +
-        tMin +
-        "-" +
-        (tMin + 4) +
-        "m",
-      salD != null
-        ? "  Salary: " +
-            (salD >= 0 ? "+" : "") +
-            salD +
-            "% (GBP" +
-            fromSal.toLocaleString("en-GB") +
-            " -> GBP" +
-            toSal.toLocaleString("en-GB") +
-            ")"
-        : "  Salary: n/a",
-      "  Skill match: " + matchPct + "% | Missing: " + missing.slice(0, 5).join(", "),
-      "  Transferable: " + overlap.slice(0, 4).join(", ")
-    );
-  }
-
-  return lines.join("\n");
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Document context
-// ─────────────────────────────────────────────────────────────────────────────
-
-function buildDocumentContext(fileType, fileName, documentText) {
-  if (!documentText) return "";
-  const TYPE_LABELS = {
-    cv: "CV / Resume",
-    jd: "Job Description",
-    cover: "Cover Letter",
-    document: "Document",
+function dbRowToMsg(row) {
+  const m = row.meta || {};
+  return {
+    role: row.role,
+    content: row.content,
+    type: m.type || (row.role === "user" ? "user" : "assistant"),
+    intent: m.intent || null,
+    confidence: m.confidence || null,
+    nextActions: m.nextActions || [],
+    missingFields: m.missingFields || [],
+    actions: m.actions || [],
+    intelligenceMode: m.intelligenceMode || null,
+    fileName: m.fileName || null,
+    contextSnapshot: m.contextSnapshot || null,
   };
-  const label = TYPE_LABELS[fileType] || "Document";
-  return [
-    "[UPLOADED DOCUMENT -- " + label + (fileName ? ' "' + fileName + '"' : "") + "]",
-    "The user has uploaded this document. Base your response on its actual content.",
-    "Reference specific details, skills, experience, or requirements found in it.",
-    "Do not assume content that is not present.",
-    "",
-    documentText.slice(0, 10000),
-    "[END DOCUMENT]",
-  ].join("\n");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// System prompt
-// ─────────────────────────────────────────────────────────────────────────────
+function isStandaloneQuery(message) {
+  const text = (message || "").trim().toLowerCase();
+  if (!text) return false;
 
-const BASE_SYSTEM = `You are EDGEX -- HireEdge's Career Intelligence Engine.
+  const PERSONAL_RE =
+    /\b(i|i'm|i am|my|me|mine|myself|for me|my role|my current role|my target|my transition|my salary|my skills)\b/i;
 
-ROLE: Format tool data into clear, structured career intelligence. You do NOT generate plans from scratch -- you format real data from tools.
+  const GREETING_RE =
+    /^(hi|hello|hey|helo|hello there|good morning|good afternoon|good evening)\b[!. ]*$/i;
 
-RULES:
-1. When tool_data is provided, format ONLY that data. Do not add invented content.
-2. NEVER invent or assume a role name.
-3. Answer general questions (salary, market, skills, visa) directly even when context has roles.
-4. If the user states new roles, use those immediately.
-5. UK English throughout. No filler. No hedging.
-6. NEVER say "I can only provide information about your current transition".
-7. When a document is provided, reference its actual content specifically.
-8. When CAREER GRAPH DATA is provided, treat those numbers as source-of-truth. Use the Difficulty score, Success rate, Timeline, and Salary figures directly in your response sections -- even when no tool_data is present.
+  const STANDALONE_RE_LIST = [
+    /\bwhat is the salary of\b/i,
+    /\bhow much does\b/i,
+    /\baverage salary for\b/i,
+    /\bmarket rate for\b/i,
+    /\bin the uk\b/i,
+    /\bwhat skills does\b/i,
+    /\bwhat does a .* do\b/i,
+    /\bvisa routes?\b/i,
+    /\bjob market demand\b/i,
+  ];
 
-FORMAT when tool_data provided:
-Use the exact numbers from tool_data. Structure with sections:
-TRANSITION SNAPSHOT / SKILL GAP BREAKDOWN / MARKET EXPECTATION (UK) / STRATEGIC POSITIONING / NEXT BEST ACTION
+  if (GREETING_RE.test(text)) return true;
+  if (PERSONAL_RE.test(text)) return false;
 
-FORMAT for general questions (no tool data):
-Use structured sections. If no intelligence mode is active, use:
-
-SUMMARY
-One sentence direct answer.
-
-KEY INSIGHT
-The single most important number, fact, or finding. Be specific.
-
-GAP / OPPORTUNITY
-The main blocker, gap, or upside opportunity. Be specific, not generic.
-
-NEXT STEP
-The one concrete action to take now.
-
-Keep each section to 1-3 sentences. No padding. No filler.
-
-NEXT ACTIONS (mandatory at end -- always include):
-[ACTIONS]
-[{"type":"question","label":"Short label","prompt":"Full question"},{"type":"tool","label":"Open tool","endpoint":"/api/tools/career-gap-explainer","prompt":""}]
-[/ACTIONS]`;
-
-function buildSystemPrompt(intelligenceMode, intent) {
-  const effectiveMode =
-    intelligenceMode || (intent === "salary_benchmark" ? "salary_benchmark" : null);
-
-  if (!effectiveMode) return BASE_SYSTEM;
-
-  const modePrompt = INTELLIGENCE_MODE_PROMPTS[effectiveMode];
-  if (!modePrompt) return BASE_SYSTEM;
-
-  return BASE_SYSTEM + "\n\n" + modePrompt;
+  return STANDALONE_RE_LIST.some((re) => re.test(text));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LLM formatting
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function formatWithLLM(
-  message,
-  resolved,
-  intent,
-  toolData,
-  graphData,
-  intelligenceMode,
-  documentContext
-) {
-  const parts = [];
-
-  if (resolved.role || resolved.target) {
-    const ctx = [];
-    if (resolved.role) ctx.push("Current role: " + resolved.role);
-    if (resolved.target) ctx.push("Target role: " + resolved.target);
-    if (resolved.country) ctx.push("Country: " + resolved.country);
-    parts.push("[SESSION MEMORY]\n" + ctx.join("\n"));
-  } else {
-    parts.push(
-      "[SESSION MEMORY]\nNone. This is a standalone query. Answer only about the role or topic explicitly mentioned in the user message. Do not reference any previous session context."
-    );
-  }
-
-  if (intelligenceMode) {
-    parts.push(
-      "[INTELLIGENCE MODE: " +
-        intelligenceMode.toUpperCase() +
-        "]\nUse the structured FORMAT for this mode as specified in your instructions."
-    );
-  }
-
-  if (graphData) parts.push(graphData);
-
-  if (toolData) {
-    parts.push(
-      "[TOOL DATA — SOURCE OF TRUTH]\n" +
-        "You MUST use ONLY the numbers from this data. Do NOT estimate, generalise, or expand ranges.\n" +
-        "If a value is present, you MUST quote it exactly.\n\n" +
-        JSON.stringify(toolData, null, 2).slice(0, 2000)
-    );
-  }
-
-  if (documentContext) {
-    parts.push(documentContext);
-  }
-
-  parts.push("[USER MESSAGE]\n" + message);
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: buildSystemPrompt(intelligenceMode, intent) },
-      { role: "user", content: parts.join("\n\n") },
-    ],
-    temperature: 0.2,
-    max_tokens: 1400,
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < 900;
   });
 
-  const raw = completion.choices?.[0]?.message?.content?.trim() || "";
-  return parseActions(raw);
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 900);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  return mobile;
 }
 
-function parseActions(raw) {
-  if (!raw) return { reply: "", nextActions: [] };
+function smartSuggestions(ctx) {
+  const role = ctx?.role || "";
+  const target = ctx?.target || "";
 
-  let nextActions = [];
-  const match = raw.match(/\[ACTIONS\]([\s\S]*?)\[\/ACTIONS\]/);
-
-  if (match) {
-    try {
-      nextActions = JSON.parse(match[1].trim());
-    } catch {
-      nextActions = [];
-    }
-    if (!Array.isArray(nextActions)) nextActions = [];
+  if (!role && !target) {
+    return [
+      { label: "Diagnose my skill gaps", prompt: "Tell me what skills I am missing for the next step in my career. Start with my current role.", cat: "Skills" },
+      { label: "Benchmark my salary", prompt: "What is the UK market rate for my role, and how do I move into the top salary band?", cat: "Salary" },
+      { label: "Map my transition path", prompt: "I want to change careers. Help me identify the best move and what it will take to get there.", cat: "Plan" },
+      { label: "Check UK visa eligibility", prompt: "I am a skilled professional. What UK visa routes am I eligible for and what is the fastest path?", cat: "Visa" },
+    ];
   }
 
-  const reply = raw
-    .replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/g, "")
-    .replace(/\[ACTIONS\][\s\S]*/g, "")
-    .replace(/\[\/ACTIONS\]/g, "")
-    .trim();
+  if (role && !target) {
+    return [
+      { label: "Best transition from " + role, prompt: "I am a " + role + ". What is the highest-value career transition I can make and how long will it take?", cat: "Transition" },
+      { label: "My salary ceiling", prompt: "What is the top-of-band salary for a " + role + " in the UK, and what is the fastest path to reach it?", cat: "Salary" },
+      { label: "Skills holding me back", prompt: "As a " + role + ", what are the exact skills I am missing that are blocking my next career step?", cat: "Skills" },
+      { label: "6-month action plan", prompt: "Build me a 6-month career action plan starting from my current role as a " + role, cat: "Plan" },
+    ];
+  }
 
-  return { reply, nextActions };
+  const short = target.split(" ").slice(0, 2).join(" ");
+  return [
+    { label: "Exact gaps to " + short, prompt: "What are the exact skills I am missing to move from " + role + " to " + target + "? Give me a prioritised list.", cat: "Skills" },
+    { label: "Salary jump", prompt: "What is the salary difference between " + role + " and " + target + " in the UK? What is the top quartile for " + target + "?", cat: "Salary" },
+    { label: "90-day transition plan", prompt: "Build a 90-day action plan to move me from " + role + " to " + target + ". Focus on the highest-leverage moves first.", cat: "Plan" },
+    { label: short + " interview prep", prompt: "I am a " + role + " interviewing for " + target + " roles. Give me the 5 hardest interview questions and how to answer each one.", cat: "Interview" },
+  ];
 }
 
-function updateCtx(resolved, intent) {
-  return { ...safeContext(resolved), lastIntent: intent };
-}
+const CAT_COLOR = { Skills: "#f59e0b", Salary: "#10b981", Plan: "#0F6E56", Visa: "#3b82f6", Transition: "#6366f1", Interview: "#8b5cf6", CV: "#ec4899" };
+const CAT_ICON = { Skills: "G", Salary: "£", Plan: "P", Visa: "V", Transition: "T", Interview: "I", CV: "C" };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Handler
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default async function handler(req, res) {
-  applyCors(req, res);
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return sendJson(req, res, 405, { error: "Method not allowed." });
-  }
-
-  let body;
-  try {
-    body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
-  } catch {
-    return sendJson(req, res, 400, { error: "Invalid JSON." });
-  }
-
-  const {
-    message,
-    context,
-    intelligence_mode,
-    fileName,
-    fileType,
-    documentText,
-  } = body;
-
-  if (!message?.trim()) {
-    return sendJson(req, res, 400, { error: "message is required." });
-  }
-
-  const msg = message.trim();
-  const resolved = resolveContext(context, msg);
-
-  const { intent, confidence, slots } = detectIntent(msg, resolved);
-
-  console.log(
-    "[chat] intent=" +
-      intent +
-      " confidence=" +
-      confidence.toFixed(2) +
-      " role=" +
-      resolved.role +
-      " target=" +
-      resolved.target +
-      " mode=" +
-      (intelligence_mode || "none") +
-      " hasDoc=" +
-      !!documentText
+function ThinkingState() {
+  return (
+    <div className="ex-thinking">
+      <div className="ex-thinking__dots">
+        <span className="ex-thinking__dot" />
+        <span className="ex-thinking__dot" />
+        <span className="ex-thinking__dot" />
+      </div>
+    </div>
   );
+}
 
-  if (slots.role && !resolved.role) resolved.role = slots.role;
-  if (slots.target && !resolved.target) resolved.target = slots.target;
-  if (slots.country && !resolved.country) resolved.country = slots.country;
+function SessionHeader({ context, messages, intelligenceMode, onEdit }) {
+  const hasConversation = messages && messages.some((m) => m.role === "user");
+  const stage = hasConversation ? "In Progress" : "Ready";
+  const stageColor = hasConversation ? "#0F6E56" : "rgba(255,255,255,0.28)";
+  const modeInfo = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
 
-  const clarification = validateRequest(intent, resolved);
-  if (clarification) {
-    console.log("[chat] clarification required:", clarification.data.missing_fields);
-    return sendJson(req, res, 200, clarification);
+  const currentRole = context?.role || null;
+  const targetRole = context?.target || null;
+  const hasContext = currentRole || targetRole;
+
+  return (
+    <div className="ex-session-header">
+      <div className="ex-session-header__main">
+        <div className="ex-session-header__goal">
+          <div className="ex-session-header__role">
+            <span className="ex-session-header__role-lbl">CURRENT</span>
+            <span className={currentRole ? "ex-session-header__role-val" : "ex-session-header__role-val ex-session-header__role-val--unset"}>
+              {currentRole || "Not set"}
+            </span>
+          </div>
+
+          <svg className="ex-session-header__arrow" width="16" height="10" viewBox="0 0 16 10" fill="none">
+            <path d="M0 5h14M10 1l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+
+          <div className="ex-session-header__role">
+            <span className="ex-session-header__role-lbl">TARGET</span>
+            <span className={targetRole ? "ex-session-header__role-val ex-session-header__role-val--accent" : "ex-session-header__role-val ex-session-header__role-val--unset"}>
+              {targetRole || "Not set"}
+            </span>
+          </div>
+        </div>
+
+        <div className="ex-session-header__divider" />
+
+        <div className="ex-session-header__meta">
+          <div className="ex-session-header__tag" style={modeInfo ? { color: modeInfo.color, background: modeInfo.color + "14", borderColor: modeInfo.color + "28" } : {}}>
+            <span
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: modeInfo ? modeInfo.color : "rgba(255,255,255,0.20)",
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+            {modeInfo ? modeInfo.label : "Career Intelligence"}
+          </div>
+
+          <div className="ex-session-header__tag ex-session-header__tag--stage" style={{ color: stageColor }}>
+            <span
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: stageColor,
+                display: "inline-block",
+                flexShrink: 0,
+                animation: hasConversation ? "ex-blink 2s ease-in-out infinite" : "none",
+              }}
+            />
+            {stage}
+          </div>
+        </div>
+      </div>
+
+      <button className="ex-session-header__edit" onClick={onEdit} title={hasContext ? "Edit career context" : "Set your career context"}>
+        <svg width="10" height="10" viewBox="0 0 11 11" fill="none">
+          <path d="M7.5 1.5l2 2L3 10H1V8L7.5 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {hasContext ? "Edit" : "Set context"}
+      </button>
+    </div>
+  );
+}
+
+const SECTION_DISPLAY = {
+  summary: { display: "Summary" },
+  insight: { display: "Key Insight" },
+  gap: { display: "Gap / Opportunity" },
+  next_step: { display: "Next Step" },
+  snapshot: { display: "Snapshot" },
+  skills: { display: "Skills" },
+  market: { display: "Market" },
+  position: { display: "Positioning" },
+  action: { display: "Action" },
+};
+
+function RLine({ item }) {
+  if (!item || item.type === "gap") return null;
+
+  if (item.type === "bullet") {
+    return (
+      <div className="ex-rline ex-rline--bullet">
+        <span className="ex-rline__dot" />
+        <span>{item.text}</span>
+      </div>
+    );
   }
 
-  const route = routeTool(intent, { ...resolved, ...slots });
-  const documentContext = buildDocumentContext(fileType, fileName, documentText);
+  return <p className="ex-rline">{item.text}</p>;
+}
 
-  try {
-    let toolData = null;
-    let toolUsed = null;
-    let toolError = null;
+function RCard({ section }) {
+  const lines = (section.lines || []).filter((l) => l && l.type !== "gap");
+  const isPlain = section.key === "plain" || section.key === "intro";
+  const meta = SECTION_DISPLAY[section.key];
 
-    if (route?.canRoute) {
-      console.log("[chat] routing to tool:", route.endpoint);
-      const toolResult = await callTool(route);
-      if (toolResult.ok) {
-        toolData = toolResult.data;
-        toolUsed = route.endpoint;
-        console.log("[chat] tool succeeded:", route.endpoint);
-        console.log("[chat] TOOL DATA:", JSON.stringify(toolData).slice(0, 1200));
-      } else {
-        toolError = toolResult.error;
-        console.warn("[chat] tool failed:", route.endpoint, toolResult.error);
+  if (!lines.length) return null;
+
+  if (isPlain) {
+    return (
+      <div className="ex-prose">
+        {(section.lines || []).map((item, i) => {
+          if (!item || item.type === "gap") return <div key={i} style={{ height: 5 }} />;
+          return <RLine key={i} item={item} />;
+        })}
+      </div>
+    );
+  }
+
+  const isAction = section.key === "next_step" || section.key === "action";
+  const isDiagnosis = section.key === "summary" || section.key === "insight";
+  const extraClass = isAction ? " ex-rcard--action" : isDiagnosis ? " ex-rcard--diagnosis" : "";
+
+  return (
+    <div className={"ex-rcard ex-rcard--" + section.key + extraClass} style={{ "--rc": section.color }}>
+      <div className="ex-rcard__hd">
+        <span className="ex-rcard__icon" style={{ background: section.color + "18", color: section.color }}>
+          {section.icon}
+        </span>
+        <span className="ex-rcard__title" style={{ color: section.color }}>
+          {meta?.display || section.title}
+        </span>
+      </div>
+      <div className="ex-rcard__body">
+        {(section.lines || []).map((item, i) => (
+          <RLine key={i} item={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UserMsg({ content, fileName }) {
+  return (
+    <div className="ex-msg ex-msg--user">
+      {fileName && (
+        <div className="ex-fchip ex-fchip--msg">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M3 1h5l2 2v8H3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          {fileName}
+        </div>
+      )}
+      <div className="ex-msg__bubble">{content}</div>
+    </div>
+  );
+}
+
+function DecisionCard({ intent, confidence, intelligenceMode, nextActions, context }) {
+  const intentCfg = intent ? INTENT_CONFIG[intent] || INTENT_CONFIG.general_career : null;
+  const modeCfg = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
+  const activeCfg = modeCfg || intentCfg;
+
+  if (!activeCfg) return null;
+
+  const pct = confidence ? Math.round(confidence * 100) : null;
+  const role = context?.role || null;
+  const target = context?.target || null;
+
+  const STATUS_MAP = {
+    career_transition: target && role ? `${role} → ${target} transition assessed` : target ? `Path to ${target} assessed` : "Transition complexity assessed",
+    skill_gap: target ? `Gap to ${target} identified` : role ? `Gaps beyond ${role} identified` : "Skill gap diagnosed",
+    salary_benchmark: role ? `${role} market rate benchmarked` : "UK salary benchmarked",
+    visa_eligibility: role ? `${role} visa eligibility assessed` : "Visa route assessed",
+    resume_optimise: target ? `CV aligned to ${target}` : "CV gaps identified",
+    linkedin_optimise: target ? `Profile positioned for ${target}` : "LinkedIn gaps identified",
+    interview_prep: target ? `${target} interview strategy built` : "Interview strategy built",
+    general_career: role && target ? `${role} → ${target} career position assessed` : role ? `${role} career position assessed` : "Career position assessed",
+    unclear: "Insufficient context — add role and target for full diagnosis",
+  };
+
+  const status = STATUS_MAP[intent] || activeCfg.label + " analysis run";
+  const toolAction = nextActions?.find((a) => a.type === "tool");
+  const promptAction = nextActions?.find((a) => a.type !== "tool");
+  const primaryAction = toolAction || promptAction || null;
+
+  const NEXT_STEP_MAP = {
+    career_transition: target ? `Build your step-by-step path to ${target}` : "Build your career transition roadmap",
+    skill_gap: target ? `Close the gaps blocking your move to ${target}` : "Close your highest-impact skill gaps",
+    salary_benchmark: role ? `Negotiate from the right position for a ${role}` : "Use this benchmark in your next negotiation",
+    visa_eligibility: "Prepare your Skilled Worker visa application",
+    resume_optimise: target ? `Rewrite your CV to land ${target} interviews` : "Rewrite your CV for ATS and recruiter fit",
+    linkedin_optimise: target ? `Reposition your profile to attract ${target} recruiters` : "Reposition your profile for recruiter visibility",
+    interview_prep: target ? `Walk into your ${target} interview ready to perform` : "Walk into your next interview prepared",
+    general_career: target && role ? `Execute your move from ${role} to ${target}` : "Take the highest-impact action on your career",
+    unclear: "Specify current role and target role to run full career analysis",
+  };
+
+  const nextStepCopy = NEXT_STEP_MAP[intent] || primaryAction?.label || "Take the next action";
+
+  return (
+    <div className="ex-decision-card" style={{ "--dc": activeCfg.color || "#0F6E56" }}>
+      <div className="ex-decision-card__row">
+        <div className="ex-decision-card__cell">
+          <span className="ex-decision-card__cell-label">ANALYSIS</span>
+          <span className="ex-decision-card__cell-value" style={{ color: activeCfg.color }}>
+            {activeCfg.label}
+          </span>
+        </div>
+
+        {pct !== null && (
+          <div className="ex-decision-card__cell">
+            <span className="ex-decision-card__cell-label">CONFIDENCE</span>
+            <span className="ex-decision-card__cell-value">{pct}%</span>
+          </div>
+        )}
+
+        <div className="ex-decision-card__cell ex-decision-card__cell--status">
+          <span className="ex-decision-card__cell-label">STATUS</span>
+          <span className="ex-decision-card__cell-value ex-decision-card__cell-value--status">{status}</span>
+        </div>
+      </div>
+
+      <div className="ex-decision-card__next">
+        <span className="ex-decision-card__next-label">RECOMMENDED MOVE</span>
+        <span className="ex-decision-card__next-value">{nextStepCopy}</span>
+      </div>
+    </div>
+  );
+}
+
+const RESPONSE_PATTERNS = {
+  general_career: { pattern: "role_discovery", accentColor: "#0F6E56" },
+  unclear: { pattern: "role_discovery", accentColor: "#0F6E56" },
+  career_transition: { pattern: "transition", accentColor: "#6366f1" },
+  skill_gap: { pattern: "transition", accentColor: "#6366f1" },
+  salary_benchmark: { pattern: "market_intel", accentColor: "#10b981" },
+  resume_optimise: { pattern: "application", accentColor: "#ec4899" },
+  linkedin_optimise: { pattern: "application", accentColor: "#0ea5e9" },
+  interview_prep: { pattern: "execution", accentColor: "#8b5cf6" },
+  visa_eligibility: { pattern: "eligibility", accentColor: "#3b82f6" },
+};
+
+const CTA_TOOL_PRIORITY = {
+  career_transition: ["career-roadmap", "career-gap-explainer", "talent-profile"],
+  skill_gap: ["career-gap-explainer", "career-roadmap", "talent-profile"],
+  salary_benchmark: ["salary-benchmark", "talent-profile"],
+  resume_optimise: ["resume-optimiser", "talent-profile"],
+  linkedin_optimise: ["linkedin-optimiser", "talent-profile"],
+  interview_prep: ["interview-prep"],
+  visa_eligibility: ["visa-intelligence"],
+  general_career: ["talent-profile", "career-roadmap"],
+  unclear: ["talent-profile"],
+};
+
+function selectPrimaryAction(nextActions, intent) {
+  if (!nextActions?.length) return null;
+
+  const toolActions = nextActions.filter((a) => a.type === "tool");
+  const promptActions = nextActions.filter((a) => a.type !== "tool");
+  const priorityList = CTA_TOOL_PRIORITY[intent];
+
+  if (priorityList && toolActions.length) {
+    for (const toolKey of priorityList) {
+      const match = toolActions.find((a) => a.endpoint && a.endpoint.includes(toolKey));
+      if (match) return match;
+    }
+  }
+
+  return toolActions[0] || promptActions[0] || null;
+}
+
+function selectSecondaryActions(nextActions, primaryAction) {
+  if (!nextActions?.length) return [];
+  return nextActions.filter((a) => a !== primaryAction).slice(0, 3);
+}
+
+function ActionButton({ action, router, onSend, className }) {
+  const handleClick = () => {
+    if (action.type === "tool") {
+      const r = ENDPOINT_TO_ROUTE[action.endpoint];
+      if (r) router.push(r);
+    } else {
+      onSend(action.prompt);
+    }
+  };
+
+  return (
+    <button className={className} onClick={handleClick}>
+      {className === "ex-act-primary" && (
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+      {action.label}
+    </button>
+  );
+}
+
+function AssistantMsg({ content, nextActions, intent, confidence, intelligenceMode, onSend, router, context }) {
+  const sections = parseReplyIntoSections(content || "");
+  const hasCards = sections.some((s) => !["plain", "intro"].includes(s.key));
+  const patternCfg = RESPONSE_PATTERNS[intent] || RESPONSE_PATTERNS.general_career;
+  const primaryAction = selectPrimaryAction(nextActions, intent);
+  const secondaryActions = selectSecondaryActions(nextActions, primaryAction);
+
+  return (
+    <div className={"ex-analysis ex-analysis--" + patternCfg.pattern}>
+      <DecisionCard
+        intent={intent}
+        confidence={confidence}
+        intelligenceMode={intelligenceMode}
+        nextActions={nextActions}
+        context={context || {}}
+      />
+
+      <div className={hasCards ? "ex-analysis__cards" : "ex-analysis__prose"}>
+        {sections.map((s, i) => (
+          <RCard key={i} section={s} />
+        ))}
+      </div>
+
+      {(primaryAction || secondaryActions.length > 0) && (
+        <div className="ex-analysis__actions">
+          {primaryAction && (
+            <ActionButton action={primaryAction} router={router} onSend={onSend} className="ex-act-primary" />
+          )}
+
+          {secondaryActions.length > 0 && (
+            <div className="ex-act-secondary-row">
+              {secondaryActions.map((a, i) => (
+                <ActionButton key={i} action={a} router={router} onSend={onSend} className="ex-act-secondary" />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClarifyMsg({ content, missingFields, actions, onSend }) {
+  const missingRole = missingFields?.includes("current_role");
+  const missingTarget = missingFields?.includes("target_role");
+
+  const strategistPrompt =
+    missingRole && missingTarget
+      ? "To run a full career diagnosis, EDGEX needs your current role and target position."
+      : missingRole
+      ? "EDGEX needs your current role to benchmark your position and identify the right path forward."
+      : missingTarget
+      ? "To analyse the transition gap and salary uplift, specify the role you are targeting."
+      : content;
+
+  return (
+    <div className="ex-analysis ex-analysis--clarify">
+      <div className="ex-clarify-block">
+        <div className="ex-clarify-block__icon">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="#0F6E56" strokeWidth="1.3" />
+            <path d="M7 4v3.5M7 9.5v.5" stroke="#0F6E56" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </div>
+        <p className="ex-clarify-block__text">{strategistPrompt}</p>
+      </div>
+
+      {(missingRole || missingTarget) && (
+        <div className="ex-clarify-block__fields">
+          {missingRole && <span className="ex-clarify-block__tag">CURRENT ROLE · Required</span>}
+          {missingTarget && <span className="ex-clarify-block__tag">TARGET ROLE · Required</span>}
+        </div>
+      )}
+
+      {actions?.length > 0 && (
+        <div className="ex-act-secondary-row" style={{ marginTop: 10 }}>
+          {actions.map((a, i) => (
+            <button key={i} className="ex-act-secondary" onClick={() => a?.prompt && onSend(a.prompt)}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ErrorMsg({ content }) {
+  return (
+    <div className="ex-msg ex-msg--ai">
+      <div className="ex-msg__av">
+        <div className="ex-msg__av--err">
+          <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+            <path d="M2 2l6 6M8 2l-6 6" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </div>
+      </div>
+      <div className="ex-msg__body">
+        <p className="ex-err-text">{content}</p>
+      </div>
+    </div>
+  );
+}
+
+function UploadMsg({ fileName, uploadType, actions, onSend, extractionState, tokenCount, extractionError }) {
+  const TYPE_MAP = {
+    cv: { label: "CV uploaded", color: "#6366f1" },
+    jd: { label: "Job description uploaded", color: "#10b981" },
+    cover: { label: "Cover letter uploaded", color: "#f59e0b" },
+    document: { label: "Document uploaded", color: "#0F6E56" },
+  };
+
+  const t = TYPE_MAP[uploadType] || TYPE_MAP.document;
+
+  return (
+    <div className="ex-msg ex-msg--ai">
+      <div className="ex-msg__av">
+        <EDGEXIcon size={20} state="idle" color="#0F6E56" />
+      </div>
+      <div className="ex-msg__body">
+        <div className="ex-upload-card" style={{ "--uc": t.color }}>
+          <div className="ex-upload-card__hd">
+            <span className="ex-upload-card__icon" style={{ background: t.color + "18", color: t.color }}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <path d="M3 1h5l3 3v9H3V1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 1v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            </span>
+            <div>
+              <div className="ex-upload-card__type" style={{ color: t.color }}>
+                {t.label}
+              </div>
+              <div className="ex-upload-card__name">{fileName}</div>
+            </div>
+          </div>
+
+          {extractionState === "extracting" && (
+            <div className="ex-upload-card__status ex-upload-card__status--extracting">
+              <span className="ex-upload-card__spinner" />
+              Reading document content...
+            </div>
+          )}
+
+          {extractionState === "ready" && tokenCount != null && (
+            <div className="ex-upload-card__status ex-upload-card__status--ready">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Content read — approximately {tokenCount.toLocaleString()} tokens
+            </div>
+          )}
+
+          {extractionState === "error" && (
+            <div className="ex-upload-card__status ex-upload-card__status--error">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                <path d="M6 2v4M6 9v1" stroke="#f87171" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              {extractionError || "Could not read this file. EDGEX will use filename context only."}
+            </div>
+          )}
+
+          {extractionState !== "extracting" && (
+            <>
+              <p className="ex-upload-card__hint">What would you like EDGEX to do?</p>
+              <div className="ex-actions ex-actions--wrap">
+                {actions.map((a, i) => (
+                  <button key={i} className="ex-act ex-act--q" onClick={() => onSend(a.prompt)}>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const IDLE_MSGS = [
+  "Ready to analyse your career",
+  "Powered by 1,200+ UK roles",
+  "Real data. Not generic advice.",
+  "Ask anything about your career",
+];
+
+const CONTEXT_MSGS = [
+  "Understanding your profile...",
+  "Career data loaded",
+  "Transition intelligence ready",
+  "Building your career path...",
+];
+
+function StatusCycle({ context }) {
+  const msgs = context?.role || context?.target ? CONTEXT_MSGS : IDLE_MSGS;
+  const [i, setI] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % msgs.length), 3000);
+    return () => clearInterval(t);
+  }, [msgs.length]);
+
+  return <span className="ex-empty__status-text">{msgs[i]}</span>;
+}
+
+function IntelPreview({ onSend }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className={"ex-preview" + (open ? " ex-preview--open" : "")}
+      onClick={() => !open && setOpen(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && !open && setOpen(true)}
+    >
+      <div className="ex-preview__hd">
+        <span className="ex-preview__label">Example Intelligence Output</span>
+        <span className="ex-preview__live">Live</span>
+      </div>
+
+      <div className="ex-preview__pills">
+        <span className="ex-pill">Sales Manager</span>
+        <span className="ex-pill__arrow">→</span>
+        <span className="ex-pill ex-pill--green">Product Manager</span>
+        <span className="ex-pill ex-pill--amber">+30% salary</span>
+        {!open && <span className="ex-preview__tap">tap to expand</span>}
+      </div>
+
+      {open && (
+        <div className="ex-preview__body" onClick={(e) => e.stopPropagation()}>
+          <div className="ex-preview__row">
+            <span className="ex-preview__k">Difficulty</span>
+            <span className="ex-preview__v">
+              <span className="ex-preview__badge">Medium · 65/100</span>
+            </span>
+          </div>
+
+          <div className="ex-preview__row">
+            <span className="ex-preview__k">Salary jump</span>
+            <span className="ex-preview__v ex-preview__v--green">£45k → £65k (+30%)</span>
+          </div>
+
+          <div className="ex-preview__row">
+            <span className="ex-preview__k">Top skill gap</span>
+            <span className="ex-preview__v">Product lifecycle management</span>
+          </div>
+
+          <div className="ex-preview__row">
+            <span className="ex-preview__k">Timeline</span>
+            <span className="ex-preview__v">9–14 months with deliberate steps</span>
+          </div>
+
+          <button
+            className="ex-preview__cta"
+            onClick={() =>
+              onSend("I am a sales manager and want to become a product manager. Run a full transition analysis.")
+            }
+          >
+            Run this analysis for my profile
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 5 }}>
+              <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ onSend, context }) {
+  const sugg = smartSuggestions(context);
+  const isMobile = useIsMobile();
+
+  return (
+    <div className="ex-empty" style={isMobile ? { overflowY: "hidden", justifyContent: "flex-start", padding: "16px 14px 0" } : {}}>
+      <div className="ex-empty__glow" />
+      <div className="ex-empty__flow" style={isMobile ? { width: "100%", gap: 0, display: "flex", flexDirection: "column", alignItems: "center" } : {}}>
+        {!isMobile && (
+          <div className="ex-empty__hero">
+            <div className="ex-empty__icon-glow">
+              <EDGEXIcon size={32} state="hero" color="#0F6E56" />
+            </div>
+            <div className="ex-empty__status">
+              <span className="ex-empty__dot" />
+              <StatusCycle context={context} />
+            </div>
+          </div>
+        )}
+
+        <h1 className="ex-empty__h1" style={isMobile ? { fontSize: 19, fontWeight: 800, textAlign: "center", margin: "0 0 8px", color: "#fff", letterSpacing: "-0.5px" } : {}}>
+          Career Operating System
+        </h1>
+
+        {!isMobile && <p className="ex-empty__sub">Diagnose your career. Identify your gaps. Execute your next move.</p>}
+        {!isMobile && <IntelPreview onSend={onSend} />}
+
+        <button
+          className={isMobile ? "" : "ex-empty__cta"}
+          style={
+            isMobile
+              ? {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  alignSelf: "stretch",
+                  margin: "0 0 8px 0",
+                  padding: "11px 18px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: "inherit",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  background: "linear-gradient(135deg,#0f6e56,#0a5542)",
+                  border: "1px solid rgba(15,110,86,0.45)",
+                  color: "#fff",
+                  WebkitTapHighlightColor: "transparent",
+                }
+              : {}
+          }
+          onClick={() =>
+            onSend(
+              "Run a full career diagnosis. Assess my current position, identify skill gaps, map transition options, and benchmark salary potential."
+            )
+          }
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+            <line x1="4.5" y1="4.5" x2="10.2" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            <line x1="19.5" y1="4.5" x2="13.8" y2="10.2" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            <line x1="4.5" y1="19.5" x2="10.2" y2="13.8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+            <line x1="19.5" y1="19.5" x2="13.8" y2="13.8" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+          </svg>
+          Start Career Analysis
+        </button>
+
+        <div className="ex-empty__grid" style={isMobile ? { display: "flex", flexDirection: "column", gap: 6, width: "100%" } : {}}>
+          {sugg.map((s, i) => (
+            <button
+              key={i}
+              className={isMobile ? "" : "ex-sugg"}
+              onClick={() => onSend(s.prompt)}
+              style={
+                isMobile
+                  ? {
+                      "--sc": CAT_COLOR[s.cat] || "#0F6E56",
+                      padding: "10px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      background: "rgba(255,255,255,0.025)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: 10,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontFamily: "inherit",
+                      width: "100%",
+                      WebkitTapHighlightColor: "transparent",
+                    }
+                  : { "--sc": CAT_COLOR[s.cat] || "#0F6E56" }
+              }
+            >
+              <span className="ex-sugg__icon" style={{ color: CAT_COLOR[s.cat] || "#0F6E56", background: (CAT_COLOR[s.cat] || "#0F6E56") + "18" }}>
+                {CAT_ICON[s.cat] || "·"}
+              </span>
+              <span className="ex-sugg__label">{s.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Panel({ open, onClose, isMobile, anchor, children }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open || isMobile) return;
+    const fn = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, [open, isMobile, onClose]);
+
+  if (!open) return null;
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="ex-backdrop" onClick={onClose} />
+        <div className="ex-sheet" role="dialog" aria-modal="true">
+          <div className="ex-sheet__handle" />
+          {children}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <div className={"ex-pop " + (anchor || "")} ref={ref} role="dialog">
+      {children}
+    </div>
+  );
+}
+
+function ToolsPanel({ open, onClose, isMobile, router, onNeedUpgrade }) {
+  const paid = isPaid();
+
+  const handleTool = (t) => {
+    if (t.paid && !paid) {
+      onNeedUpgrade(t);
+      onClose();
+      return;
+    }
+    if (t.route) router.push(t.route);
+    onClose();
+  };
+
+  return (
+    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--tools">
+      <div className="ex-panel">
+        <div className="ex-panel__hd">
+          <span className="ex-panel__title">Career Tools</span>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
+        </div>
+        <ul className="ex-panel__list">
+          {TOOLS.map((t) => (
+            <li key={t.key}>
+              <button className="ex-tool-item" onClick={() => handleTool(t)}>
+                <span className="ex-tool-item__dot" style={{ background: t.color }} />
+                <div className="ex-tool-item__body">
+                  <span className="ex-tool-item__name">{t.label}</span>
+                  <span className="ex-tool-item__tag">{t.tagline}</span>
+                </div>
+                <span className={"ex-tier " + (t.paid ? (paid ? "ex-tier--pro" : "ex-tier--locked") : "ex-tier--free")}>
+                  {t.paid ? "Pro" : "Free"}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Panel>
+  );
+}
+
+function IntelPanel({ open, onClose, isMobile, activeMode, onSelect }) {
+  return (
+    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--intel">
+      <div className="ex-panel">
+        <div className="ex-panel__hd">
+          <span className="ex-panel__title">Intelligence Mode</span>
+          <span className="ex-panel__free">Free</span>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
+        </div>
+        <p className="ex-panel__sub">Select a mode for deeper structured analysis in chat</p>
+        <div className="ex-imode-grid">
+          {INTELLIGENCE_MODES.map((m) => (
+            <button
+              key={m.key}
+              className={"ex-imode" + (activeMode === m.key ? " ex-imode--on" : "")}
+              style={{ "--im": m.color }}
+              onClick={() => {
+                onSelect(activeMode === m.key ? null : m.key);
+                onClose();
+              }}
+            >
+              <span className="ex-imode__icon" style={{ background: m.color + "18", color: m.color }}>
+                {m.icon}
+              </span>
+              <span className="ex-imode__label">{m.label}</span>
+              <span className="ex-imode__desc">{m.tagline}</span>
+              {activeMode === m.key && <span className="ex-imode__check">✓</span>}
+            </button>
+          ))}
+        </div>
+        {activeMode && (
+          <button className="ex-panel__clear" onClick={() => { onSelect(null); onClose(); }}>
+            Clear mode
+          </button>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function UploadPanel({ open, onClose, isMobile, onFile }) {
+  const fileRef = useRef(null);
+  const [accept, setAccept] = useState("*");
+
+  const TYPES = [
+    { key: "cv", icon: "C", label: "CV / Resume", desc: "EDGEX analyses gaps, ATS fit, and rewrite suggestions", color: "#6366f1", accept: ".pdf,.doc,.docx" },
+    { key: "jd", icon: "J", label: "Job Description", desc: "EDGEX scores your fit and identifies what to close", color: "#10b981", accept: ".pdf,.txt,.doc,.docx" },
+    { key: "cover", icon: "L", label: "Cover Letter", desc: "EDGEX reviews impact, tone, and opening strength", color: "#f59e0b", accept: ".pdf,.doc,.docx,.txt" },
+  ];
+
+  return (
+    <Panel open={open} onClose={onClose} isMobile={isMobile} anchor="ex-pop--upload">
+      <div className="ex-panel">
+        <div className="ex-panel__hd">
+          <span className="ex-panel__title">Upload Document</span>
+          <button className="ex-panel__x" onClick={onClose}>✕</button>
+        </div>
+        <p className="ex-panel__sub">EDGEX will analyse your document in the context of your career goals</p>
+        <ul className="ex-upload-list">
+          {TYPES.map((ut) => (
+            <li key={ut.key}>
+              <button
+                className="ex-utype"
+                onClick={() => {
+                  setAccept(ut.accept);
+                  fileRef.current?.click();
+                  onClose();
+                }}
+              >
+                <span className="ex-utype__icon" style={{ background: ut.color + "18", color: ut.color }}>
+                  {ut.icon}
+                </span>
+                <div className="ex-utype__body">
+                  <span className="ex-utype__name">{ut.label}</span>
+                  <span className="ex-utype__desc">{ut.desc}</span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <input
+          ref={fileRef}
+          type="file"
+          accept={accept}
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+            e.target.value = "";
+          }}
+        />
+      </div>
+    </Panel>
+  );
+}
+
+function UpgradeModal({ tool, onClose, router }) {
+  if (!tool) return null;
+
+  return (
+    <>
+      <div className="ex-backdrop" onClick={onClose} />
+      <div className="ex-sheet ex-sheet--upgrade" role="dialog" aria-modal="true">
+        <div className="ex-sheet__handle" />
+        <div className="ex-upgrade">
+          <div className="ex-upgrade__icon" style={{ background: tool.color + "18", color: tool.color }}>
+            <svg width="20" height="20" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 2l1.5 3.5L14 7l-2.5 2.5.6 3.5L9 11.5 6.9 13l.6-3.5L5 7l3.5-1.5z" />
+            </svg>
+          </div>
+          <h3 className="ex-upgrade__title">{tool.label}</h3>
+          <p className="ex-upgrade__desc">{tool.tagline}</p>
+          <div className="ex-upgrade__options">
+            <button
+              className="ex-upgrade__pack"
+              onClick={() => {
+                router.push("/billing?plan=career_pack");
+                onClose();
+              }}
+            >
+              <div className="ex-upgrade__pack-inner">
+                <span className="ex-upgrade__pack-label">Career Pack</span>
+                <span className="ex-upgrade__pack-price">£6.99 one-time</span>
+              </div>
+              <span className="ex-upgrade__pack-note">All tools · One payment · No subscription</span>
+            </button>
+
+            <button
+              className="ex-upgrade__pro"
+              onClick={() => {
+                router.push("/billing?plan=pro");
+                onClose();
+              }}
+            >
+              Unlock with Pro — £14.99/mo
+            </button>
+          </div>
+          <button className="ex-upgrade__dismiss" onClick={onClose}>Not now</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PowerBar({
+  input,
+  setInput,
+  loading,
+  onSend,
+  uploadedFile,
+  onClearFile,
+  intelligenceMode,
+  onOpenTools,
+  onOpenIntel,
+  onOpenUpload,
+  panelContent,
+}) {
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 150) + "px";
+  }, [input]);
+
+  const activeMode = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
+  const submit = () => onSend(input);
+  const keyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+    }
+  };
+
+  return (
+    <div className="ex-powerbar">
+      {panelContent}
+
+      {activeMode && (
+        <div className="ex-mode-pill" style={{ "--mp": activeMode.color }}>
+          <span className="ex-mode-pill__icon" style={{ color: activeMode.color }}>{activeMode.icon}</span>
+          <span className="ex-mode-pill__name" style={{ color: activeMode.color }}>{activeMode.label} active</span>
+          <button className="ex-mode-pill__clear" onClick={() => onOpenIntel()} title="Change or clear mode">✕</button>
+        </div>
+      )}
+
+      {uploadedFile && (
+        <div className="ex-fchip">
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M3 1h5l2 2v8H3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          <span className="ex-fchip__name">{uploadedFile.name}</span>
+          <button className="ex-fchip__rm" onClick={onClearFile}>✕</button>
+        </div>
+      )}
+
+      <div className="ex-bar">
+        <div className="ex-bar__ctrl">
+          <button className="ex-ctrl ex-ctrl--tools" onClick={onOpenTools} type="button">
+            <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11.7 1.5a4.5 4.5 0 00-3.7 7l-5.5 5.5 1.5 1.5L9.5 10a4.5 4.5 0 007-3.7l-2.6 2.6-2.1-.7-.7-2.1z" />
+            </svg>
+            <span className="ex-ctrl__lbl">Tools</span>
+          </button>
+
+          <button
+            className={"ex-ctrl ex-ctrl--intel" + (activeMode ? " ex-ctrl--on" : "")}
+            style={activeMode ? { "--cc": activeMode.color } : {}}
+            onClick={onOpenIntel}
+            type="button"
+          >
+            <svg width="12" height="12" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="9" r="3" />
+              <path d="M9 2v2M9 14v2M2 9h2M14 9h2M4.2 4.2l1.4 1.4M12.4 12.4l1.4 1.4M4.2 13.8l1.4-1.4M12.4 5.6l1.4-1.4" />
+            </svg>
+            <span className="ex-ctrl__lbl">{activeMode ? activeMode.label : "Intelligence"}</span>
+            <span className="ex-ctrl__free">Free</span>
+          </button>
+
+          <button
+            className={"ex-ctrl ex-ctrl--upload" + (uploadedFile ? " ex-ctrl--on" : "")}
+            onClick={onOpenUpload}
+            type="button"
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 10V3M4 6l3-3 3 3" />
+              <path d="M2 12h10" />
+            </svg>
+            <span className="ex-ctrl__lbl">{uploadedFile ? "1 file" : "Upload"}</span>
+          </button>
+        </div>
+
+        <div className="ex-bar__input">
+          <textarea
+            ref={textRef}
+            className="ex-bar__textarea"
+            placeholder={activeMode ? activeMode.label + " — describe your current role and target move..." : "Tell me your current role and target — I'll diagnose your career path."}
+            value={input}
+            rows={1}
+            disabled={loading}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={keyDown}
+          />
+          <button className="ex-send" disabled={loading || !input.trim()} onClick={submit} aria-label="Send" type="button">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <path d="M2 12.5L12.5 7L2 1.5V5.8L9 7L2 8.2V12.5Z" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <p className="ex-hint"><kbd>Enter</kbd> to send &nbsp;<kbd>Shift+Enter</kbd> for new line</p>
+    </div>
+  );
+}
+
+function CareerContextRail({ context, messages, intelligenceMode, onSend, router }) {
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant" && m.type === "assistant");
+  const primaryAction = lastAssistant?.nextActions?.[0] || null;
+  const modeInfo = intelligenceMode ? INTELLIGENCE_MODES.find((m) => m.key === intelligenceMode) : null;
+
+  const QUICK_ACTIONS = [
+    { label: "Salary check", prompt: context?.role ? `What salary should a ${context.role} target in the UK?` : "What salary benchmarks should I know for my career transition?" },
+    { label: "Skill gaps", prompt: context?.target ? `What skills am I missing to become a ${context.target}?` : "What are the most common skill gaps in my industry?" },
+    { label: "Transition plan", prompt: context?.role && context?.target ? `Build a step-by-step transition plan from ${context.role} to ${context.target}` : "How should I plan my career transition?" },
+    { label: "Market demand", prompt: context?.target ? `What is the UK job market demand for ${context.target}?` : "What roles are most in demand in the UK right now?" },
+  ];
+
+  return (
+    <aside className="ex-rail">
+      <div className="ex-rail__card">
+        <div className="ex-rail__card-label">Career Context</div>
+        {context?.role ? (
+          <div className="ex-rail__context">
+            {context.role && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Current</span>
+                <span className="ex-rail__ctx-val">{context.role}</span>
+              </div>
+            )}
+            {context.target && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Target</span>
+                <span className="ex-rail__ctx-val ex-rail__ctx-val--accent">{context.target}</span>
+              </div>
+            )}
+            {context.yearsExp && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Experience</span>
+                <span className="ex-rail__ctx-val">{context.yearsExp} yrs</span>
+              </div>
+            )}
+            {context.country && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Location</span>
+                <span className="ex-rail__ctx-val">{context.country}</span>
+              </div>
+            )}
+            {modeInfo && (
+              <div className="ex-rail__ctx-row">
+                <span className="ex-rail__ctx-key">Focus</span>
+                <span className="ex-rail__ctx-val" style={{ color: modeInfo.color }}>{modeInfo.label}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="ex-rail__empty-hint">Tell EDGEX your current role and target to activate career intelligence.</p>
+        )}
+      </div>
+
+      {primaryAction && (
+        <div className="ex-rail__card ex-rail__card--action">
+          <div className="ex-rail__card-label">Next Best Action</div>
+          {primaryAction.type === "tool" ? (
+            <button
+              className="ex-rail__nba"
+              onClick={() => {
+                const r = ENDPOINT_TO_ROUTE[primaryAction.endpoint];
+                if (r) router.push(r);
+              }}
+            >
+              <span className="ex-rail__nba-label">{primaryAction.label}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ) : (
+            <button className="ex-rail__nba" onClick={() => onSend(primaryAction.prompt)}>
+              <span className="ex-rail__nba-label">{primaryAction.label}</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="ex-rail__card">
+        <div className="ex-rail__card-label">Quick Analysis</div>
+        <div className="ex-rail__quick-actions">
+          {QUICK_ACTIONS.map((a, i) => (
+            <button key={i} className="ex-rail__quick-btn" onClick={() => onSend(a.prompt)}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export default function ChatWindow() {
+  const router = useRouter();
+  const { context, updateContext, clear, conversationId, setConversationId, incrementMessageCount, registerNewChat } = useEDGEXContext();
+  const handledQueryConv = useRef(false);
+  const { user } = useAuth();
+  const isMobile = useIsMobile();
+
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [documentText, setDocumentText] = useState(null);
+  const [intelligenceMode, setIntelligenceMode] = useState(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [intelOpen, setIntelOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [upgradeTool, setUpgradeTool] = useState(null);
+
+  const bottomRef = useRef(null);
+  const titleSet = useRef(false);
+  const loadedConv = useRef(null);
+  const isNewChatRef = useRef(false);
+
+  useEffect(() => {
+    registerNewChat(newChat);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  useEffect(() => {
+    const convId = router.query?.conv;
+    if (convId && !handledQueryConv.current && convId !== conversationId) {
+      handledQueryConv.current = true;
+      isNewChatRef.current = false;
+      setConversationId(convId);
+      router.replace(router.pathname, undefined, { shallow: true });
+    }
+  }, [router.query?.conv]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!user || !conversationId || loadedConv.current === conversationId) return;
+
+    loadConversation(conversationId, user.id).then(({ data }) => {
+      setMessages((data || []).map(dbRowToMsg));
+      loadedConv.current = conversationId;
+      titleSet.current = (data || []).some((r) => r.role === "user");
+    });
+  }, [user, conversationId]);
+
+  const handleFile = useCallback(async (file) => {
+    setUploadedFile(file);
+    setDocumentText(null);
+
+    const uploadType = detectUploadType(file.name);
+    const actions = getUploadActions(uploadType, context);
+    const msgId = Date.now();
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "upload",
+        type: "upload",
+        msgId,
+        fileName: file.name,
+        uploadType,
+        actions,
+        extractionState: "extracting",
+        tokenCount: null,
+        extractionError: null,
+      },
+    ]);
+
+    const result = await extractDocument(file);
+
+    if (result.error) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.msgId === msgId ? { ...m, extractionState: "error", extractionError: result.error } : m
+        )
+      );
+    } else {
+      const tokens = estimateTokens(result.text);
+      setDocumentText(result.text);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.msgId === msgId ? { ...m, extractionState: "ready", tokenCount: tokens } : m
+        )
+      );
+    }
+  }, [context]);
+
+  const closeAll = () => {
+    setToolsOpen(false);
+    setIntelOpen(false);
+    setUploadOpen(false);
+  };
+
+  const send = useCallback(async (text) => {
+    const trimmed = (text || "").trim();
+    if (!trimmed || loading) return;
+
+    const intent = classifyIntent(trimmed, context);
+    const useMode = intelligenceMode || (intent.type === "intelligence" ? intent.mode : null);
+    const fileSnap = uploadedFile;
+    const docTextSnap = documentText;
+
+    const requestContext = isStandaloneQuery(trimmed) ? null : context;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "user",
+        content: trimmed,
+        fileName: fileSnap?.name || null,
+        contextSnapshot: requestContext ? _safe(requestContext) : {},
+      },
+    ]);
+
+    setInput("");
+    setUploadedFile(null);
+    setDocumentText(null);
+    setLoading(true);
+
+    let convId = conversationId;
+
+    if (!convId && user) {
+      const { data } = await createConversation(user.id);
+      if (data) {
+        convId = data.id;
+        setConversationId(data.id);
+        loadedConv.current = data.id;
+        titleSet.current = false;
       }
     }
 
-    if (!openai) {
-      return sendJson(req, res, 200, {
-        ok: true,
-        data: {
-          intent: { name: intent, confidence },
-          tool_used: toolUsed,
-          reply: toolData
-            ? JSON.stringify(toolData).slice(0, 300)
-            : "EDGEX is initialising.",
-          next_actions: [],
-          context: updateCtx(resolved, intent),
+    if (convId && user) {
+      await saveMessage({
+        conversationId: convId,
+        userId: user.id,
+        role: "user",
+        content: trimmed,
+        meta: {
+          type: "user",
+          contextSnapshot: requestContext ? _safe(requestContext) : {},
         },
       });
+
+      if (!titleSet.current) {
+        await updateConversationTitle(convId, user.id, trimmed.slice(0, 60));
+        titleSet.current = true;
+      }
     }
 
-    const graphData = buildCareerGraph(resolved.role, resolved.target);
+    try {
+      const payload = buildRequestPayload(
+        trimmed,
+        requestContext,
+        intent,
+        useMode,
+        fileSnap,
+        docTextSnap
+      );
 
-    const { reply, nextActions } = await formatWithLLM(
-      msg,
-      resolved,
-      intent,
-      toolData,
-      graphData,
-      intelligence_mode,
-      documentContext
-    );
+      const res = await fetch(`${API_BASE}/api/copilot/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-HireEdge-Plan": getPlan(),
+        },
+        body: JSON.stringify(payload),
+      });
 
-    return sendJson(req, res, 200, {
-      ok: true,
-      data: {
-        intent: { name: intent, confidence },
-        tool_used: toolUsed,
-        tool_error: toolError || undefined,
-        reply,
-        next_actions: nextActions,
-        context: updateCtx(resolved, intent),
-        recommendations: [],
-        insights: null,
-      },
-    });
-  } catch (err) {
-    console.error("[chat] handler error:", err);
-    return sendJson(req, res, 500, {
-      ok: false,
-      error: "EDGEX is temporarily unavailable.",
-      message: err.message,
-    });
-  }
+      let json = null;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error("Backend returned non-JSON response");
+      }
+
+      if (!res.ok || !json?.ok) {
+        const backendMsg =
+          json?.error || json?.message || `Request failed with status ${res.status}`;
+
+        const e = {
+          role: "assistant",
+          type: "error",
+          content: backendMsg,
+          contextSnapshot: requestContext ? _safe(requestContext) : {},
+        };
+
+        setMessages((p) => [...p, e]);
+
+        if (convId && user) {
+          await saveMessage({
+            conversationId: convId,
+            userId: user.id,
+            role: "assistant",
+            content: e.content,
+            meta: {
+              type: "error",
+              contextSnapshot: requestContext ? _safe(requestContext) : {},
+            },
+          });
+        }
+
+        return;
+      }
+
+      const data = json.data;
+      if (!data) throw new Error("Empty response from backend");
+
+      if (data.type === "clarification") {
+        const clarificationContext = _safe(data.context || requestContext || {});
+
+        const m = {
+          role: "assistant",
+          type: "clarification",
+          content: data.reply,
+          missingFields: data.missing_fields || [],
+          actions: data.next_actions || [],
+          contextSnapshot: clarificationContext,
+        };
+
+        setMessages((p) => [...p, m]);
+
+        if (data.context) updateContext(_safe(data.context));
+
+        if (convId && user) {
+          await saveMessage({
+            conversationId: convId,
+            userId: user.id,
+            role: "assistant",
+            content: m.content,
+            meta: {
+              type: "clarification",
+              missingFields: m.missingFields,
+              actions: m.actions,
+              contextSnapshot: clarificationContext,
+            },
+          });
+        }
+
+        return;
+      }
+
+      const assistantContext = _safe(data.context || requestContext || {});
+
+      const m = {
+        role: "assistant",
+        type: "assistant",
+        content: data.reply,
+        nextActions: data.next_actions || [],
+        intent: data.intent?.name,
+        confidence: data.intent?.confidence,
+        intelligenceMode: useMode,
+        contextSnapshot: assistantContext,
+      };
+
+      setMessages((p) => [...p, m]);
+      incrementMessageCount();
+
+      if (data.context) updateContext(_safe(data.context));
+
+      if (convId && user) {
+        await saveMessage({
+          conversationId: convId,
+          userId: user.id,
+          role: "assistant",
+          content: m.content,
+          meta: {
+            type: "assistant",
+            intent: m.intent,
+            confidence: m.confidence,
+            nextActions: m.nextActions,
+            intelligenceMode: useMode,
+            contextSnapshot: assistantContext,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[EDGEX] send error:", err);
+
+      const e = {
+        role: "assistant",
+        type: "error",
+        content: err?.message || "Connection error. Please try again.",
+        contextSnapshot: requestContext ? _safe(requestContext) : {},
+      };
+
+      setMessages((p) => [...p, e]);
+
+      if (convId && user) {
+        await saveMessage({
+          conversationId: convId,
+          userId: user.id,
+          role: "assistant",
+          content: e.content,
+          meta: {
+            type: "error",
+            contextSnapshot: requestContext ? _safe(requestContext) : {},
+          },
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    context,
+    loading,
+    updateContext,
+    conversationId,
+    setConversationId,
+    user,
+    uploadedFile,
+    intelligenceMode,
+    documentText,
+    incrementMessageCount,
+  ]);
+
+  const newChat = () => {
+    isNewChatRef.current = true;
+    setMessages([]);
+    setInput("");
+    setUploadedFile(null);
+    setDocumentText(null);
+    setIntelligenceMode(null);
+    clear();
+    setConversationId(null);
+    loadedConv.current = null;
+    titleSet.current = false;
+  };
+
+  const editContext = () => {
+    const role = window.prompt("Current role:", context?.role || "");
+    const target = window.prompt("Target role:", context?.target || "");
+    if (role !== null || target !== null) {
+      updateContext({
+        role: role || context?.role,
+        target: target || context?.target,
+      });
+    }
+  };
+
+  return (
+    <div className="ex-chat" style={{ position: "relative" }}>
+      <SessionHeader
+        context={context}
+        messages={messages}
+        intelligenceMode={intelligenceMode}
+        onEdit={editContext}
+      />
+
+      <div className="ex-workspace">
+        <div className="ex-workspace__main">
+          <div className="ex-messages">
+            {messages.length === 0 && !loading && <EmptyState onSend={send} context={context} />}
+
+            {messages.map((msg, i) => {
+              if (msg.type === "upload") {
+                return (
+                  <UploadMsg
+                    key={i}
+                    fileName={msg.fileName}
+                    uploadType={msg.uploadType}
+                    actions={msg.actions}
+                    onSend={send}
+                    extractionState={msg.extractionState}
+                    tokenCount={msg.tokenCount}
+                    extractionError={msg.extractionError}
+                  />
+                );
+              }
+
+              if (msg.role === "user") {
+                return <UserMsg key={i} content={msg.content} fileName={msg.fileName} />;
+              }
+
+              if (msg.type === "clarification") {
+                return (
+                  <ClarifyMsg
+                    key={i}
+                    content={msg.content}
+                    missingFields={msg.missingFields}
+                    actions={msg.actions}
+                    onSend={send}
+                  />
+                );
+              }
+
+              if (msg.type === "error") {
+                return <ErrorMsg key={i} content={msg.content} />;
+              }
+
+              return (
+                <AssistantMsg
+                  key={i}
+                  content={msg.content}
+                  nextActions={msg.nextActions}
+                  intent={msg.intent}
+                  confidence={msg.confidence}
+                  intelligenceMode={msg.intelligenceMode}
+                  onSend={send}
+                  router={router}
+                  context={msg.contextSnapshot || {}}
+                />
+              );
+            })}
+
+            {loading && <ThinkingState />}
+            <div ref={bottomRef} />
+          </div>
+
+          {messages.length === 0 && !loading && (
+            <p className="ex-input-guide">Start by telling EDGEX your current role and goal</p>
+          )}
+
+          <PowerBar
+            input={input}
+            setInput={setInput}
+            loading={loading}
+            onSend={send}
+            uploadedFile={uploadedFile}
+            onClearFile={() => {
+              setUploadedFile(null);
+              setDocumentText(null);
+            }}
+            intelligenceMode={intelligenceMode}
+            onOpenTools={() => {
+              closeAll();
+              setToolsOpen((v) => !v);
+            }}
+            onOpenIntel={() => {
+              closeAll();
+              setIntelOpen((v) => !v);
+            }}
+            onOpenUpload={() => {
+              closeAll();
+              setUploadOpen((v) => !v);
+            }}
+            panelContent={
+              <>
+                <ToolsPanel
+                  open={toolsOpen}
+                  onClose={() => setToolsOpen(false)}
+                  isMobile={isMobile}
+                  router={router}
+                  onNeedUpgrade={(t) => setUpgradeTool(t)}
+                />
+
+                <IntelPanel
+                  open={intelOpen}
+                  onClose={() => setIntelOpen(false)}
+                  isMobile={isMobile}
+                  activeMode={intelligenceMode}
+                  onSelect={setIntelligenceMode}
+                />
+
+                <UploadPanel
+                  open={uploadOpen}
+                  onClose={() => setUploadOpen(false)}
+                  isMobile={isMobile}
+                  onFile={handleFile}
+                />
+
+                {upgradeTool && (
+                  <UpgradeModal
+                    tool={upgradeTool}
+                    onClose={() => setUpgradeTool(null)}
+                    router={router}
+                  />
+                )}
+              </>
+            }
+          />
+        </div>
+
+        <CareerContextRail
+          context={context}
+          messages={messages}
+          intelligenceMode={intelligenceMode}
+          onSend={send}
+          router={router}
+        />
+      </div>
+    </div>
+  );
 }
