@@ -754,11 +754,11 @@ function EmptyState({ onSend, context }) {
   const isMobile = useIsMobile();
 
   return (
-    <div className="ex-empty">
+    <div className="ex-empty" style={isMobile ? { overflowY: "hidden", justifyContent: "flex-start", padding: "8px 14px 0" } : {}}>
       <div className="ex-empty__glow" />
-      <div className="ex-empty__flow">
+      <div className="ex-empty__flow" style={isMobile ? { width: "100%", gap: 0 } : {}}>
 
-        {/* Hero logo — hidden on mobile to save space for 4 cards */}
+        {/* Hero + subtitle + intel — desktop only */}
         {!isMobile && (
           <div className="ex-empty__hero">
             <div className="ex-empty__icon-glow">
@@ -771,18 +771,19 @@ function EmptyState({ onSend, context }) {
           </div>
         )}
 
-        <h1 className="ex-empty__h1">Career Operating System</h1>
+        <h1 className="ex-empty__h1" style={isMobile ? { fontSize: 20, fontWeight: 800, textAlign: "center", margin: "0 0 10px", color: "#fff", letterSpacing: "-0.5px" } : {}}>
+          Career Operating System
+        </h1>
 
-        {/* Subtitle — desktop only */}
         {!isMobile && (
           <p className="ex-empty__sub">Diagnose your career. Identify your gaps. Execute your next move.</p>
         )}
 
-        {/* Intel preview card — desktop only */}
         {!isMobile && <IntelPreview onSend={onSend} />}
 
         <button
           className="ex-empty__cta"
+          style={isMobile ? { width: "100%", marginBottom: 10, padding: "12px 18px", fontSize: 14 } : {}}
           onClick={() => onSend("Run a full career diagnosis. Assess my current position, identify skill gaps, map transition options, and benchmark salary potential.")}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
@@ -794,13 +795,13 @@ function EmptyState({ onSend, context }) {
           Start Career Analysis
         </button>
 
-        <div className="ex-empty__grid">
+        <div className="ex-empty__grid" style={isMobile ? { display: "flex", flexDirection: "column", gap: 6, width: "100%" } : {}}>
           {sugg.map((s, i) => (
             <button
               key={i}
               className="ex-sugg"
               onClick={() => onSend(s.prompt)}
-              style={{ "--sc": CAT_COLOR[s.cat] || "#0F6E56" }}
+              style={isMobile ? { "--sc": CAT_COLOR[s.cat] || "#0F6E56", padding: "9px 12px", display: "flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%" } : { "--sc": CAT_COLOR[s.cat] || "#0F6E56" }}
             >
               <span className="ex-sugg__icon" style={{ color: CAT_COLOR[s.cat] || "#0F6E56", background: (CAT_COLOR[s.cat] || "#0F6E56") + "18" }}>
                 {CAT_ICON[s.cat] || "·"}
