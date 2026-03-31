@@ -807,9 +807,9 @@ function EmptyState({ onSend, context }) {
           {sugg.map((s, i) => (
             <button
               key={i}
-              className="ex-sugg"
+              className={isMobile ? "" : "ex-sugg"}
               onClick={() => onSend(s.prompt)}
-              style={isMobile ? { "--sc": CAT_COLOR[s.cat] || "#0F6E56", padding: "10px 12px", display: "flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%" } : { "--sc": CAT_COLOR[s.cat] || "#0F6E56" }}
+              style={isMobile ? { "--sc": CAT_COLOR[s.cat] || "#0F6E56", padding: "10px 12px", display: "flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%", WebkitTapHighlightColor: "transparent" } : { "--sc": CAT_COLOR[s.cat] || "#0F6E56" }}
             >
               <span className="ex-sugg__icon" style={{ color: CAT_COLOR[s.cat] || "#0F6E56", background: (CAT_COLOR[s.cat] || "#0F6E56") + "18" }}>
                 {CAT_ICON[s.cat] || "·"}
