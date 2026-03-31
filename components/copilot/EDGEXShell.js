@@ -318,7 +318,7 @@ export default function EDGEXShell() {
         </div>
       </header>
 
-      <main className="exs-body">
+      <main className="exs-body" style={{ paddingBottom: typeof window !== "undefined" && window.innerWidth < 900 ? "56px" : "0" }}>
         <div className="exs-chat-stage">
           <ChatWindow />
         </div>
