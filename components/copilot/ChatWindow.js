@@ -9,7 +9,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import EDGEXIcon from "../brand/EDGEXIcon";
 import {
   createConversation,
-  listConversations,
   loadConversation,
   saveMessage,
   updateConversationTitle,
@@ -74,7 +73,36 @@ function dbRowToMsg(row) {
     actions: m.actions || [],
     intelligenceMode: m.intelligenceMode || null,
     fileName: m.fileName || null,
+    contextSnapshot: m.contextSnapshot || null,
   };
+}
+
+function isStandaloneQuery(message) {
+  const text = (message || "").trim().toLowerCase();
+  if (!text) return false;
+
+  const PERSONAL_RE =
+    /\b(i|i'm|i am|my|me|mine|myself|for me|my role|my current role|my target|my transition|my salary|my skills)\b/i;
+
+  const GREETING_RE =
+    /^(hi|hello|hey|helo|hello there|good morning|good afternoon|good evening)\b[!. ]*$/i;
+
+  const STANDALONE_RE_LIST = [
+    /\bwhat is the salary of\b/i,
+    /\bhow much does\b/i,
+    /\baverage salary for\b/i,
+    /\bmarket rate for\b/i,
+    /\bin the uk\b/i,
+    /\bwhat skills does\b/i,
+    /\bwhat does a .* do\b/i,
+    /\bvisa routes?\b/i,
+    /\bjob market demand\b/i,
+  ];
+
+  if (GREETING_RE.test(text)) return true;
+  if (PERSONAL_RE.test(text)) return false;
+
+  return STANDALONE_RE_LIST.some((re) => re.test(text));
 }
 
 function useIsMobile() {
@@ -136,29 +164,6 @@ function ThinkingState() {
         <span className="ex-thinking__dot" />
       </div>
     </div>
-  );
-}
-
-function IntentBadge({ intent, intelligenceMode }) {
-  if (intelligenceMode) {
-    const m = INTELLIGENCE_MODES.find((x) => x.key === intelligenceMode);
-    if (m) {
-      return (
-        <span className="ex-badge" style={{ background: m.color + "18", color: m.color, borderColor: m.color + "28" }}>
-          <span className="ex-badge__icon">{m.icon}</span>
-          {m.label}
-        </span>
-      );
-    }
-  }
-
-  if (!intent) return null;
-
-  const cfg = INTENT_CONFIG[intent] || INTENT_CONFIG.general_career;
-  return (
-    <span className="ex-badge" style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.color + "28" }}>
-      {cfg.label}
-    </span>
   );
 }
 
@@ -1373,9 +1378,16 @@ export default function ChatWindow() {
     const fileSnap = uploadedFile;
     const docTextSnap = documentText;
 
+    const requestContext = isStandaloneQuery(trimmed) ? null : context;
+
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: trimmed, fileName: fileSnap?.name || null },
+      {
+        role: "user",
+        content: trimmed,
+        fileName: fileSnap?.name || null,
+        contextSnapshot: requestContext ? _safe(requestContext) : {},
+      },
     ]);
 
     setInput("");
@@ -1401,7 +1413,10 @@ export default function ChatWindow() {
         userId: user.id,
         role: "user",
         content: trimmed,
-        meta: { type: "user" },
+        meta: {
+          type: "user",
+          contextSnapshot: requestContext ? _safe(requestContext) : {},
+        },
       });
 
       if (!titleSet.current) {
@@ -1411,7 +1426,14 @@ export default function ChatWindow() {
     }
 
     try {
-      const payload = buildRequestPayload(trimmed, context, intent, useMode, fileSnap, docTextSnap);
+      const payload = buildRequestPayload(
+        trimmed,
+        requestContext,
+        intent,
+        useMode,
+        fileSnap,
+        docTextSnap
+      );
 
       const res = await fetch(`${API_BASE}/api/copilot/chat`, {
         method: "POST",
@@ -1437,6 +1459,7 @@ export default function ChatWindow() {
           role: "assistant",
           type: "error",
           content: backendMsg,
+          contextSnapshot: requestContext ? _safe(requestContext) : {},
         };
 
         setMessages((p) => [...p, e]);
@@ -1447,7 +1470,10 @@ export default function ChatWindow() {
             userId: user.id,
             role: "assistant",
             content: e.content,
-            meta: { type: "error" },
+            meta: {
+              type: "error",
+              contextSnapshot: requestContext ? _safe(requestContext) : {},
+            },
           });
         }
 
@@ -1458,12 +1484,15 @@ export default function ChatWindow() {
       if (!data) throw new Error("Empty response from backend");
 
       if (data.type === "clarification") {
+        const clarificationContext = _safe(data.context || requestContext || {});
+
         const m = {
           role: "assistant",
           type: "clarification",
           content: data.reply,
           missingFields: data.missing_fields || [],
           actions: data.next_actions || [],
+          contextSnapshot: clarificationContext,
         };
 
         setMessages((p) => [...p, m]);
@@ -1480,12 +1509,15 @@ export default function ChatWindow() {
               type: "clarification",
               missingFields: m.missingFields,
               actions: m.actions,
+              contextSnapshot: clarificationContext,
             },
           });
         }
 
         return;
       }
+
+      const assistantContext = _safe(data.context || requestContext || {});
 
       const m = {
         role: "assistant",
@@ -1495,6 +1527,7 @@ export default function ChatWindow() {
         intent: data.intent?.name,
         confidence: data.intent?.confidence,
         intelligenceMode: useMode,
+        contextSnapshot: assistantContext,
       };
 
       setMessages((p) => [...p, m]);
@@ -1514,6 +1547,7 @@ export default function ChatWindow() {
             confidence: m.confidence,
             nextActions: m.nextActions,
             intelligenceMode: useMode,
+            contextSnapshot: assistantContext,
           },
         });
       }
@@ -1524,6 +1558,7 @@ export default function ChatWindow() {
         role: "assistant",
         type: "error",
         content: err?.message || "Connection error. Please try again.",
+        contextSnapshot: requestContext ? _safe(requestContext) : {},
       };
 
       setMessages((p) => [...p, e]);
@@ -1534,7 +1569,10 @@ export default function ChatWindow() {
           userId: user.id,
           role: "assistant",
           content: e.content,
-          meta: { type: "error" },
+          meta: {
+            type: "error",
+            contextSnapshot: requestContext ? _safe(requestContext) : {},
+          },
         });
       }
     } finally {
@@ -1637,7 +1675,7 @@ export default function ChatWindow() {
                   intelligenceMode={msg.intelligenceMode}
                   onSend={send}
                   router={router}
-                  context={context}
+                  context={msg.contextSnapshot || {}}
                 />
               );
             })}
