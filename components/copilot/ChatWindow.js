@@ -756,7 +756,7 @@ function EmptyState({ onSend, context }) {
   return (
     <div className="ex-empty" style={isMobile ? { overflowY: "hidden", justifyContent: "flex-start", padding: "16px 14px 0" } : {}}>
       <div className="ex-empty__glow" />
-      <div className="ex-empty__flow" style={isMobile ? { width: "100%", gap: 0 } : {}}>
+      <div className="ex-empty__flow" style={isMobile ? { width: "100%", gap: 0, display: "flex", flexDirection: "column", alignItems: "center" } : {}}>
 
         {/* Hero + subtitle + intel — desktop only */}
         {!isMobile && (
@@ -783,7 +783,7 @@ function EmptyState({ onSend, context }) {
 
         <button
           className="ex-empty__cta"
-          style={isMobile ? { alignSelf: "center", marginBottom: 10, padding: "10px 24px", fontSize: 13, borderRadius: 10 } : {}}
+          style={isMobile ? { alignSelf: "center", margin: "0 0 8px 0", padding: "10px 24px", fontSize: 13, borderRadius: 10, display: "flex" } : {}}
           onClick={() => onSend("Run a full career diagnosis. Assess my current position, identify skill gaps, map transition options, and benchmark salary potential.")}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
