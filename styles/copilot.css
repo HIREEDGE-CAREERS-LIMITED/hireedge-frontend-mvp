@@ -521,7 +521,7 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .ex-messages          { padding:14px 14px 100px; }
+  .ex-messages          { padding:14px 14px 20px; }
   .ex-powerbar          { padding:8px 12px 12px; }
   .ex-pop--tools, .ex-pop--intel, .ex-pop--upload { bottom:90px; left:12px; right:12px; width:auto !important; }
   .ex-ctrl__lbl    { font-size:11px; }
@@ -858,5 +858,5 @@ body.edgex-page .app-shell__main { padding-top:0 !important; }
   .ex-powerbar { padding-bottom: 12px !important; }
 
   /* Messages bottom padding */
-  .ex-messages { padding-bottom: 110px; }
+  .ex-messages { padding-bottom: 20px; }
 }
