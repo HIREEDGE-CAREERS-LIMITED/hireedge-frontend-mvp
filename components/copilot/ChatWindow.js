@@ -771,7 +771,7 @@ function EmptyState({ onSend, context }) {
           </div>
         )}
 
-        <h1 className="ex-empty__h1" style={isMobile ? { fontSize: 20, fontWeight: 800, textAlign: "center", margin: "0 0 10px", color: "#fff", letterSpacing: "-0.5px" } : {}}>
+        <h1 className="ex-empty__h1" style={isMobile ? { fontSize: 19, fontWeight: 800, textAlign: "center", margin: "0 0 6px", color: "#fff", letterSpacing: "-0.5px" } : {}}>
           Career Operating System
         </h1>
 
@@ -783,7 +783,7 @@ function EmptyState({ onSend, context }) {
 
         <button
           className="ex-empty__cta"
-          style={isMobile ? { width: "100%", marginBottom: 10, padding: "12px 18px", fontSize: 14 } : {}}
+          style={isMobile ? { width: "100%", marginBottom: 8, padding: "10px 18px", fontSize: 14 } : {}}
           onClick={() => onSend("Run a full career diagnosis. Assess my current position, identify skill gaps, map transition options, and benchmark salary potential.")}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
@@ -795,13 +795,13 @@ function EmptyState({ onSend, context }) {
           Start Career Analysis
         </button>
 
-        <div className="ex-empty__grid" style={isMobile ? { display: "flex", flexDirection: "column", gap: 6, width: "100%" } : {}}>
+        <div className="ex-empty__grid" style={isMobile ? { display: "flex", flexDirection: "column", gap: 5, width: "100%" } : {}}>
           {sugg.map((s, i) => (
             <button
               key={i}
               className="ex-sugg"
               onClick={() => onSend(s.prompt)}
-              style={isMobile ? { "--sc": CAT_COLOR[s.cat] || "#0F6E56", padding: "9px 12px", display: "flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%" } : { "--sc": CAT_COLOR[s.cat] || "#0F6E56" }}
+              style={isMobile ? { "--sc": CAT_COLOR[s.cat] || "#0F6E56", padding: "7px 12px", display: "flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%" } : { "--sc": CAT_COLOR[s.cat] || "#0F6E56" }}
             >
               <span className="ex-sugg__icon" style={{ color: CAT_COLOR[s.cat] || "#0F6E56", background: (CAT_COLOR[s.cat] || "#0F6E56") + "18" }}>
                 {CAT_ICON[s.cat] || "·"}
