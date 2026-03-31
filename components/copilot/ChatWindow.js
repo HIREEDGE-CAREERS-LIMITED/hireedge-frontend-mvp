@@ -746,26 +746,36 @@ function IntelPreview({ onSend }) {
 }
 
 function EmptyState({ onSend, context }) {
-  const sugg = smartSuggestions(context);
+  const sugg    = smartSuggestions(context);
+  const isMobile = useIsMobile();
+
   return (
     <div className="ex-empty">
       <div className="ex-empty__glow" />
       <div className="ex-empty__flow">
 
-        <div className="ex-empty__hero">
-          <div className="ex-empty__icon-glow">
-            <EDGEXIcon size={32} state="hero" color="#0F6E56" />
+        {/* Hero logo — hidden on mobile to save space for 4 cards */}
+        {!isMobile && (
+          <div className="ex-empty__hero">
+            <div className="ex-empty__icon-glow">
+              <EDGEXIcon size={32} state="hero" color="#0F6E56" />
+            </div>
+            <div className="ex-empty__status">
+              <span className="ex-empty__dot" />
+              <StatusCycle context={context} />
+            </div>
           </div>
-          <div className="ex-empty__status">
-            <span className="ex-empty__dot" />
-            <StatusCycle context={context} />
-          </div>
-        </div>
+        )}
 
         <h1 className="ex-empty__h1">Career Operating System</h1>
-        <p className="ex-empty__sub">Diagnose your career. Identify your gaps. Execute your next move.</p>
 
-        <IntelPreview onSend={onSend} />
+        {/* Subtitle — desktop only */}
+        {!isMobile && (
+          <p className="ex-empty__sub">Diagnose your career. Identify your gaps. Execute your next move.</p>
+        )}
+
+        {/* Intel preview card — desktop only */}
+        {!isMobile && <IntelPreview onSend={onSend} />}
 
         <button
           className="ex-empty__cta"
