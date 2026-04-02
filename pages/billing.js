@@ -470,6 +470,7 @@ export default function BillingPage() {
       setIsLoading(true);
 
       const { data, error } = await supabase.auth.getSession();
+
       if (error || !data?.session?.access_token) {
         alert("Please sign in again before upgrading.");
         return;
