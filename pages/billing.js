@@ -2,39 +2,48 @@
 // pages/billing.js
 // HireEdge — Billing / Plan Selection
 //
-// CHANGES vs previous version:
-//   - Career Pack price: £19.99 → £6.99
-//   - Career Pack CTA: "Get Career Pack" → "Unlock Career Pack — £6.99"
-//   - Pro CTA: "Upgrade to Pro" → "Start Pro — £14.99/month"
-//   - Elite CTA: "Go Elite" → "Upgrade to Elite — £29.99/month"
-//   - Added: headline, priceNote2, positioning per plan
-//   - Removed: "Talent Profile" from Free features (Pro tool)
-//   - PricingCard renders new headline, priceNote2, positioning fields
-//   - TrustRow added above .billing-grid
-//   - ComparisonNote added below .billing-grid
-//   - Layout, toggle, FAQ, UsageMeter, PlanBadge: unchanged
+// UPDATED:
+// - Real Stripe checkout integration
+// - Keeps existing UI and layout
+// - Sends POST to backend checkout endpoint
+// - Uses Supabase session token for auth
+// - Career Pack / Pro / Elite now call backend instead of localStorage-only
+// - Free stays local
+// - Yearly toggle kept in UI, but checkout currently uses monthly live plans
+// - Refund FAQ wording corrected to case-by-case review
 // ============================================================================
 
 import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 
-// ── Plan data (inline — single source of truth for this page) ─────────────
+// ── Supabase client ──────────────────────────────────────────────────────────
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "hireedge_plan";
+const BACKEND_URL = "https://hireedge-backend-mvp.vercel.app";
+
+// ── Plan data (inline — single source of truth for this page) ───────────────
 
 const PLANS_CONFIG = {
   free: {
-    id:              "free",
-    name:            "Free",
-    headline:        "Explore your career basics",
-    price:           "£0",
-    priceNote:       "forever",
-    priceNote2:      null,
-    positioning:     null,
+    id: "free",
+    name: "Free",
+    headline: "Explore your career basics",
+    price: "£0",
+    priceNote: "forever",
+    priceNote2: null,
+    positioning: null,
     copilot_per_day: 10,
-    tools_per_day:   15,
-    career_pack:     false,
-    premium_tools:   false,
-    unlimited:       false,
+    tools_per_day: 15,
+    career_pack: false,
+    premium_tools: false,
+    unlimited: false,
     features: [
       "Role Explorer",
       "Salary Insights",
@@ -47,18 +56,18 @@ const PLANS_CONFIG = {
     cta: null,
   },
   career_pack: {
-    id:              "career_pack",
-    name:            "Career Pack",
-    headline:        "One-time career transformation plan",
-    price:           "£6.99",
-    priceNote:       "one-time",
-    priceNote2:      "One-time payment • No subscription",
-    positioning:     "Best for a one-time structured plan",
+    id: "career_pack",
+    name: "Career Pack",
+    headline: "One-time career transformation plan",
+    price: "£6.99",
+    priceNote: "one-time",
+    priceNote2: "One-time payment • No subscription",
+    positioning: "Best for a one-time structured plan",
     copilot_per_day: 20,
-    tools_per_day:   25,
-    career_pack:     true,
-    premium_tools:   false,
-    unlimited:       false,
+    tools_per_day: 25,
+    career_pack: true,
+    premium_tools: false,
+    unlimited: false,
     features: [
       "Everything in Free",
       "Full Career Pack (build + export)",
@@ -66,26 +75,26 @@ const PLANS_CONFIG = {
       "20 EDGEX messages/day",
       "25 tool uses/day",
     ],
-    cta:        "Get your plan — £6.99 one-time",
-    ctaTag:     "Best for starters",
-    ctaSub:     "No commitment • Upgrade instantly",
+    cta: "Get your plan — £6.99 one-time",
+    ctaTag: "Best for starters",
+    ctaSub: "No commitment • Upgrade instantly",
     stripe_key: "career_pack",
   },
   pro: {
-    id:              "pro",
-    name:            "Pro",
-    headline:        "Full career acceleration toolkit",
-    price:           "£14.99",
-    priceNote:       "/month",
-    priceNote2:      "Monthly subscription • Cancel anytime",
-    positioning:     "Best for continuous career growth",
-    yearlyPrice:     "£119.88/yr (£9.99/mo)",
+    id: "pro",
+    name: "Pro",
+    headline: "Full career acceleration toolkit",
+    price: "£14.99",
+    priceNote: "/month",
+    priceNote2: "Monthly subscription • Cancel anytime",
+    positioning: "Best for continuous career growth",
+    yearlyPrice: "£119.88/yr (£9.99/mo)",
     copilot_per_day: 100,
-    tools_per_day:   100,
-    career_pack:     true,
-    premium_tools:   true,
-    unlimited:       false,
-    popular:         true,
+    tools_per_day: 100,
+    career_pack: true,
+    premium_tools: true,
+    unlimited: false,
+    popular: true,
     features: [
       "Everything in Career Pack",
       "Resume Optimiser",
@@ -96,26 +105,26 @@ const PLANS_CONFIG = {
       "100 EDGEX messages/day",
       "100 tool uses/day",
     ],
-    cta:        "Start Pro — £14.99/month",
-    ctaTag:     null,
-    ctaSub:     "No commitment • Upgrade instantly",
-    ctaNote:    "Most users choose Pro for full access",
-    stripe_key: "career_pro",
+    cta: "Start Pro — £14.99/month",
+    ctaTag: null,
+    ctaSub: "No commitment • Upgrade instantly",
+    ctaNote: "Most users choose Pro for full access",
+    stripe_key: "pro",
   },
   elite: {
-    id:              "elite",
-    name:            "Elite",
-    headline:        "Maximum growth with priority support",
-    price:           "£29.99",
-    priceNote:       "/month",
-    priceNote2:      "Monthly subscription • Cancel anytime",
-    positioning:     null,
-    yearlyPrice:     "£239.88/yr (£19.99/mo)",
+    id: "elite",
+    name: "Elite",
+    headline: "Maximum growth with priority support",
+    price: "£29.99",
+    priceNote: "/month",
+    priceNote2: "Monthly subscription • Cancel anytime",
+    positioning: null,
+    yearlyPrice: "£239.88/yr (£19.99/mo)",
     copilot_per_day: Infinity,
-    tools_per_day:   Infinity,
-    career_pack:     true,
-    premium_tools:   true,
-    unlimited:       true,
+    tools_per_day: Infinity,
+    career_pack: true,
+    premium_tools: true,
+    unlimited: true,
     features: [
       "Everything in Pro",
       "Unlimited EDGEX messages",
@@ -123,15 +132,17 @@ const PLANS_CONFIG = {
       "Priority support",
       "Early access to new features",
     ],
-    cta:        "Upgrade to Elite — £29.99/month",
-    ctaTag:     null,
-    ctaSub:     "No commitment • Upgrade instantly",
-    ctaNote:    null,
-    stripe_key: "career_elite",
+    cta: "Upgrade to Elite — £29.99/month",
+    ctaTag: null,
+    ctaSub: "No commitment • Upgrade instantly",
+    ctaNote: null,
+    stripe_key: "elite",
   },
 };
 
 const PLAN_ORDER = ["free", "career_pack", "pro", "elite"];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getCurrentPlan() {
   if (typeof window === "undefined") return "free";
@@ -154,41 +165,70 @@ function getUsage() {
     try {
       const stored = localStorage.getItem("hireedge_usage");
       const parsed = stored ? JSON.parse(stored) : {};
-      const today  = new Date().toISOString().slice(0, 10);
+      const today = new Date().toISOString().slice(0, 10);
       if (parsed.date !== today) return { copilot: 0, tools: 0, date: today };
       return parsed;
     } catch {
       return { copilot: 0, tools: 0, date: "" };
     }
   })();
+
   return {
     copilot: {
-      used:  raw.copilot,
+      used: raw.copilot,
       limit: plan.copilot_per_day,
-      pct:   plan.copilot_per_day === Infinity ? 0 : Math.round((raw.copilot / plan.copilot_per_day) * 100),
+      pct:
+        plan.copilot_per_day === Infinity
+          ? 0
+          : Math.round((raw.copilot / plan.copilot_per_day) * 100),
     },
     tools: {
-      used:  raw.tools,
+      used: raw.tools,
       limit: plan.tools_per_day,
-      pct:   plan.tools_per_day === Infinity ? 0 : Math.round((raw.tools / plan.tools_per_day) * 100),
+      pct:
+        plan.tools_per_day === Infinity
+          ? 0
+          : Math.round((raw.tools / plan.tools_per_day) * 100),
     },
   };
 }
 
-// ── Plan badge ────────────────────────────────────────────────────────────
+// ── Plan badge ───────────────────────────────────────────────────────────────
 
 const BADGE_STYLES = {
-  free:        { bg: "var(--bg-elevated)",                                   color: "var(--text-secondary)",  border: "var(--border-default)" },
-  career_pack: { bg: "rgba(16,185,129,0.08)",                                color: "var(--accent-400)",      border: "rgba(16,185,129,0.2)"  },
-  pro:         { bg: "rgba(16,185,129,0.12)",                                color: "var(--accent-300)",      border: "rgba(16,185,129,0.3)"  },
-  elite:       { bg: "linear-gradient(135deg,rgba(251,191,36,0.1),rgba(16,185,129,0.1))", color: "var(--amber-400)", border: "rgba(251,191,36,0.25)" },
+  free: {
+    bg: "var(--bg-elevated)",
+    color: "var(--text-secondary)",
+    border: "var(--border-default)",
+  },
+  career_pack: {
+    bg: "rgba(16,185,129,0.08)",
+    color: "var(--accent-400)",
+    border: "rgba(16,185,129,0.2)",
+  },
+  pro: {
+    bg: "rgba(16,185,129,0.12)",
+    color: "var(--accent-300)",
+    border: "rgba(16,185,129,0.3)",
+  },
+  elite: {
+    bg: "linear-gradient(135deg,rgba(251,191,36,0.1),rgba(16,185,129,0.1))",
+    color: "var(--amber-400)",
+    border: "rgba(251,191,36,0.25)",
+  },
 };
 
-const PLAN_LABELS = { free: "Free", career_pack: "Career Pack", pro: "Pro", elite: "Elite" };
+const PLAN_LABELS = {
+  free: "Free",
+  career_pack: "Career Pack",
+  pro: "Pro",
+  elite: "Elite",
+};
 
 function PlanBadge({ plan, size, showIcon }) {
   const style = BADGE_STYLES[plan] || BADGE_STYLES.free;
   const label = PLAN_LABELS[plan] || "Free";
+
   return (
     <span
       className={`plan-badge ${size === "lg" ? "plan-badge--lg" : size === "sm" ? "plan-badge--sm" : ""}`}
@@ -200,10 +240,10 @@ function PlanBadge({ plan, size, showIcon }) {
   );
 }
 
-// ── Usage meter ───────────────────────────────────────────────────────────
+// ── Usage meter ──────────────────────────────────────────────────────────────
 
 function UsageMeter({ compact }) {
-  const usage    = getUsage();
+  const usage = getUsage();
   const planData = getPlan(getCurrentPlan());
 
   if (planData.unlimited) {
@@ -216,14 +256,27 @@ function UsageMeter({ compact }) {
 
   return (
     <div className={`usage-meter ${compact ? "usage-meter--compact" : ""}`}>
-      <Meter label="EDGEX" used={usage.copilot.used} limit={usage.copilot.limit} pct={usage.copilot.pct} compact={compact} />
-      <Meter label="Tools" used={usage.tools.used}   limit={usage.tools.limit}   pct={usage.tools.pct}   compact={compact} />
+      <Meter
+        label="EDGEX"
+        used={usage.copilot.used}
+        limit={usage.copilot.limit}
+        pct={usage.copilot.pct}
+        compact={compact}
+      />
+      <Meter
+        label="Tools"
+        used={usage.tools.used}
+        limit={usage.tools.limit}
+        pct={usage.tools.pct}
+        compact={compact}
+      />
     </div>
   );
 }
 
 function Meter({ label, used, limit, pct, compact }) {
   const depleted = pct >= 100;
+
   return (
     <div className={`meter ${depleted ? "meter--depleted" : ""}`}>
       <div className="meter__header">
@@ -234,62 +287,54 @@ function Meter({ label, used, limit, pct, compact }) {
           </span>
         )}
       </div>
+
       <div className="meter__track">
         <div
           className="meter__fill"
           style={{
-            width:      `${Math.min(pct, 100)}%`,
-            background: pct >= 90 ? "var(--red-400)" : pct >= 70 ? "var(--amber-400)" : "var(--accent-500)",
+            width: `${Math.min(pct, 100)}%`,
+            background:
+              pct >= 90 ? "var(--red-400)" : pct >= 70 ? "var(--amber-400)" : "var(--accent-500)",
           }}
         />
       </div>
+
       {depleted && !compact && <span className="meter__warning">Daily limit reached</span>}
     </div>
   );
 }
 
-// ── Pricing card ──────────────────────────────────────────────────────────
+// ── Pricing card ─────────────────────────────────────────────────────────────
 
-function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle }) {
-  const showYearly  = billingCycle === "yearly" && plan.yearlyPrice;
+function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle, isLoading }) {
+  const showYearly = billingCycle === "yearly" && plan.yearlyPrice;
   const displayPrice = showYearly
     ? plan.yearlyPrice.split("(")[1]?.replace(")", "") || plan.yearlyPrice
     : plan.price;
   const displayNote = showYearly ? "/month billed yearly" : plan.priceNote;
 
   return (
-    <div className={`pricing-card ${plan.popular ? "pricing-card--popular" : ""} ${isCurrentPlan ? "pricing-card--current" : ""}`}>
-      {plan.popular     && <div className="pricing-card__ribbon">Most Popular</div>}
-      {isCurrentPlan    && <div className="pricing-card__current-badge">Current Plan</div>}
+    <div
+      className={`pricing-card ${plan.popular ? "pricing-card--popular" : ""} ${isCurrentPlan ? "pricing-card--current" : ""}`}
+    >
+      {plan.popular && <div className="pricing-card__ribbon">Most Popular</div>}
+      {isCurrentPlan && <div className="pricing-card__current-badge">Current Plan</div>}
 
       <div className="pricing-card__header">
         <h3 className="pricing-card__name">{plan.name}</h3>
 
-        {/* Value headline — new */}
-        {plan.headline && (
-          <p className="pricing-card__headline">{plan.headline}</p>
-        )}
+        {plan.headline && <p className="pricing-card__headline">{plan.headline}</p>}
 
         <div className="pricing-card__price">
           <span className="pricing-card__amount">{displayPrice}</span>
           <span className="pricing-card__note">{displayNote}</span>
         </div>
 
-        {showYearly && (
-          <div className="pricing-card__yearly-total">
-            {plan.yearlyPrice.split("/")[0]}
-          </div>
-        )}
+        {showYearly && <div className="pricing-card__yearly-total">{plan.yearlyPrice.split("/")[0]}</div>}
 
-        {/* Payment clarity note — new */}
-        {plan.priceNote2 && !showYearly && (
-          <p className="pricing-card__price-note2">{plan.priceNote2}</p>
-        )}
+        {plan.priceNote2 && !showYearly && <p className="pricing-card__price-note2">{plan.priceNote2}</p>}
 
-        {/* Positioning line — new */}
-        {plan.positioning && (
-          <p className="pricing-card__positioning">{plan.positioning}</p>
-        )}
+        {plan.positioning && <p className="pricing-card__positioning">{plan.positioning}</p>}
       </div>
 
       <div className="pricing-card__features">
@@ -308,21 +353,16 @@ function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle }) {
           </button>
         ) : plan.cta ? (
           <>
-            {plan.ctaTag && (
-              <span className="pricing-card__cta-tag">{plan.ctaTag}</span>
-            )}
+            {plan.ctaTag && <span className="pricing-card__cta-tag">{plan.ctaTag}</span>}
             <button
               className={`pricing-card__btn ${plan.popular ? "pricing-card__btn--primary pricing-card__btn--primary-lg" : "pricing-card__btn--secondary"}`}
               onClick={() => onSelect?.(plan.id)}
+              disabled={isLoading}
             >
-              {plan.cta}
+              {isLoading ? "Redirecting..." : plan.cta}
             </button>
-            {plan.ctaNote && (
-              <p className="pricing-card__cta-note">{plan.ctaNote}</p>
-            )}
-            {plan.ctaSub && (
-              <p className="pricing-card__cta-sub">{plan.ctaSub}</p>
-            )}
+            {plan.ctaNote && <p className="pricing-card__cta-note">{plan.ctaNote}</p>}
+            {plan.ctaSub && <p className="pricing-card__cta-sub">{plan.ctaSub}</p>}
           </>
         ) : (
           <button className="pricing-card__btn pricing-card__btn--muted" disabled>
@@ -344,7 +384,7 @@ function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle }) {
   );
 }
 
-// ── Trust row — new ───────────────────────────────────────────────────────
+// ── Trust row ────────────────────────────────────────────────────────────────
 
 function TrustRow() {
   return (
@@ -365,7 +405,7 @@ function TrustRow() {
   );
 }
 
-// ── Comparison note — new ─────────────────────────────────────────────────
+// ── Comparison note ──────────────────────────────────────────────────────────
 
 function ComparisonNote() {
   return (
@@ -385,7 +425,7 @@ function ComparisonNote() {
   );
 }
 
-// ── FAQ item ──────────────────────────────────────────────────────────────
+// ── FAQ item ─────────────────────────────────────────────────────────────────
 
 function FAQItem({ q, a }) {
   return (
@@ -396,34 +436,83 @@ function FAQItem({ q, a }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BillingPage() {
   const [currentPlan, setCurrentPlan] = useState("free");
   const [billingCycle, setBillingCycle] = useState("monthly");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Read localStorage only after mount — localStorage is not available during SSR
   useEffect(() => {
     setCurrentPlan(getCurrentPlan());
   }, []);
 
-  const handleSelect = (planId) => {
-    setPlan(planId);
-    setCurrentPlan(planId);
+  const handleSelect = async (planId) => {
+    if (planId === "free") {
+      setPlan("free");
+      setCurrentPlan("free");
+      return;
+    }
+
+    const selectedPlan = getPlan(planId);
+
+    if (!selectedPlan?.stripe_key) {
+      alert("This plan is not configured for checkout yet.");
+      return;
+    }
+
+    if (billingCycle === "yearly") {
+      alert("Yearly billing is not live yet. Please use monthly for now.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data?.session?.access_token) {
+        alert("Please sign in again before upgrading.");
+        return;
+      }
+
+      const token = data.session.access_token;
+
+      const res = await fetch(`${BACKEND_URL}/api/billing/create-checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          plan_id: selectedPlan.stripe_key,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Could not start checkout.");
+      }
+
+      if (!json?.url) {
+        throw new Error("Checkout URL missing.");
+      }
+
+      window.location.href = json.url;
+    } catch (err) {
+      alert(err?.message || "Something went wrong starting checkout.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="billing-page">
-
-      {/* Header — unchanged */}
       <div className="billing-page__header">
         <h1 className="billing-page__title">Plans &amp; Pricing</h1>
-        <p className="billing-page__subtitle">
-          Simple pricing. No surprises.
-        </p>
+        <p className="billing-page__subtitle">Simple pricing. No surprises.</p>
       </div>
 
-      {/* Current plan + usage — unchanged */}
       <div className="billing-current">
         <div className="billing-current__info">
           <span className="billing-current__label">Current Plan</span>
@@ -432,7 +521,6 @@ export default function BillingPage() {
         <UsageMeter />
       </div>
 
-      {/* Billing toggle — unchanged */}
       <div className="billing-toggle">
         <button
           className={`billing-toggle__btn ${billingCycle === "monthly" ? "billing-toggle__btn--active" : ""}`}
@@ -449,10 +537,8 @@ export default function BillingPage() {
         </button>
       </div>
 
-      {/* Trust row — NEW: above cards */}
       <TrustRow />
 
-      {/* Plan cards — unchanged structure, PricingCard renders new fields */}
       <div className="billing-grid">
         {PLAN_ORDER.map((planId) => (
           <PricingCard
@@ -461,26 +547,42 @@ export default function BillingPage() {
             isCurrentPlan={planId === currentPlan}
             onSelect={handleSelect}
             billingCycle={billingCycle}
+            isLoading={isLoading}
           />
         ))}
       </div>
 
-      {/* Comparison note — NEW: below cards */}
       <ComparisonNote />
 
-      {/* FAQ — unchanged */}
       <div className="billing-faq">
         <h3 className="billing-faq__title">Frequently Asked Questions</h3>
         <div className="billing-faq__grid">
-          <FAQItem q="Can I switch plans anytime?"           a="Yes. Upgrade instantly, downgrade at the end of your billing cycle. No lock-in." />
-          <FAQItem q="What payment methods do you accept?"   a="All major credit/debit cards via Stripe. Apple Pay and Google Pay also supported." />
-          <FAQItem q="Do limits reset daily?"                a="Yes. EDGEX messages and tool uses reset every day at midnight UTC." />
-          <FAQItem q="Is the Career Pack a one-time purchase?" a="Yes. Pay once and keep full career pack access indefinitely." />
-          <FAQItem q="What happens when I hit a limit?"      a="You'll see a clear upgrade prompt. Your data is never lost — just upgrade to continue." />
-          <FAQItem q="Can I get a refund?"                   a="Yes, within 14 days of purchase if you're not satisfied." />
+          <FAQItem
+            q="Can I switch plans anytime?"
+            a="Yes. Upgrade instantly, downgrade at the end of your billing cycle. No lock-in."
+          />
+          <FAQItem
+            q="What payment methods do you accept?"
+            a="All major credit/debit cards via Stripe. Apple Pay and Google Pay also supported."
+          />
+          <FAQItem
+            q="Do limits reset daily?"
+            a="Yes. EDGEX messages and tool uses reset every day at midnight UTC."
+          />
+          <FAQItem
+            q="Is the Career Pack a one-time purchase?"
+            a="Yes. Pay once and keep full career pack access indefinitely."
+          />
+          <FAQItem
+            q="What happens when I hit a limit?"
+            a="You'll see a clear upgrade prompt. Your data is never lost — just upgrade to continue."
+          />
+          <FAQItem
+            q="Can I get a refund?"
+            a="Refund requests are reviewed on a case-by-case basis. Please contact support if you experience any billing issues."
+          />
         </div>
       </div>
-
     </div>
   );
 }
