@@ -587,3 +587,5 @@ export default function BillingPage() {
     </div>
   );
 }
+
+give me the full final updated code please  to adjust this issue ? 
