@@ -231,7 +231,9 @@ function PlanBadge({ plan, size, showIcon }) {
 
   return (
     <span
-      className={`plan-badge ${size === "lg" ? "plan-badge--lg" : size === "sm" ? "plan-badge--sm" : ""}`}
+      className={`plan-badge ${
+        size === "lg" ? "plan-badge--lg" : size === "sm" ? "plan-badge--sm" : ""
+      }`}
       style={{ background: style.bg, color: style.color, borderColor: style.border }}
     >
       {showIcon && plan !== "free" && <span className="plan-badge__icon">✦</span>}
@@ -315,7 +317,9 @@ function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle, isLoading })
 
   return (
     <div
-      className={`pricing-card ${plan.popular ? "pricing-card--popular" : ""} ${isCurrentPlan ? "pricing-card--current" : ""}`}
+      className={`pricing-card ${plan.popular ? "pricing-card--popular" : ""} ${
+        isCurrentPlan ? "pricing-card--current" : ""
+      }`}
     >
       {plan.popular && <div className="pricing-card__ribbon">Most Popular</div>}
       {isCurrentPlan && <div className="pricing-card__current-badge">Current Plan</div>}
@@ -330,9 +334,13 @@ function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle, isLoading })
           <span className="pricing-card__note">{displayNote}</span>
         </div>
 
-        {showYearly && <div className="pricing-card__yearly-total">{plan.yearlyPrice.split("/")[0]}</div>}
+        {showYearly && (
+          <div className="pricing-card__yearly-total">{plan.yearlyPrice.split("/")[0]}</div>
+        )}
 
-        {plan.priceNote2 && !showYearly && <p className="pricing-card__price-note2">{plan.priceNote2}</p>}
+        {plan.priceNote2 && !showYearly && (
+          <p className="pricing-card__price-note2">{plan.priceNote2}</p>
+        )}
 
         {plan.positioning && <p className="pricing-card__positioning">{plan.positioning}</p>}
       </div>
@@ -355,7 +363,11 @@ function PricingCard({ plan, isCurrentPlan, onSelect, billingCycle, isLoading })
           <>
             {plan.ctaTag && <span className="pricing-card__cta-tag">{plan.ctaTag}</span>}
             <button
-              className={`pricing-card__btn ${plan.popular ? "pricing-card__btn--primary pricing-card__btn--primary-lg" : "pricing-card__btn--secondary"}`}
+              className={`pricing-card__btn ${
+                plan.popular
+                  ? "pricing-card__btn--primary pricing-card__btn--primary-lg"
+                  : "pricing-card__btn--secondary"
+              }`}
               onClick={() => onSelect?.(plan.id)}
               disabled={isLoading}
             >
@@ -524,13 +536,17 @@ export default function BillingPage() {
 
       <div className="billing-toggle">
         <button
-          className={`billing-toggle__btn ${billingCycle === "monthly" ? "billing-toggle__btn--active" : ""}`}
+          className={`billing-toggle__btn ${
+            billingCycle === "monthly" ? "billing-toggle__btn--active" : ""
+          }`}
           onClick={() => setBillingCycle("monthly")}
         >
           Monthly
         </button>
         <button
-          className={`billing-toggle__btn ${billingCycle === "yearly" ? "billing-toggle__btn--active" : ""}`}
+          className={`billing-toggle__btn ${
+            billingCycle === "yearly" ? "billing-toggle__btn--active" : ""
+          }`}
           onClick={() => setBillingCycle("yearly")}
         >
           Yearly
@@ -587,5 +603,3 @@ export default function BillingPage() {
     </div>
   );
 }
-
-give me the full final updated code please  to adjust this issue ? 
